@@ -182,12 +182,16 @@ async def handle_profile_document(update: Update,
 async def web_app_data_handler(update: Update,
                                context: ContextTypes.DEFAULT_TYPE):
     try:
-        # Получаем JSON из Web App
+        # 1. Получаем данные из Web App
         raw_data = json.loads(update.effective_message.web_app_data.data)
-        data_type = raw_data.get("type")  # Читаем нашу новую метку
+        data_type = raw_data.get("type")
 
-        if data_type == "profile_update":
-            # ЛОГИКА ДЛЯ ПРОФИЛЯ
+        logger.info(f"Daten erhalten. Typ: {data_type}")
+
+        # --- ЛОГИКА СОХРАНЕНИЯ ПРОФИЛЯ (SETTINGS) ---
+        # Срабатывает, если есть тип 'profile_update' или просто прилетели поля профиля
+        if data_type == "profile_update" or ("company_name" in raw_data and
+                                             "invoice_data" not in raw_data):
             profile_data = {
                 "id": update.effective_user.id,
                 "company_name": raw_data.get("company_name"),
@@ -199,27 +203,56 @@ async def web_app_data_handler(update: Update,
                 "tax_id": raw_data.get("tax_id"),
                 "iban": raw_data.get("iban")
             }
-            supabase.table("profiles").upsert(profile_data).execute()
+
+            # Сохранение профиля с защитой от разрыва соединения (наша прошлая правка)
+            try:
+                supabase.table("profiles").upsert(profile_data).execute()
+            except Exception as e:
+                logger.warning(
+                    f"Verbindungsproblem (10054?), versuche erneut: {e}")
+                supabase.table("profiles").upsert(profile_data).execute()
+
             await update.message.reply_text(
                 "🎉 Profil erfolgreich gespeichert!",
                 reply_markup=get_main_keyboard())
 
-        elif data_type == "create_invoice":
-            # ЛОГИКА ДЛЯ СЧЕТА
-            # Здесь мы пока просто выведем инфо, что данные получены
-            client = raw_data.get("client_name", "Unbekannter Kunde")
-            await update.message.reply_text(
-                f"✅ Rechnung für {client} empfangen. PDF-Erstellung wird vorbereitet...",
-                reply_markup=get_main_keyboard())
+        # --- ЛОГИКА СОЗДАНИЯ СЧЕТА (INVOICE) ---
+        elif data_type == "create_invoice" or "invoice_data" in raw_data:
+            inv = raw_data.get("invoice_data")
 
-        else:
-            # На случай, если тип не указан
-            logger.warning(f"Unbekannter Datentyp erhalten: {raw_data}")
+            # Подготовка данных для новой таблицы 'invoices'
+            db_invoice_data = {
+                "user_id": update.effective_user.id,
+                "client_name": inv.get("client_name"),
+                "client_address": inv.get("client_address"),
+                "client_email": inv.get("client_email"),
+                "description": inv.get("description"),
+                "amount": inv.get("amount"),
+                "vat_rate": inv.get("vat_rate"),
+                "total": inv.get("total"),
+                "invoice_date": inv.get("date"),
+                "status": "created"
+            }
+
+            # Сохраняем счет в базу (тоже с защитой от разрыва)
+            try:
+                supabase.table("invoices").insert(db_invoice_data).execute()
+            except Exception:
+                logger.warning(
+                    "Verbindung verloren beim Speichern der Rechnung, versuche erneut..."
+                )
+                supabase.table("invoices").insert(db_invoice_data).execute()
+
+            await update.message.reply_text(
+                f"✅ Rechnung für {inv.get('client_name')} über {inv.get('total')} € wurde gespeichert!\n"
+                "Ich bereite die PDF-Datei vor...",
+                reply_markup=get_main_keyboard())
+            # Сюда позже добавим: await send_invoice_pdf(update, inv)
 
     except Exception as e:
-        logger.error(f"Fehler im web_app_data_handler: {e}")
-        await update.message.reply_text(
-            "❌ Fehler bei der Verarbeitung der Daten.")
+        logger.error(f"Kritischer Fehler im web_app_data_handler: {e}")
+        await update.message.reply_text(f"❌ Fehler: {str(e)}",
+                                        reply_markup=get_main_keyboard())
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
