@@ -114,7 +114,7 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Замени URL на тот, который даст GitHub Pages (или пока используй любой для теста)
-    web_app_url = "https://yourusername.github.io/invoice-bot/" 
+    web_app_url = "https://atashkayev-stack.github.io/invoice-bot/" 
     
     keyboard = ReplyKeyboardMarkup([
         [KeyboardButton("⚙️ Открыть настройки", web_app=WebAppInfo(url=web_app_url))]
