@@ -66,21 +66,19 @@
             } catch (e) { console.error(e); }
         }
 
-      function saveProfile() {
-    tg.sendData(JSON.stringify({
-        type: "profile_update", // <-- Добавляем метку типа
-        company_name: document.getElementById('company_name').value,
-        street: document.getElementById('street').value,
-        city: document.getElementById('city').value,
-        postal_code: document.getElementById('postal_code').value,
-        email: document.getElementById('email').value,
-        phone: document.getElementById('phone').value,
-        tax_id: document.getElementById('tax_id').value,
-        iban: document.getElementById('iban').value
-    }));
-    tg.close();
-}
-        
+        function saveProfile() {
+            tg.sendData(JSON.stringify({
+                company_name: document.getElementById('company_name').value,
+                street: document.getElementById('street').value,
+                city: document.getElementById('city').value,
+                postal_code: document.getElementById('postal_code').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                tax_id: document.getElementById('tax_id').value,
+                iban: document.getElementById('iban').value
+            }));
+            tg.close();
+        }
     </script>
 </body>
 </html>
