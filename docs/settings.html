@@ -3,210 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profileinstellungen</title>
+    <title>Profil-Einstellungen</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body {
-            background: var(--tg-theme-bg-color, #ffffff);
-            color: var(--tg-theme-text-color, #000000);
-            padding: 15px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-        .form-control, .form-select {
-            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
-            color: var(--tg-theme-text-color, #000000);
-            border: 1px solid var(--tg-theme-hint-color, #999999);
-            border-radius: 8px;
-            padding: 10px 12px;
-            margin-bottom: 10px;
-        }
-        .form-label {
-            font-weight: 500;
-            margin-bottom: 5px;
-            font-size: 14px;
-        }
-        .section-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin-top: 20px;
-            margin-bottom: 15px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid var(--tg-theme-button-color, #0088cc);
-            color: var(--tg-theme-button-color, #0088cc);
-        }
-        .btn-primary {
-            background: var(--tg-theme-button-color, #0088cc);
-            color: var(--tg-theme-button-text-color, #ffffff);
-            border: none;
-            border-radius: 8px;
-            padding: 12px;
-            font-weight: 600;
-            width: 100%;
-            margin-top: 15px;
-        }
-        .form-check-input {
-            margin-top: 0.25rem;
-        }
-        .info-text {
-            font-size: 12px;
-            color: var(--tg-theme-hint-color, #999999);
-            margin-top: -8px;
-            margin-bottom: 10px;
-        }
-        .required::after {
-            content: " *";
-            color: #ff3b30;
-        }
+        body { font-family: Arial; padding: 20px; background: #f4f4f9; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
+        button { width: 100%; padding: 15px; background: #0088cc; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        label { font-weight: bold; font-size: 0.9em; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h4 style="margin-bottom: 20px;">⚙️ Profileinstellungen</h4>
-        
-        <form id="settingsForm">
-            <!-- Grunddaten -->
-            <div class="section-title">🏢 Firmendaten</div>
-            
-            <div class="mb-3">
-                <label class="form-label required">Firma / Name</label>
-                <input type="text" class="form-control" id="company_name" 
-                       placeholder="z.B. Max Mustermann IT-Consulting" required>
-                <div class="info-text">Name wie er auf Rechnungen erscheinen soll</div>
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label required">Vollständige Adresse</label>
-                <input type="text" class="form-control" id="address" 
-                       placeholder="Musterstraße 123, 10115 Berlin" required>
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label">E-Mail</label>
-                <input type="email" class="form-control" id="email" 
-                       placeholder="kontakt@firma.de">
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label">Telefon</label>
-                <input type="tel" class="form-control" id="phone" 
-                       placeholder="+49 30 12345678">
-            </div>
-            
-            <!-- Steuerdaten -->
-            <div class="section-title">🔢 Steuerdaten</div>
-            
-            <div class="mb-3">
-                <label class="form-label">Steuernummer</label>
-                <input type="text" class="form-control" id="tax_id" 
-                       placeholder="123/456/78901">
-                <div class="info-text">Deine persönliche Steuernummer vom Finanzamt</div>
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label">Umsatzsteuer-ID (USt-IdNr.)</label>
-                <input type="text" class="form-control" id="vat_id" 
-                       placeholder="DE123456789">
-                <div class="info-text">Nur für umsatzsteuerpflichtige Unternehmen</div>
-            </div>
-            
-            <div class="mb-3">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="is_kleinunternehmer">
-                    <label class="form-check-label" for="is_kleinunternehmer">
-                        Kleinunternehmer gemäß §19 UStG
-                    </label>
-                </div>
-                <div class="info-text">Wenn aktiviert: Keine Umsatzsteuer auf Rechnungen</div>
-            </div>
-            
-            <!-- Bankdaten -->
-            <div class="section-title">🏦 Bankverbindung</div>
-            
-            <div class="mb-3">
-                <label class="form-label">Bank</label>
-                <input type="text" class="form-control" id="bank_name" 
-                       placeholder="Sparkasse Berlin">
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label">IBAN</label>
-                <input type="text" class="form-control" id="iban" 
-                       placeholder="DE89 3704 0044 0532 0130 00"
-                       pattern="[A-Z]{2}[0-9]{2}[A-Z0-9]+"
-                       title="Gültige IBAN eingeben">
-                <div class="info-text">Internationale Bankkontonummer</div>
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label">BIC / SWIFT</label>
-                <input type="text" class="form-control" id="bic" 
-                       placeholder="COBADEFFXXX">
-            </div>
-            
-            <!-- Weitere Angaben -->
-            <div class="section-title">📋 Weitere Angaben (optional)</div>
-            
-            <div class="mb-3">
-                <label class="form-label">Handelsregisternummer</label>
-                <input type="text" class="form-control" id="registration_number" 
-                       placeholder="HRB 12345 B">
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label">Geschäftsführer</label>
-                <input type="text" class="form-control" id="ceo_name" 
-                       placeholder="Max Mustermann">
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label">Zahlungsziel (Tage)</label>
-                <input type="number" class="form-control" id="payment_terms" 
-                       value="14" min="1" max="90">
-                <div class="info-text">Standard-Zahlungsfrist für Rechnungen</div>
-            </div>
-            
-            <button type="submit" class="btn btn-primary">
-                💾 Profil speichern
-            </button>
-        </form>
-    </div>
+    <h3>Mein Profil (Verkäufer)</h3>
+    <label>Firma</label>
+    <input type="text" id="company_name" placeholder="Firma GmbH">
+    <label>Straße</label>
+    <input type="text" id="street" placeholder="Hauptstr. 1">
+    <label>Stadt</label>
+    <input type="text" id="city" placeholder="Berlin">
+    <label>PLZ</label>
+    <input type="text" id="postal_code" placeholder="10115">
+    <label>IBAN</label>
+    <input type="text" id="iban" placeholder="DE12 3456...">
+    
+    <button onclick="saveProfile()">Speichern</button>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        tg.MainButton.hide();
 
-        // Формируем данные для отправки
-        document.getElementById('settingsForm').onsubmit = (e) => {
-            e.preventDefault();
-            
+        // Автозаполнение из URL
+        const params = new URLSearchParams(window.location.search);
+        const encoded = params.get('data');
+        if (encoded) {
+            try {
+                const data = JSON.parse(atob(decodeURIComponent(encoded)));
+                document.getElementById('company_name').value = data.company_name || '';
+                document.getElementById('street').value = data.street || '';
+                document.getElementById('city').value = data.city || '';
+                document.getElementById('postal_code').value = data.postal_code || '';
+                document.getElementById('iban').value = data.iban || '';
+            } catch (e) { console.error(e); }
+        }
+
+        function saveProfile() {
             const data = {
                 company_name: document.getElementById('company_name').value,
-                address: document.getElementById('address').value,
-                email: document.getElementById('email').value || null,
-                phone: document.getElementById('phone').value || null,
-                tax_id: document.getElementById('tax_id').value || null,
-                vat_id: document.getElementById('vat_id').value || null,
-                is_kleinunternehmer: document.getElementById('is_kleinunternehmer').checked,
-                bank_name: document.getElementById('bank_name').value || null,
-                iban: document.getElementById('iban').value || null,
-                bic: document.getElementById('bic').value || null,
-                registration_number: document.getElementById('registration_number').value || null,
-                ceo_name: document.getElementById('ceo_name').value || null,
-                payment_terms: parseInt(document.getElementById('payment_terms').value) || 14
+                street: document.getElementById('street').value,
+                city: document.getElementById('city').value,
+                postal_code: document.getElementById('postal_code').value,
+                iban: document.getElementById('iban').value
             };
-            
-            // Отправляем данные обратно в бот
             tg.sendData(JSON.stringify(data));
-        };
-
-        // Автоформатирование IBAN
-        document.getElementById('iban').addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\s/g, '').toUpperCase();
-            let formatted = value.match(/.{1,4}/g)?.join(' ') || value;
-            e.target.value = formatted;
-        });
+        }
     </script>
 </body>
 </html>
