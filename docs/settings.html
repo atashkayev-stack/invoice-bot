@@ -6,54 +6,85 @@
     <title>Profil-Einstellungen</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: Arial; padding: 20px; background: #f4f4f9; }
-        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
-        button { width: 100%; padding: 15px; background: #0088cc; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        label { font-weight: bold; font-size: 0.9em; }
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f9; color: #333; }
+        .container { max-width: 400px; margin: 0 auto; }
+        input { width: 100%; padding: 12px; margin: 8px 0 15px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: #0088cc; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        label { font-weight: bold; font-size: 0.85em; color: #555; }
+        h3 { text-align: center; color: #0088cc; }
     </style>
 </head>
 <body>
-    <h3>Mein Profil (Verkäufer)</h3>
-    <label>Firma</label>
-    <input type="text" id="company_name" placeholder="Firma GmbH">
-    <label>Straße</label>
-    <input type="text" id="street" placeholder="Hauptstr. 1">
-    <label>Stadt</label>
-    <input type="text" id="city" placeholder="Berlin">
-    <label>PLZ</label>
-    <input type="text" id="postal_code" placeholder="10115">
-    <label>IBAN</label>
-    <input type="text" id="iban" placeholder="DE12 3456...">
-    
-    <button onclick="saveProfile()">Speichern</button>
+    <div class="container">
+        <h3>Mein Firmenprofil</h3>
+        
+        <label>Firma (Absender)</label>
+        <input type="text" id="company_name" placeholder="Muster GmbH">
+
+        <label>Straße & Hausnummer</label>
+        <input type="text" id="street" placeholder="Musterstraße 123">
+
+        <div style="display: flex; gap: 10px;">
+            <div style="flex: 1;">
+                <label>PLZ</label>
+                <input type="text" id="postal_code" placeholder="12345">
+            </div>
+            <div style="flex: 2;">
+                <label>Stadt</label>
+                <input type="text" id="city" placeholder="Berlin">
+            </div>
+        </div>
+
+        <label>Steuernummer / USt-ID (Tax ID)</label>
+        <input type="text" id="tax_id" placeholder="DE123456789">
+
+        <label>IBAN</label>
+        <input type="text" id="iban" placeholder="DE00 0000 ...">
+        
+        <button onclick="saveProfile()">Speichern</button>
+    </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Автозаполнение из URL
+        // 1. Извлекаем данные из URL
         const params = new URLSearchParams(window.location.search);
         const encoded = params.get('data');
+
         if (encoded) {
             try {
-                const data = JSON.parse(atob(decodeURIComponent(encoded)));
+                // Декодируем Base64
+                const jsonString = atob(decodeURIComponent(encoded));
+                const data = JSON.parse(jsonString);
+                console.log("Данные для формы:", data);
+
+                // 2. Заполняем поля (проверяем наличие данных)
                 document.getElementById('company_name').value = data.company_name || '';
                 document.getElementById('street').value = data.street || '';
                 document.getElementById('city').value = data.city || '';
                 document.getElementById('postal_code').value = data.postal_code || '';
+                document.getElementById('tax_id').value = data.tax_id || ''; // ТЕПЕРЬ ТУТ!
                 document.getElementById('iban').value = data.iban || '';
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error("Ошибка парсинга:", e);
+            }
         }
 
         function saveProfile() {
-            const data = {
+            const result = {
+                type: 'profile_update',
                 company_name: document.getElementById('company_name').value,
                 street: document.getElementById('street').value,
                 city: document.getElementById('city').value,
                 postal_code: document.getElementById('postal_code').value,
+                tax_id: document.getElementById('tax_id').value,
                 iban: document.getElementById('iban').value
             };
-            tg.sendData(JSON.stringify(data));
+            
+            // Отправляем обратно в бот
+            tg.sendData(JSON.stringify(result));
+            tg.close();
         }
     </script>
 </body>
