@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: invoice-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+    depends_on:
+      - redis
+    networks:
+      - bot-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: invoice-bot-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - bot-network
+
+volumes:
+  redis-data:
+
+networks:
+  bot-network:
+    driver: bridge
