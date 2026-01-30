@@ -6,40 +6,41 @@
     <title>Profil-Einstellungen</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f9; color: #333; }
-        .container { max-width: 400px; margin: 0 auto; }
-        input { width: 100%; padding: 12px; margin: 8px 0 15px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background: #0088cc; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        label { font-weight: bold; font-size: 0.85em; color: #555; }
-        h3 { text-align: center; color: #0088cc; }
+        body { font-family: -apple-system, sans-serif; padding: 15px; background: #f4f4f9; color: #333; }
+        .container { max-width: 400px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        label { font-weight: bold; font-size: 0.8em; color: #666; display: block; margin-top: 12px; }
+        input { width: 100%; padding: 10px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 15px; }
+        button { width: 100%; padding: 14px; background: #0088cc; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 20px; }
+        h3 { text-align: center; color: #0088cc; margin-top: 0; }
+        .row { display: flex; gap: 8px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h3>Mein Firmenprofil</h3>
+        <h3>Firmenprofil</h3>
         
-        <label>Firma (Absender)</label>
-        <input type="text" id="company_name" placeholder="Muster GmbH">
+        <label>Firma</label>
+        <input type="text" id="company_name">
 
-        <label>Straße & Hausnummer</label>
-        <input type="text" id="street" placeholder="Musterstraße 123">
+        <label>Straße & Hausnr.</label>
+        <input type="text" id="street">
 
-        <div style="display: flex; gap: 10px;">
-            <div style="flex: 1;">
-                <label>PLZ</label>
-                <input type="text" id="postal_code" placeholder="12345">
-            </div>
-            <div style="flex: 2;">
-                <label>Stadt</label>
-                <input type="text" id="city" placeholder="Berlin">
-            </div>
+        <div class="row">
+            <div style="flex: 1;"><label>PLZ</label><input type="text" id="postal_code"></div>
+            <div style="flex: 2;"><label>Stadt</label><input type="text" id="city"></div>
         </div>
 
-        <label>Steuernummer / USt-ID (Tax ID)</label>
-        <input type="text" id="tax_id" placeholder="DE123456789">
+        <label>E-Mail</label>
+        <input type="email" id="email" placeholder="info@firma.de">
+
+        <label>Telefon</label>
+        <input type="tel" id="phone" placeholder="+49 ...">
+
+        <label>Steuernummer / USt-ID</label>
+        <input type="text" id="tax_id">
 
         <label>IBAN</label>
-        <input type="text" id="iban" placeholder="DE00 0000 ...">
+        <input type="text" id="iban">
         
         <button onclick="saveProfile()">Speichern</button>
     </div>
@@ -48,42 +49,34 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // 1. Извлекаем данные из URL
         const params = new URLSearchParams(window.location.search);
         const encoded = params.get('data');
 
         if (encoded) {
             try {
-                // Декодируем Base64
-                const jsonString = atob(decodeURIComponent(encoded));
-                const data = JSON.parse(jsonString);
-                console.log("Данные для формы:", data);
-
-                // 2. Заполняем поля (проверяем наличие данных)
+                const data = JSON.parse(atob(decodeURIComponent(encoded)));
                 document.getElementById('company_name').value = data.company_name || '';
                 document.getElementById('street').value = data.street || '';
                 document.getElementById('city').value = data.city || '';
                 document.getElementById('postal_code').value = data.postal_code || '';
-                document.getElementById('tax_id').value = data.tax_id || ''; // ТЕПЕРЬ ТУТ!
+                document.getElementById('email').value = data.email || '';
+                document.getElementById('phone').value = data.phone || '';
+                document.getElementById('tax_id').value = data.tax_id || '';
                 document.getElementById('iban').value = data.iban || '';
-            } catch (e) {
-                console.error("Ошибка парсинга:", e);
-            }
+            } catch (e) { console.error(e); }
         }
 
         function saveProfile() {
-            const result = {
-                type: 'profile_update',
+            tg.sendData(JSON.stringify({
                 company_name: document.getElementById('company_name').value,
                 street: document.getElementById('street').value,
                 city: document.getElementById('city').value,
                 postal_code: document.getElementById('postal_code').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
                 tax_id: document.getElementById('tax_id').value,
                 iban: document.getElementById('iban').value
-            };
-            
-            // Отправляем обратно в бот
-            tg.sendData(JSON.stringify(result));
+            }));
             tg.close();
         }
     </script>
