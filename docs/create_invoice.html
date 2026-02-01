@@ -2,349 +2,136 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Rechnung erstellen</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script>
-    // 1. Функция, которая запускается при загрузке страницы
-    window.onload = function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const encodedData = urlParams.get('data');
-
-        if (encodedData) {
-            try {
-                // 2. Декодируем Base64 и парсим в JSON
-                // decodeURIComponent нужен, чтобы убрать %20 и прочие символы из URL
-                const jsonString = atob(decodeURIComponent(encodedData));
-                const data = JSON.parse(jsonString);
-
-                console.log("Полученные данные:", data);
-
-                // 3. Заполняем поля формы (убедись, что ID совпадают!)
-                if (data.company_name) document.getElementById('company_name').value = data.company_name;
-                if (data.street) document.getElementById('street').value = data.street;
-                if (data.postal_code) document.getElementById('postal_code').value = data.postal_code;
-                if (data.city) document.getElementById('city').value = data.city;
-                if (data.tax_id) document.getElementById('tax_id').value = data.tax_id;
-                if (data.iban) document.getElementById('iban').value = data.iban;
-
-            } catch (e) {
-                console.error("Ошибка при разборе данных:", e);
-            }
-        }
-    };
-
-    // 4. Функция отправки данных обратно в бот (когда нажмешь "Сохранить")
-    function sendDataBack() {
-        const tg = window.Telegram.WebApp;
-        const resultData = {
-            company_name: document.getElementById('company_name').value,
-            // ... собрать остальные поля ...
-        };
-        
-        tg.sendData(JSON.stringify(resultData));
-        tg.close();
-    }
-</script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body {
-            background: var(--tg-theme-bg-color, #ffffff);
-            color: var(--tg-theme-text-color, #000000);
-            padding: 15px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-        .form-control, .form-select {
-            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
-            color: var(--tg-theme-text-color, #000000);
-            border: 1px solid var(--tg-theme-hint-color, #999999);
-            border-radius: 8px;
-            padding: 10px 12px;
-            margin-bottom: 10px;
-        }
-        .form-label {
-            font-weight: 500;
-            margin-bottom: 5px;
-            font-size: 14px;
-        }
-        .section-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin-top: 20px;
-            margin-bottom: 15px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid var(--tg-theme-button-color, #0088cc);
-            color: var(--tg-theme-button-color, #0088cc);
-        }
-        .btn-primary {
-            background: var(--tg-theme-button-color, #0088cc);
-            color: var(--tg-theme-button-text-color, #ffffff);
-            border: none;
-            border-radius: 8px;
-            padding: 12px;
-            font-weight: 600;
-            width: 100%;
-            margin-top: 15px;
-        }
-        .info-text {
-            font-size: 12px;
-            color: var(--tg-theme-hint-color, #999999);
-            margin-top: -8px;
-            margin-bottom: 10px;
-        }
-        .required::after {
-            content: " *";
-            color: #ff3b30;
-        }
-        .ai-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
-            margin-left: 8px;
-        }
-        .calculated-field {
-            background: var(--tg-theme-secondary-bg-color, #e8f5e9);
-            font-weight: 600;
-            font-size: 18px;
-            padding: 12px;
-            text-align: right;
-        }
-        .input-group-text {
-            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
-            border: 1px solid var(--tg-theme-hint-color, #999999);
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, sans-serif; background: #f5f5f5; padding-bottom: 80px; }
+        .tabs { display: flex; background: white; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 500; color: #666; }
+        .tab.active { color: #0088cc; border-bottom-color: #0088cc; background: #f9f9f9; }
+        .tab-content { display: none; padding: 15px; }
+        .tab-content.active { display: block; }
+        .form-group { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; }
+        label { display: block; font-size: 11px; color: #888; margin-bottom: 5px; text-transform: uppercase; font-weight: 700; }
+        input, select, textarea { width: 100%; border: 1px solid #eee; padding: 12px; border-radius: 10px; font-size: 16px; outline: none; }
+        .item-card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 5px solid #0088cc; }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .btn-submit { background: #28a745; color: white; border: none; padding: 12px 24px; border-radius: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h4 style="margin-bottom: 20px;">📝 Neue Rechnung</h4>
-        
-        <div id="aiNotice" class="alert alert-info" style="display: none; padding: 10px; font-size: 13px; border-radius: 8px;">
-            <strong>🤖 KI-erkannte Daten</strong><br>
-            Diese Felder wurden automatisch ausgefüllt. Bitte überprüfe sie!
+    <div class="tabs">
+        <div class="tab active" onclick="showTab('client', this)">Kunde</div>
+        <div class="tab" onclick="showTab('items', this)">Positionen</div>
+        <div class="tab" onclick="showTab('extra', this)">Extra</div>
+    </div>
+
+    <div id="client" class="tab-content active">
+        <div class="form-group"><label>Firma / Name *</label><input type="text" id="company_name"></div>
+        <div class="form-group"><label>Adresse</label><input type="text" id="address"></div>
+    </div>
+
+    <div id="items" class="tab-content">
+        <div id="items-list"></div>
+        <button style="width:100%; padding:15px; background:#0088cc; color:white; border:none; border-radius:10px;" onclick="addItem()">+ Position</button>
+    </div>
+
+    <div id="extra" class="tab-content">
+        <div class="form-group">
+            <label>MwSt. (%)</label>
+            <select id="vat_rate" onchange="calculateTotals()">
+                <option value="19">19%</option>
+                <option value="7">7%</option>
+                <option value="0">0% (§19 UStG)</option>
+            </select>
         </div>
-        
-        <form id="invoiceForm">
-            <!-- Kundendaten -->
-            <div class="section-title">
-                👤 Kundendaten
-                <span id="aiExtractedBadge" class="ai-badge" style="display: none;">KI erkannt</span>
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label required">Kundenname / Firma</label>
-                <input type="text" class="form-control" id="client_name" 
-                       placeholder="z.B. Musterfirma GmbH" required>
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label required">Vollständige Adresse</label>
-                <textarea class="form-control" id="client_address" rows="3" 
-                          placeholder="Straße Nr., PLZ Ort, Land" required></textarea>
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label">E-Mail</label>
-                <input type="email" class="form-control" id="client_email" 
-                       placeholder="kunde@firma.de">
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label">Telefon</label>
-                <input type="tel" class="form-control" id="client_phone" 
-                       placeholder="+49 30 12345678">
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label">Steuernummer</label>
-                <input type="text" class="form-control" id="client_tax_id" 
-                       placeholder="123/456/78901">
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label">USt-ID</label>
-                <input type="text" class="form-control" id="client_vat_id" 
-                       placeholder="DE123456789">
-            </div>
-            
-            <!-- Rechnungsdaten -->
-            <div class="section-title">📋 Rechnungsdetails</div>
-            
-            <div class="mb-3">
-                <label class="form-label required">Rechnungsdatum</label>
-                <input type="date" class="form-control" id="invoice_date" required>
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label required">Leistungsbeschreibung</label>
-                <textarea class="form-control" id="description" rows="4" 
-                          placeholder="z.B. Website-Entwicklung inkl. Design und Programmierung" required></textarea>
-                <div class="info-text">Was wurde geleistet?</div>
-            </div>
-            
-            <!-- Betrag und MwSt -->
-            <div class="section-title">💰 Betrag</div>
-            
-            <div class="mb-3">
-                <label class="form-label required">Nettobetrag</label>
-                <div class="input-group">
-                    <input type="number" class="form-control" id="amount" 
-                           step="0.01" min="0.01" placeholder="0.00" required>
-                    <span class="input-group-text">€</span>
-                </div>
-                <div class="info-text">Betrag ohne Mehrwertsteuer</div>
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label required">Mehrwertsteuersatz</label>
-                <select class="form-select" id="vat_rate" required>
-                    <option value="19">19% (Standard)</option>
-                    <option value="7">7% (ermäßigt)</option>
-                    <option value="0">0% (Kleinunternehmer / §19 UStG)</option>
-                </select>
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label">MwSt.-Betrag</label>
-                <div class="form-control calculated-field" id="vat_amount_display">0,00 €</div>
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label">Gesamtbetrag (Brutto)</label>
-                <div class="form-control calculated-field" id="total_display" 
-                     style="font-size: 20px; background: #e3f2fd;">0,00 €</div>
-            </div>
-            
-            <!-- Zahlungsbedingungen -->
-            <div class="section-title">📅 Zahlungsbedingungen</div>
-            
-            <div class="mb-3">
-                <label class="form-label">Zahlungsziel (Tage)</label>
-                <input type="number" class="form-control" id="payment_terms" 
-                       value="14" min="1" max="90">
-                <div class="info-text">Frist bis zur Zahlung</div>
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label">Zusätzliche Hinweise (optional)</label>
-                <textarea class="form-control" id="notes" rows="2" 
-                          placeholder="z.B. Vielen Dank für Ihren Auftrag!"></textarea>
-            </div>
-            
-            <button type="submit" class="btn btn-primary">
-                ✅ Rechnung erstellen
-            </button>
-        </form>
+    </div>
+
+    <div class="footer">
+        <div id="total_display" style="font-weight:bold; font-size:20px;">0,00 €</div>
+        <button class="btn-submit" onclick="sendData()">Senden</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        tg.MainButton.hide();
 
-        // Сегодняшняя дата по умолчанию
-        document.getElementById('invoice_date').valueAsDate = new Date();
+        let items = [];
 
-        // Проверяем есть ли предзаполненные данные от AI
-        const urlParams = new URLSearchParams(window.location.search);
-        const dataParam = urlParams.get('data');
-        
-        if (dataParam) {
-            try {
-                const decodedData = atob(decodeURIComponent(dataParam));
-                const aiData = JSON.parse(decodedData);
-                
-                // Показываем бейдж что данные от AI
-                document.getElementById('aiExtractedBadge').style.display = 'inline-block';
-                document.getElementById('aiNotice').style.display = 'block';
-                
-                // Заполняем поля
-                if (aiData.company_name) document.getElementById('client_name').value = aiData.company_name;
-                
-                // Формируем адрес
-                let addressParts = [];
-                if (aiData.street) addressParts.push(aiData.street);
-                if (aiData.postal_code && aiData.city) {
-                    addressParts.push(aiData.postal_code + ' ' + aiData.city);
-                }
-                if (aiData.country) addressParts.push(aiData.country);
-                
-                if (addressParts.length > 0) {
-                    document.getElementById('client_address').value = addressParts.join('\n');
-                }
-                
-                if (aiData.email) document.getElementById('client_email').value = aiData.email;
-                if (aiData.phone) document.getElementById('client_phone').value = aiData.phone;
-                if (aiData.tax_id) document.getElementById('client_tax_id').value = aiData.tax_id;
-                if (aiData.vat_id) document.getElementById('client_vat_id').value = aiData.vat_id;
-                
-            } catch (error) {
-                console.error('Error parsing AI data:', error);
+        // ПРИЕМНИК ДАННЫХ ИЗ БОТА
+        window.addEventListener('load', () => {
+            const params = new URLSearchParams(window.location.search);
+            const dataEncoded = params.get('data');
+            if (dataEncoded) {
+                try {
+                    const profile = JSON.parse(atob(dataEncoded.replace(/-/g, '+').replace(/_/g, '/')));
+                    if (profile.vat_rate !== undefined) {
+                        document.getElementById('vat_rate').value = profile.vat_rate;
+                        calculateTotals();
+                    }
+                } catch (e) { console.error("Profile load error", e); }
             }
+        });
+
+        function showTab(id, el) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            el.classList.add('active');
         }
 
-        // Автоматический расчет MwSt и Итого
+        function addItem() {
+            items.push({ id: Date.now(), description: '', quantity: 1, unit: 'Stk', price: 0, total: 0 });
+            renderItems();
+        }
+
+        function updateItem(id, field, val) {
+            const item = items.find(i => i.id === id);
+            item[field] = (field === 'description' || field === 'unit') ? val : parseFloat(val) || 0;
+            item.total = item.quantity * item.price;
+            renderItems();
+        }
+
+        function renderItems() {
+            const list = document.getElementById('items-list');
+            list.innerHTML = items.map(item => `
+                <div class="item-card">
+                    <label>Leistung</label>
+                    <input type="text" value="${item.description}" onchange="updateItem(${item.id}, 'description', this.value)">
+                    <div style="display:flex; gap:10px; margin-top:10px;">
+                        <input type="number" value="${item.quantity}" placeholder="Menge" onchange="updateItem(${item.id}, 'quantity', this.value)">
+                        <select onchange="updateItem(${item.id}, 'unit', this.value)">
+                            <option value="Stk">Stk</option><option value="Std">Std</option>
+                        </select>
+                        <input type="number" value="${item.price}" placeholder="Preis" onchange="updateItem(${item.id}, 'price', this.value)">
+                    </div>
+                </div>
+            `).join('');
+            calculateTotals();
+        }
+
         function calculateTotals() {
-            const amount = parseFloat(document.getElementById('amount').value) || 0;
-            const vatRate = parseFloat(document.getElementById('vat_rate').value) || 0;
-            
-            const vatAmount = amount * (vatRate / 100);
-            const total = amount + vatAmount;
-            
-            // Обновляем отображение
-            document.getElementById('vat_amount_display').textContent = 
-                vatAmount.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-            
-            document.getElementById('total_display').textContent = 
-                total.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-            
-            return { vatAmount, total };
+            const vat = parseFloat(document.getElementById('vat_rate').value) / 100;
+            const net = items.reduce((s, i) => s + i.total, 0);
+            const gross = net * (1 + vat);
+            document.getElementById('total_display').innerText = gross.toFixed(2) + ' €';
+            return { net, gross, vat: gross - net };
         }
-        
-        // Слушаем изменения суммы и НДС
-        document.getElementById('amount').addEventListener('input', calculateTotals);
-        document.getElementById('vat_rate').addEventListener('change', calculateTotals);
-        
-        // Отправка формы
-        document.getElementById('invoiceForm').onsubmit = (e) => {
-            e.preventDefault();
-            
-            const { vatAmount, total } = calculateTotals();
-            
-            const invoiceData = {
-                // Данные клиента
-                client_name: document.getElementById('client_name').value,
-                client_address: document.getElementById('client_address').value,
-                client_email: document.getElementById('client_email').value || null,
-                client_phone: document.getElementById('client_phone').value || null,
-                client_tax_id: document.getElementById('client_tax_id').value || null,
-                client_vat_id: document.getElementById('client_vat_id').value || null,
-                
-                // Данные счета
-                date: document.getElementById('invoice_date').value,
-                description: document.getElementById('description').value,
-                amount: parseFloat(document.getElementById('amount').value),
-                vat_rate: parseFloat(document.getElementById('vat_rate').value),
-                vat_amount: vatAmount,
-                total: total,
-                payment_terms: parseInt(document.getElementById('payment_terms').value),
-                notes: document.getElementById('notes').value || null
-            };
-            
-            // Отправляем данные обратно в бот
-            const data = {
-                invoice_data: invoiceData
-            };
-            
-            tg.sendData(JSON.stringify(data));
-        };
 
-        // Инициализируем расчет при загрузке
-        calculateTotals();
+        function sendData() {
+            const res = calculateTotals();
+            const data = {
+                invoice_items: items,
+                total_net: res.net,
+                total_gross: res.gross,
+                total_vat: res.vat,
+                vat_rate: parseFloat(document.getElementById('vat_rate').value),
+                client_data: { company_name: document.getElementById('company_name').value, address: document.getElementById('address').value }
+            };
+            tg.sendData(JSON.stringify(data));
+        }
     </script>
 </body>
 </html>

@@ -8,163 +8,121 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, sans-serif; background: #f5f5f5; padding-bottom: 80px; }
-        .tabs { display: flex; background: white; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; border-bottom: 3px solid transparent; color: #666; font-weight: 500; }
+        .tabs { display: flex; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 10; }
+        .tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 500; color: #666; }
         .tab.active { color: #0088cc; border-bottom-color: #0088cc; background: #f9f9f9; }
         .tab-content { display: none; padding: 15px; }
         .tab-content.active { display: block; }
-        .form-group { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
-        label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; text-transform: uppercase; }
-        input, select, textarea { width: 100%; border: 1px solid #eee; padding: 10px; border-radius: 8px; font-size: 16px; outline: none; }
-        .item-card { background: #fff; border-left: 4px solid #0088cc; padding: 12px; margin-bottom: 10px; border-radius: 8px; position: relative; }
-        .btn-add { background: #0088cc; color: white; border: none; width: 100%; padding: 15px; border-radius: 10px; font-weight: bold; margin-top: 10px; }
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .form-group { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; }
+        label { display: block; font-size: 11px; color: #888; margin-bottom: 5px; text-transform: uppercase; font-weight: 700; }
+        input, select, textarea { width: 100%; border: 1px solid #eee; padding: 12px; border-radius: 10px; font-size: 16px; outline: none; }
+        .item-card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 5px solid #0088cc; position: relative; }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; z-index: 1000; }
         .total-price { font-size: 20px; font-weight: bold; color: #0088cc; }
-        .btn-submit { background: #28a745; color: white; border: none; padding: 10px 25px; border-radius: 8px; font-weight: bold; }
+        .btn-submit { background: #28a745; color: white; border: none; padding: 12px 24px; border-radius: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="tabs">
-        <div class="tab active" onclick="showTab('client')">Kunde</div>
-        <div class="tab" onclick="showTab('items')">Positionen</div>
-        <div class="tab" onclick="showTab('extra')">Extra</div>
+        <div class="tab active" onclick="showTab('client', this)">Kunde</div>
+        <div class="tab" onclick="showTab('items', this)">Positionen</div>
+        <div class="tab" onclick="showTab('extra', this)">Extra</div>
     </div>
 
     <div id="client" class="tab-content active">
-        <div class="form-group">
-            <label>Firma / Name</label>
-            <input type="text" id="company_name" placeholder="Muster GmbH">
-        </div>
-        <div class="form-group">
-            <label>Straße & Hausnummer</label>
-            <input type="text" id="street" placeholder="Hauptstr. 1">
-        </div>
-        <div style="display: flex; gap: 10px;">
-            <div class="form-group" style="flex: 1;">
-                <label>PLZ</label>
-                <input type="text" id="postal_code" placeholder="12345">
-            </div>
-            <div class="form-group" style="flex: 2;">
-                <label>Stadt</label>
-                <input type="text" id="city" placeholder="Berlin">
-            </div>
-        </div>
-        <div class="form-group">
-            <label>E-Mail (optional)</label>
-            <input type="email" id="email" placeholder="kunde@mail.de">
-        </div>
+        <div class="form-group"><label>Firma / Name *</label><input type="text" id="company_name" placeholder="Name des Kunden"></div>
+        <div class="form-group"><label>Adresse</label><input type="text" id="address" placeholder="Straße, PLZ, Stadt"></div>
     </div>
 
     <div id="items" class="tab-content">
         <div id="items-list"></div>
-        <button class="btn-add" onclick="addItem()">+ Position hinzufügen</button>
+        <button style="width:100%; padding:15px; background:#0088cc; color:white; border:none; border-radius:10px; font-weight:bold;" onclick="addItem()">+ Position hinzufügen</button>
     </div>
 
     <div id="extra" class="tab-content">
         <div class="form-group">
-            <label>Datum</label>
-            <input type="date" id="offer_date">
-        </div>
-        <div class="form-group">
-            <label>Gültig bis</label>
-            <input type="date" id="valid_until">
-        </div>
-        <div class="form-group">
             <label>MwSt. (%)</label>
-            <select id="vat_rate">
+            <select id="vat_rate" onchange="updateTotals()">
                 <option value="19">19% (Standard)</option>
                 <option value="7">7% (Ermäßigt)</option>
                 <option value="0">0% (Kleinunternehmer)</option>
             </select>
         </div>
+        <div class="form-group"><label>Gültig bis</label><input type="date" id="valid_until"></div>
+        <div class="form-group"><label>Notizen</label><textarea id="notes" rows="3"></textarea></div>
     </div>
 
     <div class="footer">
-        <div class="total-price" id="total_gross_display">0,00 €</div>
+        <div class="total-price" id="total_display">0,00 €</div>
         <button class="btn-submit" onclick="sendData()">Angebot senden</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        tg.ready();
-
         let items = [];
 
-        function showTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        function showTab(id, el) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            event.currentTarget.classList.add('active');
+            document.getElementById(id).classList.add('active');
+            el.classList.add('active');
         }
 
         function addItem() {
-            const item = { id: Date.now(), description: '', quantity: 1, price: 0 };
-            items.push(item);
+            const id = Date.now();
+            items.push({ id, description: '', quantity: 1, price: 0, total: 0 });
             renderItems();
+        }
+
+        function updateItem(id, field, val) {
+            const item = items.find(i => i.id === id);
+            item[field] = field === 'description' ? val : parseFloat(val) || 0;
+            item.total = item.quantity * item.price;
+            updateTotals();
+            document.getElementById(`total-${id}`).innerText = item.total.toFixed(2) + ' €';
         }
 
         function renderItems() {
             const list = document.getElementById('items-list');
             list.innerHTML = items.map(item => `
                 <div class="item-card">
-                    <input type="text" placeholder="Beschreibung" value="${item.description}" 
-                           onchange="updateItem(${item.id}, 'description', this.value)" style="margin-bottom:8px">
-                    <div style="display:flex; gap:10px">
-                        <input type="number" placeholder="Menge" value="${item.quantity}" 
-                               onchange="updateItem(${item.id}, 'quantity', this.value)" style="flex:1">
-                        <input type="number" placeholder="Preis" value="${item.price}" 
-                               onchange="updateItem(${item.id}, 'price', this.value)" style="flex:2">
+                    <label>Leistung</label>
+                    <input type="text" value="${item.description}" onchange="updateItem(${item.id}, 'description', this.value)">
+                    <div style="display:flex; gap:10px; margin-top:10px;">
+                        <input type="number" value="${item.quantity}" style="flex:1" onchange="updateItem(${item.id}, 'quantity', this.value)">
+                        <input type="number" value="${item.price}" style="flex:1.5" onchange="updateItem(${item.id}, 'price', this.value)">
+                        <div id="total-${item.id}" style="flex:1; text-align:right; font-weight:bold; padding-top:12px;">${item.total.toFixed(2)} €</div>
                     </div>
                 </div>
             `).join('');
-            calculateTotal();
+            updateTotals();
         }
 
-        function updateItem(id, field, value) {
-            const item = items.find(i => i.id === id);
-            if (item) {
-                item[field] = field === 'description' ? value : parseFloat(value) || 0;
-            }
-            calculateTotal();
-        }
-
-        function calculateTotal() {
-            const vatRate = parseFloat(document.getElementById('vat_rate').value) / 100;
-            const net = items.reduce((sum, i) => sum + (i.quantity * i.price), 0);
-            const gross = net * (1 + vatRate);
-            document.getElementById('total_gross_display').textContent = gross.toFixed(2).replace('.', ',') + ' €';
-            return { net, gross };
+        function updateTotals() {
+            const vat = parseFloat(document.getElementById('vat_rate').value) / 100;
+            const net = items.reduce((s, i) => s + i.total, 0);
+            const gross = net * (1 + vat);
+            document.getElementById('total_display').innerText = gross.toFixed(2).replace('.', ',') + ' €';
         }
 
         function sendData() {
-            const totals = calculateTotal();
+            const vat = parseFloat(document.getElementById('vat_rate').value);
+            const net = items.reduce((s, i) => s + i.total, 0);
             const data = {
-                client_data: {
-                    company_name: document.getElementById('company_name').value,
-                    street: document.getElementById('street').value,
-                    postal_code: document.getElementById('postal_code').value,
-                    city: document.getElementById('city').value,
-                    email: document.getElementById('email').value
+                type: "offer_creation",
+                client_data: { 
+                    company_name: document.getElementById('company_name').value, 
+                    address: document.getElementById('address').value 
                 },
-                offer_date: document.getElementById('offer_date').value,
-                valid_until: document.getElementById('valid_until').value,
-                offer_items: items, // Ключ для handlers_v1.py
-                total_net: totals.net,
-                total_gross: totals.gross,
-                vat_rate: parseFloat(document.getElementById('vat_rate').value)
+                offer_items: items,
+                total_net: net,
+                total_gross: net * (1 + vat/100),
+                vat_rate: vat,
+                valid_until: document.getElementById('valid_until').value
             };
-
-            if (data.client_data.company_name === "") {
-                alert("Bitte Firmennamen eingeben!");
-                return;
-            }
-
             tg.sendData(JSON.stringify(data));
         }
-
-        // Установка даты по умолчанию
-        document.getElementById('offer_date').valueAsDate = new Date();
     </script>
 </body>
 </html>
