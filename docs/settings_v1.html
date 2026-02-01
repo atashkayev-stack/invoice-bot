@@ -229,6 +229,22 @@
             </select>
         </div>
         
+<!-- MwSt-Einstellungen -->
+<div class="section">
+    <div class="section-title">💶 Mehrwertsteuer</div>
+    
+    <div class="checkbox-container">
+        <input type="checkbox" id="is_kleinunternehmer" onchange="toggleVatRate()">
+        <label for="is_kleinunternehmer">Kleinunternehmer (§19 UStG)</label>
+    </div>
+    
+    <label id="vat_rate_label">Standard MwSt-Satz</label>
+    <select id="default_vat_rate">
+        <option value="19">19%</option>
+        <option value="7">7%</option>
+        <option value="0">0%</option>
+    </select>
+</div>
         <button onclick="saveProfile()">💾 Speichern</button>
     </div>
 
@@ -241,6 +257,9 @@
         const params = new URLSearchParams(window.location.search);
         const encoded = params.get('data');
 
+        if (data.default_vat_rate !== undefined) {
+    document.getElementById('default_vat_rate').value = data.default_vat_rate;
+}
         if (encoded) {
             try {
                 const data = JSON.parse(atob(decodeURIComponent(encoded)));
@@ -270,6 +289,17 @@
             }
         }
 
+        function toggleVatRate() {
+    const isKlein = document.getElementById('is_kleinunternehmer').checked;
+    const vatSelect = document.getElementById('default_vat_rate');
+    
+    if (isKlein) {
+        vatSelect.value = "0";
+        vatSelect.disabled = true;
+    } else {
+        vatSelect.disabled = false;
+    }
+}
         // Автоматический парсинг последнего счета
         document.getElementById('last_invoice_example').addEventListener('blur', function() {
             const value = this.value.trim();

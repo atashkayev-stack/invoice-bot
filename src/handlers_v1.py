@@ -107,14 +107,44 @@ def generate_pdf(data, profile, title="RECHNUNG"):
 
 # --- ОБРАБОТКА ДАННЫХ ИЗ WEB APP ---
 
+# ЗАМЕНИ функцию web_app_data_handler полностью (строка ~129):
+
 
 async def web_app_data_handler(update: Update,
                                context: ContextTypes.DEFAULT_TYPE):
+    """Обработка данных из WebApp"""
     raw_data = update.effective_message.web_app_data.data
     data = json.loads(raw_data)
     user_id = update.effective_user.id
-    profile = db.get_profile(user_id) or {}
 
+    # ========== СОХРАНЕНИЕ ПРОФИЛЯ ==========
+    if data.get('type') == 'profile_update':
+        import os
+        from supabase import create_client
+        supabase = create_client(os.getenv("SUPABASE_URL"),
+                                 os.getenv("SUPABASE_KEY"))
+
+        profile_data = {
+            "id": user_id,
+            "company_name": data.get("company_name"),
+            "street": data.get("street"),
+            "city": data.get("city"),
+            "postal_code": data.get("postal_code"),
+            "email": data.get("email"),
+            "phone": data.get("phone"),
+            "tax_id": data.get("tax_id"),
+            "iban": data.get("iban"),
+            "is_kleinunternehmer": data.get("is_kleinunternehmer", False),
+            "default_vat_rate": data.get("default_vat_rate", 19)
+        }
+
+        supabase.table("profiles").upsert(profile_data).execute()
+        await update.message.reply_text("✅ Profil gespeichert!",
+                                        reply_markup=get_main_keyboard())
+        return
+
+    # ========== СОЗДАНИЕ СЧЕТА/ОФФЕРА ==========
+    profile = db.get_profile(user_id) or {}
     doc_type = "ANGEBOT" if data.get(
         'type') == "offer_creation" else "RECHNUNG"
 

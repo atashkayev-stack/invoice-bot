@@ -75,7 +75,7 @@
             border-radius: 8px;
             border-left: 3px solid #0088cc;
         }
-        .item-row input { margin-top: 5px; }
+        .item-row input, .item-row select { margin-top: 5px; }
         .delete-item {
             color: #ff3b30;
             cursor: pointer;
@@ -298,15 +298,22 @@
                 document.getElementById('valid_until').value = newValidUntil.toISOString().split('T')[0];
             });
             
-            // Проверка на Kleinunternehmer из профиля
+            // Загрузка профиля из URL
             const params = new URLSearchParams(window.location.search);
             const dataEncoded = params.get('data');
             if (dataEncoded) {
                 try {
                     const profile = JSON.parse(atob(dataEncoded));
+                    
+                    // Kleinunternehmer проверка
                     if (profile.is_kleinunternehmer) {
                         document.getElementById('vat_rate').value = "0";
+                    } 
+                    // Или берем default_vat_rate из профиля
+                    else if (profile.default_vat_rate !== undefined) {
+                        document.getElementById('vat_rate').value = profile.default_vat_rate;
                     }
+                    
                 } catch(e) {
                     console.error('Profile parse error:', e);
                 }
@@ -344,6 +351,7 @@
                 id: id,
                 description: '',
                 quantity: 1,
+                unit: 'Stk',
                 price: 0,
                 total: 0
             });
@@ -363,7 +371,7 @@
             const item = items.find(i => i.id === id);
             if (!item) return;
             
-            if (field === 'description') {
+            if (field === 'description' || field === 'unit') {
                 item[field] = value;
             } else {
                 item[field] = parseFloat(value) || 0;
@@ -388,6 +396,20 @@
                             <label>Menge</label>
                             <input type="number" step="0.01" value="${item.quantity}" 
                                    onchange="updateItem(${item.id}, 'quantity', this.value)">
+                        </div>
+                        <div>
+                            <label>Einheit</label>
+                            <select onchange="updateItem(${item.id}, 'unit', this.value)">
+                                <option value="Stk" ${item.unit === 'Stk' ? 'selected' : ''}>Stk</option>
+                                <option value="Std" ${item.unit === 'Std' ? 'selected' : ''}>Std</option>
+                                <option value="Tag" ${item.unit === 'Tag' ? 'selected' : ''}>Tag</option>
+                                <option value="kg" ${item.unit === 'kg' ? 'selected' : ''}>kg</option>
+                                <option value="m" ${item.unit === 'm' ? 'selected' : ''}>m</option>
+                                <option value="m²" ${item.unit === 'm²' ? 'selected' : ''}>m²</option>
+                                <option value="m³" ${item.unit === 'm³' ? 'selected' : ''}>m³</option>
+                                <option value="km" ${item.unit === 'km' ? 'selected' : ''}>km</option>
+                                <option value="l" ${item.unit === 'l' ? 'selected' : ''}>l</option>
+                            </select>
                         </div>
                         <div>
                             <label>Preis (€)</label>
@@ -446,6 +468,7 @@
                 offer_items: items.map(item => ({
                     description: item.description,
                     quantity: item.quantity,
+                    unit: item.unit,
                     price: item.price,
                     total: item.total
                 })),
