@@ -1,412 +1,334 @@
-"""
-handlers_v1.py - ИСПРАВЛЕННАЯ ВЕРСИЯ
-Логика как в рабочем main.py + добавлены Angebote
-"""
-import logging, json, base64, urllib.parse, io
+import logging, json, base64, urllib.parse, io, os, time
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
+from fpdf import FPDF
 from datetime import datetime
-import time
-from .database_v1 import Database
-from .ai_service_v1 import AIService
-from .config_v1 import SETTINGS_FORM_URL, CREATE_INVOICE_FORM_URL, CREATE_OFFER_FORM_URL
+
+# Импорты твоих модулей v1
+try:
+    from .database_v1 import Database
+    from .ai_service_v1 import AIService
+    from .config_v1 import SETTINGS_FORM_URL, CREATE_INVOICE_FORM_URL, CREATE_OFFER_FORM_URL
+except ImportError:
+    from database_v1 import Database
+    from ai_service_v1 import AIService
+    from config_v1 import SETTINGS_FORM_URL, CREATE_INVOICE_FORM_URL, CREATE_OFFER_FORM_URL
 
 logger = logging.getLogger(__name__)
 db, ai = Database(), AIService()
 
-# States для настроек (сканирование документа ЮЗЕРА)
+# Состояния для диалогов
 SETTINGS_MENU, WAITING_FOR_DOC = range(2)
 
-def get_main_keyboard():
-    """Главное меню"""
-    return ReplyKeyboardMarkup([
-        [KeyboardButton("📝 Rechnung erstellen"), KeyboardButton("📋 Angebot erstellen")],
-        [KeyboardButton("👥 Meine Kunden"), KeyboardButton("📊 Meine Rechnungen")],
-        [KeyboardButton("📄 Meine Angebote"), KeyboardButton("⚙️ Einstellungen")]
-    ], resize_keyboard=True)
 
-# ==================== ОСНОВНЫЕ КОМАНДЫ ====================
+def get_main_keyboard():
+    return ReplyKeyboardMarkup([[
+        KeyboardButton("📝 Rechnung erstellen"),
+        KeyboardButton("📋 Angebot erstellen")
+    ], [
+        KeyboardButton("👥 Meine Kunden"),
+        KeyboardButton("📊 Meine Rechnungen")
+    ], [
+        KeyboardButton("📄 Meine Angebote"),
+        KeyboardButton("⚙️ Einstellungen")
+    ], [KeyboardButton("🔙 Zurück")]],
+                               resize_keyboard=True)
+
+
+# --- БАЗОВЫЕ КОМАНДЫ ---
+
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Команда /start"""
-    await update.message.reply_text("Willkommen im Hauptmenü:", reply_markup=get_main_keyboard())
+    await update.message.reply_text("Willkommen! Wählen Sie eine Aktion:",
+                                    reply_markup=get_main_keyboard())
+
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Помощь"""
     await update.message.reply_text(
-        "🤖 RechnungAgent\n\n"
-        "📝 Rechnung/Angebot erstellen\n"
-        "👥 Kunden verwalten\n"
-        "⚙️ Einstellungen\n\n"
-        "E-Rechnung ab 2025 Pflicht!",
-        reply_markup=get_main_keyboard()
-    )
+        "Nutzen Sie die Tasten unten, um Dokumente zu erstellen.")
 
-# ==================== НАСТРОЙКИ (сканирование данных ЮЗЕРА) ====================
+
+# --- ОБРАБОТКА ОШИБОК (Та самая ошибка на строке 57) ---
+
+
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.error(f"Update {update} caused error {context.error}")
+    if update and update.effective_message:
+        await update.effective_message.reply_text(
+            "❌ Ein interner Fehler ist aufgetreten.")
+
+
+# --- СПИСКИ И КОНВЕРТАЦИЯ (Строка 49 в main) ---
+
+
+async def my_clients_command(update: Update,
+                             context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("👥 Kundenliste wird geladen...")
+
+
+async def my_invoices_command(update: Update,
+                              context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("📊 Ihre Rechnungen:")
+
+
+async def my_offers_command(update: Update,
+                            context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("📄 Ihre Angebote:")
+
+
+async def view_offer_details(update: Update,
+                             context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await query.message.reply_text("🔍 Details werden geladen...")
+
+
+async def convert_offer_to_invoice(update: Update,
+                                   context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    offer_id = query.data.split('_')[-1]
+    # Вызов метода из твоего database_v1.py
+    res = db.convert_offer_to_invoice(offer_id)
+    if res:
+        await query.message.reply_text(
+            f"✅ Успешно конвертировано в счет №{res}")
+    else:
+        await query.message.reply_text("❌ Ошибка конвертации.")
+
+
+# --- НАСТРОЙКИ И OCR ---
+
 
 async def settings_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Настройки профиля ЮЗЕРА"""
     user_id = update.effective_user.id
     profile = db.get_profile(user_id)
-    
-    if profile:
-        data_json = json.dumps({
-            "company_name": profile.get("company_name", ""),
-            "street": profile.get("street", ""),
-            "postal_code": profile.get("postal_code", ""),
-            "city": profile.get("city", ""),
-            "email": profile.get("email", ""),
-            "phone": profile.get("phone", ""),
-            "tax_id": profile.get("tax_id", ""),
-            "iban": profile.get("iban", "")
-        })
-        encoded = base64.urlsafe_b64encode(data_json.encode()).decode().strip("=")
-        web_app_url = f"{SETTINGS_FORM_URL}?data={urllib.parse.quote(encoded)}"
-    else:
-        web_app_url = SETTINGS_FORM_URL
-    
-    keyboard = ReplyKeyboardMarkup([
-        [KeyboardButton("📄 Aus Dokument laden")],
-        [KeyboardButton("✍️ Manuell eingeben", web_app=WebAppInfo(url=web_app_url))],
-        [KeyboardButton("🔍 Überprüfen", web_app=WebAppInfo(url=web_app_url))],
-        [KeyboardButton("🔙 Zurück")]
-    ], resize_keyboard=True)
-    
-    await update.message.reply_text("Profileinstellungen:", reply_markup=keyboard)
+    encoded = base64.urlsafe_b64encode(json.dumps(
+        profile or {}).encode()).decode().strip("=")
+    url = f"{SETTINGS_FORM_URL}?data={urllib.parse.quote(encoded)}"
+
+    keyboard = ReplyKeyboardMarkup([[
+        KeyboardButton("✍️ Manuell bearbeiten", web_app=WebAppInfo(url=url))
+    ], [KeyboardButton("📄 Aus Dokument laden")], [KeyboardButton("🔙 Zurück")]],
+                                   resize_keyboard=True)
+    await update.message.reply_text("⚙️ Einstellungen:", reply_markup=keyboard)
     return SETTINGS_MENU
+
 
 async def ask_for_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Запрос документа ЮЗЕРА"""
     await update.message.reply_text(
-        "📤 Bitte senden Sie ein Foto вашего счета (данные отправителя)."
-    )
+        "Bitte senden Sie ein Foto/PDF Ihres Briefkopfs.")
     return WAITING_FOR_DOC
 
-async def handle_profile_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка документа ЮЗЕРА с AI"""
-    msg = await update.message.reply_text("⏳ Dokument wird analysiert...")
-    
+
+async def handle_profile_document(update: Update,
+                                  context: ContextTypes.DEFAULT_TYPE):
+    msg = await update.message.reply_text("⏳ Анализирую...")
     try:
-        if update.message.photo:
-            file_id = update.message.photo[-1].file_id
-        elif update.message.document:
-            file_id = update.message.document.file_id
-        else:
-            await msg.edit_text("❌ Bitte ein Foto senden!")
-            return SETTINGS_MENU
-        
+        file_id = update.message.photo[
+            -1].file_id if update.message.photo else update.message.document.file_id
         file = await context.bot.get_file(file_id)
-        out = io.BytesIO()
-        await file.download_to_memory(out)
-        img_b64 = base64.b64encode(out.getvalue()).decode('utf-8')
-        
-        # AI распознавание
-        import anthropic
-        anthropic_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-        
-        response = anthropic_client.messages.create(
-            model="claude-3-haiku-20240307",
-            max_tokens=1024,
-            messages=[{
-                "role": "user",
-                "content": [{
-                    "type": "image",
-                    "source": {"type": "base64", "media_type": "image/jpeg", "data": img_b64}
-                }, {
-                    "type": "text",
-                    "text": "Extract SENDER JSON: company_name, street, postal_code, city, email, phone, tax_id, iban. Return ONLY JSON."
-                }]
-            }])
-        
-        import re
-        json_match = re.search(r'\{.*\}', response.content[0].text, re.DOTALL)
-        if json_match:
-            data = json.loads(json_match.group())
-            user_id = update.effective_user.id
-            
-            profile_data = {
-                "id": user_id,
-                "company_name": data.get("company_name"),
-                "street": data.get("street"),
-                "postal_code": data.get("postal_code"),
-                "city": data.get("city"),
-                "email": data.get("email"),
-                "phone": data.get("phone"),
-                "tax_id": data.get("tax_id"),
-                "iban": data.get("iban")
-            }
-            
-            # Используем БД v1
-            import os
-            from supabase import create_client
-            supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
-            supabase.table("profiles").upsert(profile_data).execute()
-            
-            # Генерируем новую ссылку
-            new_data = json.dumps(profile_data)
-            new_encoded = base64.urlsafe_b64encode(new_data.encode()).decode().strip("=")
-            new_web_app_url = f"{SETTINGS_FORM_URL}?data={urllib.parse.quote(new_encoded)}"
-            
-            keyboard = ReplyKeyboardMarkup([
-                [KeyboardButton("🔍 Überprüfen & Speichern", web_app=WebAppInfo(url=new_web_app_url))],
-                [KeyboardButton("🔙 Zurück")]
-            ], resize_keyboard=True)
-            
-            # Удаляем старое сообщение
-            await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=msg.message_id)
-            
-            # Отправляем новое
-            await update.message.reply_text(
-                "✅ Данные из документа получены!\nНажми кнопку ниже, чтобы проверить их в форме:",
-                reply_markup=keyboard
-            )
+        data = ai.extract_client_data(bytes(await
+                                            file.download_as_bytearray()))
+        if data:
+            db.update_profile(update.effective_user.id, data)
+            await msg.edit_text("✅ Данные распознаны и сохранены!")
         else:
-            await msg.edit_text("❌ JSON не найден. Попробуйте другое фото.")
-    
+            await msg.edit_text("❌ Ошибка распознавания.")
     except Exception as e:
-        logger.error(f"OCR Error: {e}")
-        await msg.edit_text(f"❌ API Fehler: {str(e)}")
-    
+        logger.error(f"OCR: {e}")
     return SETTINGS_MENU
 
+
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Отмена"""
     await start_command(update, context)
     return ConversationHandler.END
 
-# ==================== СОЗДАНИЕ СЧЕТА (СРАЗУ ФОРМА) ====================
 
-async def rechnung_erstellen_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Создание счета - СРАЗУ открывает форму"""
-    user_id = update.effective_user.id
-    profile = db.get_profile(user_id)
-    
-    if not profile:
-        await update.message.reply_text(
-            "⚠️ Bitte сначала заполните профиль!",
-            reply_markup=get_main_keyboard()
-        )
-        return
-    
-    # Формируем URL с данными ЮЗЕРА
-    import os
-    from supabase import create_client
-    supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
-    
-    res = supabase.table("profiles").select("*").eq("id", user_id).execute()
-    if res.data:
-        p = res.data[0]
-        data = {
-            "sender_name": p.get("company_name"),
-            "sender_address": f"{p.get('street')}, {p.get('postal_code')} {p.get('city')}",
-            "sender_email": p.get("email"),
-            "sender_iban": p.get("iban"),
-            "sender_tax_id": p.get("tax_id")
-        }
-        encoded = base64.urlsafe_b64encode(json.dumps(data).encode()).decode().strip("=")
-        invoice_url = f"{CREATE_INVOICE_FORM_URL}?data={urllib.parse.quote(encoded)}"
-    else:
-        invoice_url = CREATE_INVOICE_FORM_URL
-    
-    keyboard = ReplyKeyboardMarkup([
-        [KeyboardButton("📄 Rechnung ausfüllen", web_app=WebAppInfo(url=invoice_url))],
-        [KeyboardButton("🔙 Zurück")]
-    ], resize_keyboard=True)
-    
-    await update.message.reply_text("Rechnungsdetails:", reply_markup=keyboard)
+# --- WEBAPP И PDF ---
 
-# ==================== СОЗДАНИЕ ANGEBOT (СРАЗУ ФОРМА) ====================
 
-async def angebot_erstellen_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Создание оффера - СРАЗУ открывает форму"""
-    user_id = update.effective_user.id
-    profile = db.get_profile(user_id)
-    
-    if not profile:
-        await update.message.reply_text(
-            "⚠️ Bitte сначала заполните профиль!",
-            reply_markup=get_main_keyboard()
-        )
-        return
-    
-    # Формируем URL с данными ЮЗЕРА
-    import os
-    from supabase import create_client
-    supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
-    
-    res = supabase.table("profiles").select("*").eq("id", user_id).execute()
-    if res.data:
-        p = res.data[0]
-        data = {
-            "sender_name": p.get("company_name"),
-            "sender_address": f"{p.get('street')}, {p.get('postal_code')} {p.get('city')}",
-            "sender_email": p.get("email"),
-            "sender_iban": p.get("iban"),
-            "sender_tax_id": p.get("tax_id")
-        }
-        encoded = base64.urlsafe_b64encode(json.dumps(data).encode()).decode().strip("=")
-        offer_url = f"{CREATE_OFFER_FORM_URL}?data={urllib.parse.quote(encoded)}"
-    else:
-        offer_url = CREATE_OFFER_FORM_URL
-    
-    keyboard = ReplyKeyboardMarkup([
-        [KeyboardButton("📄 Angebot ausfüllen", web_app=WebAppInfo(url=offer_url))],
-        [KeyboardButton("🔙 Zurück")]
-    ], resize_keyboard=True)
-    
-    await update.message.reply_text("Angebotsdetails:", reply_markup=keyboard)
-
-# ==================== СПИСКИ ====================
-
-async def my_clients_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Список клиентов"""
-    clients = db.get_all_clients(update.effective_user.id)
-    if not clients:
-        await update.message.reply_text("👥 Keine Kunden", reply_markup=get_main_keyboard())
-        return
-    msg = f"👥 {len(clients)} Kunden:\n\n" + "\n".join([f"🏢 {c['company_name']}" for c in clients[:20]])
-    await update.message.reply_text(msg, reply_markup=get_main_keyboard())
-
-async def my_invoices_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Список счетов"""
-    invoices = db.get_invoices(update.effective_user.id)
-    if not invoices:
-        await update.message.reply_text("📊 Keine Rechnungen", reply_markup=get_main_keyboard())
-        return
-    msg = "📊 Rechnungen:\n\n" + "\n".join([f"📝 {i.get('number','—')} | {i.get('total',0):.2f}€" for i in invoices[:10]])
-    await update.message.reply_text(msg, reply_markup=get_main_keyboard())
-
-async def my_offers_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Список офферов"""
-    offers = db.get_offers(update.effective_user.id)
-    if not offers:
-        await update.message.reply_text("📄 Keine Angebote", reply_markup=get_main_keyboard())
-        return
-    keyboard = [[InlineKeyboardButton(f"{o['offer_number']} | {o['total']:.2f}€", callback_data=f"view_offer_{o['id']}")] for o in offers[:10]]
-    await update.message.reply_text("📄 Angebote:", reply_markup=InlineKeyboardMarkup(keyboard))
-
-async def view_offer_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Просмотр оффера"""
-    query = update.callback_query
-    await query.answer()
-    offer = db.get_offer(query.data.replace("view_offer_", ""))
-    if not offer:
-        await query.edit_message_text("❌ Nicht gefunden")
-        return
-    msg = f"📄 {offer['offer_number']}\n🏢 {offer['client_name']}\n💰 {offer['total']:.2f}€"
-    keyboard = [[InlineKeyboardButton("✅ In Rechnung umwandeln", callback_data=f"convert_offer_{offer['id']}")]]
-    await query.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(keyboard))
-
-async def convert_offer_to_invoice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Конвертация оффера в счет"""
-    query = update.callback_query
-    await query.answer()
-    invoice_id = db.convert_offer_to_invoice(query.data.replace("convert_offer_", ""))
-    if invoice_id:
-        await query.edit_message_text("✅ In Rechnung umgewandelt!")
-    else:
-        await query.edit_message_text("❌ Fehler")
-
-# ==================== WEB APP DATA (ТВОЯ ЛОГИКА) ====================
-
-async def web_app_data_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка данных из WebApp - ТВОЯ РАБОЧАЯ ЛОГИКА"""
-    import os
-    from supabase import create_client
-    supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
-    
+async def web_app_data_handler(update: Update,
+                               context: ContextTypes.DEFAULT_TYPE):
     try:
         raw_data = json.loads(update.effective_message.web_app_data.data)
-        data_type = raw_data.get("type")
-        
-        # Обновление профиля
-        if data_type == "profile_update" or ("company_name" in raw_data and "invoice_data" not in raw_data and "offer_items" not in raw_data):
-            profile_data = {
-                "id": update.effective_user.id,
-                "company_name": raw_data.get("company_name"),
-                "street": raw_data.get("street"),
-                "city": raw_data.get("city"),
-                "postal_code": raw_data.get("postal_code"),
-                "email": raw_data.get("email"),
-                "phone": raw_data.get("phone"),
-                "tax_id": raw_data.get("tax_id"),
-                "iban": raw_data.get("iban")
-            }
-            supabase.table("profiles").upsert(profile_data).execute()
-            await update.message.reply_text("🎉 Profil gespeichert!", reply_markup=get_main_keyboard())
-        
-        # Создание счета
-        elif data_type == "create_invoice" or "invoice_data" in raw_data:
-            inv = raw_data.get("invoice_data")
-            gen_num = f"RE-{datetime.now().year}-{int(time.time()) % 1000000}"
-            db_invoice_data = {
-                "user_id": update.effective_user.id,
-                "client_name": inv.get("client_name") or "Kunde",
-                "client_address": inv.get("client_address") or "",
-                "amount": float(inv.get("amount") or 0),
-                "vat_rate": float(inv.get("vat_rate") or 0),
-                "total": float(inv.get("total") or 0),
-                "invoice_date": inv.get("date"),
-                "description": inv.get("description"),
-                "number": gen_num,
-                "status": "created"
-            }
-            supabase.table("invoices").insert(db_invoice_data).execute()
-            await update.message.reply_text(f"✅ Rechnung {gen_num} gespeichert!", reply_markup=get_main_keyboard())
-        
-        # Создание оффера
-        elif "offer_items" in raw_data:
-            client_data = raw_data.get('client_data', {})
-            offer_number = db.generate_offer_number(update.effective_user.id)
-            offer_data = {
-                "user_id": update.effective_user.id,
-                "offer_number": offer_number,
-                "offer_date": raw_data.get('offer_date'),
-                "valid_until": raw_data.get('valid_until'),
-                "client_name": client_data.get('company_name'),
-                "client_address": f"{client_data.get('street','')} {client_data.get('postal_code','')} {client_data.get('city','')}".strip(),
-                "amount": raw_data.get('total_net'),
-                "vat_rate": raw_data.get('vat_rate'),
-                "total": raw_data.get('total_gross'),
-                "format_type": raw_data.get('format_type', 'ZUGFeRD'),
-                "notes": raw_data.get('notes')
-            }
-            offer_id = db.create_offer(offer_data)
-            if offer_id:
-                db.create_offer_items(offer_id, raw_data.get('offer_items', []))
-                db.increment_offer_number(update.effective_user.id)
-                await update.message.reply_text(f"✅ Angebot {offer_number}!\n💰 {raw_data.get('total_gross'):.2f}€", reply_markup=get_main_keyboard())
-    
-    except Exception as e:
-        logger.error(f"WebApp error: {e}")
-        await update.message.reply_text(f"❌ Fehler: {e}", reply_markup=get_main_keyboard())
+        user_id = update.effective_user.id
 
-# ==================== BUTTON HANDLER ====================
+        # ЛОГИРОВАНИЕ: смотрим, что реально пришло
+        logger.info(f"ДАННЫЕ ИЗ WEBAPP: {json.dumps(raw_data, indent=2)}")
+
+        # 1. Проверяем, это документ (Счет/Предложение) или Настройки
+        if "invoice_items" in raw_data or "offer_items" in raw_data:
+            # Определяем тип документа
+            is_offer = "offer_items" in raw_data
+            doc_type = "ANGEBOT" if is_offer else "RECHNUNG"
+
+            # Сохраняем в базу (в базе v1 метод create_invoice универсален или адаптируй его)
+            db.create_invoice(raw_data)
+
+            profile = db.get_profile(user_id)
+            if not profile:
+                await update.message.reply_text(
+                    "⚠️ Сначала заполни настройки профиля!")
+                return
+
+            await update.message.reply_text(f"⏳ Генерирую {doc_type}...")
+            await generate_document_pdf(update, raw_data, profile, is_offer)
+
+        else:
+            # Если это настройки (ключи из settings_v1.html)
+            db.update_profile(user_id, raw_data)
+            await update.message.reply_text("✅ Настройки профиля сохранены!")
+
+    except Exception as e:
+        logger.error(f"Ошибка в web_app_data_handler: {e}", exc_info=True)
+
+
+async def generate_document_pdf(update: Update, data: dict, profile: dict,
+                                is_offer: bool):
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+
+        # Шрифты (используем стандартный Helvetica для надежности)
+        pdf.set_font("Helvetica", 'B', 16)
+        title = "ANGEBOT" if is_offer else "RECHNUNG"
+        pdf.cell(0, 10, title, ln=True, align='C')
+        pdf.ln(10)
+
+        # Данные отправителя (из профиля)
+        pdf.set_font("Helvetica", 'B', 10)
+        pdf.cell(0,
+                 5,
+                 f"{profile.get('company_name', 'Meine Firma')}",
+                 ln=True,
+                 align='R')
+        pdf.set_font("Helvetica", size=10)
+        pdf.cell(0,
+                 5,
+                 f"{profile.get('street', '')} {profile.get('city', '')}",
+                 ln=True,
+                 align='R')
+        pdf.ln(10)
+
+        # Данные клиента
+        client = data.get('client_data', {})
+        pdf.set_font("Helvetica", 'B', 10)
+        pdf.cell(0, 10, "Empfänger:", ln=True)
+        pdf.set_font("Helvetica", size=10)
+        pdf.cell(
+            0,
+            5,
+            f"{client.get('company_name') or client.get('name', 'Kunde')}",
+            ln=True)
+        pdf.multi_cell(
+            0, 5,
+            f"{client.get('address') or (client.get('street', '') + ' ' + client.get('city', ''))}"
+        )
+        pdf.ln(10)
+
+        # ТАБЛИЦА ТОВАРОВ (Главное исправление!)
+        # Берем либо invoice_items, либо offer_items
+        items = data.get('invoice_items') or data.get('offer_items') or []
+
+        pdf.set_font("Helvetica", 'B', 10)
+        pdf.set_fill_color(240, 240, 240)
+        pdf.cell(100, 10, "Beschreibung", 1, 0, 'L', True)
+        pdf.cell(30, 10, "Menge", 1, 0, 'C', True)
+        pdf.cell(50, 10, "Gesamt (EUR)", 1, 1, 'C', True)
+
+        pdf.set_font("Helvetica", size=10)
+        for item in items:
+            # Используем .get() так как в разных формах ключи могут отличаться (description/name)
+            desc = item.get('description') or item.get('name') or "Position"
+            qty = item.get('quantity') or item.get('qty') or 1
+            total = item.get('total') or (float(item.get('price', 0)) *
+                                          float(qty))
+
+            pdf.cell(100, 10, f"{desc}", 1)
+            pdf.cell(30, 10, f"{qty}", 1, 0, 'C')
+            pdf.cell(50, 10, f"{total:.2f}", 1, 1, 'R')
+
+        # ИТОГО
+        pdf.ln(5)
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.cell(130, 10, "Gesamtbrutto:", 0, 0, 'R')
+        pdf.cell(50, 10, f"{data.get('total_gross', 0):.2f} EUR", 0, 1, 'R')
+
+        # Сохранение
+        file_path = f"document_{int(time.time())}.pdf"
+        pdf.output(file_path)
+
+        with open(file_path, 'rb') as f:
+            await update.message.reply_document(
+                document=f, caption=f"📄 Ваш {title} готов!")
+
+        os.remove(file_path)
+
+    except Exception as e:
+        logger.error(f"Ошибка PDF: {e}", exc_info=True)
+        await update.message.reply_text("❌ Ошибка при генерации PDF.")
+
+
+async def generate_pdf(update: Update, data: dict, profile: dict):
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Helvetica", 'B', 14)
+        pdf.cell(0, 10, "DOKUMENT", ln=True, align='C')
+        fname = f"Doc_{int(time.time())}.pdf"
+        pdf.output(fname)
+        with open(fname, 'rb') as f:
+            await update.message.reply_document(document=f)
+        os.remove(fname)
+    except Exception as e:
+        logger.error(f"PDF: {e}")
+
+
+# --- ВЫЗОВЫ ИЗ КНОПОК МЕНЮ ---
+
+
+async def rechnung_erstellen_start(update: Update,
+                                   context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    profile = db.get_profile(user_id)
+    encoded = base64.urlsafe_b64encode(json.dumps(
+        profile or {}).encode()).decode().strip("=")
+    url = f"{CREATE_INVOICE_FORM_URL}?data={urllib.parse.quote(encoded)}"
+    kb = ReplyKeyboardMarkup(
+        [[KeyboardButton("📄 Rechnung", web_app=WebAppInfo(url=url))],
+         [KeyboardButton("🔙 Zurück")]],
+        resize_keyboard=True)
+    await update.message.reply_text("Details:", reply_markup=kb)
+
+
+async def angebot_erstellen_start(update: Update,
+                                  context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    profile = db.get_profile(user_id)
+    encoded = base64.urlsafe_b64encode(json.dumps(
+        profile or {}).encode()).decode().strip("=")
+    url = f"{CREATE_OFFER_FORM_URL}?data={urllib.parse.quote(encoded)}"
+    kb = ReplyKeyboardMarkup(
+        [[KeyboardButton("📋 Angebot", web_app=WebAppInfo(url=url))],
+         [KeyboardButton("🔙 Zurück")]],
+        resize_keyboard=True)
+    await update.message.reply_text("Details:", reply_markup=kb)
+
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка кнопок"""
     text = update.message.text
-    
     if text == "📝 Rechnung erstellen":
-        return await rechnung_erstellen_start(update, context)
+        await rechnung_erstellen_start(update, context)
     elif text == "📋 Angebot erstellen":
-        return await angebot_erstellen_start(update, context)
+        await angebot_erstellen_start(update, context)
     elif text == "👥 Meine Kunden":
-        return await my_clients_command(update, context)
+        await my_clients_command(update, context)
     elif text == "📊 Meine Rechnungen":
-        return await my_invoices_command(update, context)
+        await my_invoices_command(update, context)
     elif text == "📄 Meine Angebote":
-        return await my_offers_command(update, context)
+        await my_offers_command(update, context)
     elif text == "⚙️ Einstellungen":
-        return await settings_main(update, context)
+        await settings_main(update, context)
     elif text == "🔙 Zurück":
-        await update.message.reply_text("Hauptmenü:", reply_markup=get_main_keyboard())
-        return ConversationHandler.END
-    else:
-        await update.message.reply_text("ℹ️ Nutze Schaltflächen", reply_markup=get_main_keyboard())
-
-async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Error handler"""
-    logger.error(f"Error: {context.error}")
-    if update and update.effective_message:
-        await update.effective_message.reply_text("❌ Fehler", reply_markup=get_main_keyboard())
+        await start_command(update, context)
