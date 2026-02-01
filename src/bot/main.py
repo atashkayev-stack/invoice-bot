@@ -5,11 +5,14 @@ import base64
 import io
 import urllib.parse
 import re
+import time
+from datetime import datetime
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, ConversationHandler
 import anthropic
+from fpdf import FPDF
 
 # 1. Einstellungen & Initialisierung
 load_dotenv()
@@ -27,7 +30,6 @@ SETTINGS_MENU, WAITING_FOR_DOC = range(2)
 
 
 def get_profile_url(user_id):
-    """Holt Daten aus Supabase und erstellt eine URL für settings.html"""
     base_url = "https://atashkayev-stack.github.io/invoice-bot/settings.html"
     try:
         res = supabase.table("profiles").select("*").eq("id",
@@ -35,14 +37,14 @@ def get_profile_url(user_id):
         if res.data:
             p = res.data[0]
             data = {
-                "company_name": p.get("company_name"),
-                "street": p.get("street"),
-                "postal_code": p.get("zip"),
-                "city": p.get("city"),
-                "email": p.get("email"),
-                "phone": p.get("phone"),
-                "tax_id": p.get("tax_id"),
-                "iban": p.get("iban")
+                "company_name": p.get("company_name") or "",
+                "street": p.get("street") or "",
+                "postal_code": p.get("zip") or "",
+                "city": p.get("city") or "",
+                "email": p.get("email") or "",
+                "phone": p.get("phone") or "",
+                "tax_id": p.get("tax_id") or "",
+                "iban": p.get("iban") or ""
             }
             encoded = base64.urlsafe_b64encode(
                 json.dumps(data).encode()).decode().strip("=")
@@ -53,14 +55,12 @@ def get_profile_url(user_id):
 
 
 def get_invoice_url(user_id):
-    """Holt Profildaten und erstellt eine URL für create_invoice.html"""
     base_url = "https://atashkayev-stack.github.io/invoice-bot/create_invoice.html"
     try:
         res = supabase.table("profiles").select("*").eq("id",
                                                         user_id).execute()
         if res.data:
             p = res.data[0]
-            # Данные отправителя для предзаполнения формы счета
             data = {
                 "sender_name": p.get("company_name"),
                 "sender_address":
@@ -97,34 +97,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     reply_markup=get_main_keyboard())
 
 
-async def rechnung_erstellen_start(update: Update,
-                                   context: ContextTypes.DEFAULT_TYPE):
-    """Обработка кнопки создания счета"""
-    user_id = update.effective_user.id
-    res = supabase.table("profiles").select("*").eq("id", user_id).execute()
-
-    if not res.data:
-        await update.message.reply_text(
-            "⚠️ Bitte füllen Sie zuerst Ihr Profil in den Einstellungen aus!",
-            reply_markup=get_main_keyboard())
-        return
-
-    invoice_url = get_invoice_url(user_id)
-    keyboard = ReplyKeyboardMarkup([[
-        KeyboardButton("📄 Rechnung ausfüllen",
-                       web_app=WebAppInfo(url=invoice_url))
-    ], [KeyboardButton("🔙 Zurück")]],
-                                   resize_keyboard=True)
-
-    await update.message.reply_text(
-        "Öffnen Sie das Formular, um die Rechnungsdetails einzugeben:",
-        reply_markup=keyboard)
-
-
 async def settings_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     web_app_url = get_profile_url(user_id)
-
     keyboard = ReplyKeyboardMarkup(
         [[KeyboardButton("📄 Aus Dokument laden")],
          [
@@ -134,16 +109,14 @@ async def settings_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
          [KeyboardButton("🔍 Überprüfen", web_app=WebAppInfo(url=web_app_url))],
          [KeyboardButton("🔙 Zurück")]],
         resize_keyboard=True)
-
-    await update.message.reply_text(
-        "Profileinstellungen. Bitte wählen Sie eine Option:",
-        reply_markup=keyboard)
+    await update.message.reply_text("Profileinstellungen:",
+                                    reply_markup=keyboard)
     return SETTINGS_MENU
 
 
 async def ask_for_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "📤 Bitte senden Sie ein Foto oder ein PDF Ihrer Rechnung (Absenderdaten)."
+        "📤 Bitte senden Sie ein Foto или PDF вашего счета (данные отправителя)."
     )
     return WAITING_FOR_DOC
 
@@ -152,44 +125,94 @@ async def handle_profile_document(update: Update,
                                   context: ContextTypes.DEFAULT_TYPE):
     msg = await update.message.reply_text("⏳ Dokument wird analysiert...")
     try:
+
         if update.message.photo:
-            file = await context.bot.get_file(update.message.photo[-1].file_id)
-            out = io.BytesIO()
-            await file.download_to_memory(out)
-            img_b64 = base64.urlsafe_b64encode(out.getvalue()).decode('utf-8')
-            content = [{
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": "image/jpeg",
-                    "data": img_b64
-                }
-            }, {
-                "type":
-                "text",
-                "text":
-                "Extract SENDER JSON: company_name, street, postal_code, city, email, phone, tax_id, iban."
-            }]
-        # (Остальная логика OCR как была...)
-        # Для краткости пропустим внутренности OCR, они у тебя рабочие.
-        pass
+            file_id = update.message.photo[-1].file_id
+        elif update.message.document:
+            file_id = update.message.document.file_id
+        else:
+            await msg.edit_text("❌ Bitte ein Foto senden!")
+            return SETTINGS_MENU
+
+        # ... (код получения картинки остается прежним) ...
+        file = await context.bot.get_file(file_id)
+        out = io.BytesIO()
+        await file.download_to_memory(out)
+        img_b64 = base64.b64encode(out.getvalue()).decode('utf-8')
+
+        response = anthropic_client.messages.create(
+            model="claude-3-haiku-20240307",
+            max_tokens=1024,
+            messages=[{
+                "role":
+                "user",
+                "content": [{
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/jpeg",
+                        "data": img_b64
+                    }
+                }, {
+                    "type":
+                    "text",
+                    "text":
+                    "Extract SENDER JSON: company_name, street, postal_code, city, email, phone, tax_id, iban. Return ONLY JSON."
+                }]
+            }])
+
+        json_match = re.search(r'\{.*\}', response.content[0].text, re.DOTALL)
+        if json_match:
+            data = json.loads(json_match.group())
+            user_id = update.effective_user.id
+            profile_data = {
+                "id": user_id,
+                "company_name": data.get("company_name"),
+                "street": data.get("street"),
+                "zip": data.get("postal_code"),  # Важно: в базе 'zip'
+                "city": data.get("city"),
+                "email": data.get("email"),
+                "phone": data.get("phone"),
+                "tax_id": data.get("tax_id"),
+                "iban": data.get("iban")
+            }
+            supabase.table("profiles").upsert(profile_data).execute()
+
+            # --- ИСПРАВЛЕНИЕ ОШИБКИ ТУТ ---
+            # 1. Генерируем НОВУЮ ссылку
+            new_web_app_url = get_profile_url(user_id)
+
+            # 2. Создаем клавиатуру
+            keyboard = ReplyKeyboardMarkup([[
+                KeyboardButton("🔍 Überprüfen & Speichern",
+                               web_app=WebAppInfo(url=new_web_app_url))
+            ], [KeyboardButton("🔙 Zurück")]],
+                                           resize_keyboard=True)
+
+            # 3. Удаляем сообщение "⏳ Dokument wird analysiert..."
+            await context.bot.delete_message(chat_id=update.effective_chat.id,
+                                             message_id=msg.message_id)
+
+            # 4. Отправляем новое сообщение с кнопками
+            await update.message.reply_text(
+                "✅ Данные из документа получены!\nНажми кнопку ниже, чтобы проверить их в форме:",
+                reply_markup=keyboard)
+        else:
+            # Для ошибки тоже используем удаление или просто редактируем текст без кнопок
+            await msg.edit_text("❌ JSON не найден. Попробуйте другое фото.")
+
     except Exception as e:
         logger.error(f"OCR Error: {e}")
-        await msg.edit_text("❌ Fehler bei der Analyse.")
+        await msg.edit_text(f"❌ API Fehler: {str(e)}")
     return SETTINGS_MENU
 
 
 async def web_app_data_handler(update: Update,
                                context: ContextTypes.DEFAULT_TYPE):
     try:
-        # 1. Получаем данные из Web App
         raw_data = json.loads(update.effective_message.web_app_data.data)
         data_type = raw_data.get("type")
 
-        logger.info(f"Daten erhalten. Typ: {data_type}")
-
-        # --- ЛОГИКА СОХРАНЕНИЯ ПРОФИЛЯ (SETTINGS) ---
-        # Срабатывает, если есть тип 'profile_update' или просто прилетели поля профиля
         if data_type == "profile_update" or ("company_name" in raw_data and
                                              "invoice_data" not in raw_data):
             profile_data = {
@@ -203,62 +226,121 @@ async def web_app_data_handler(update: Update,
                 "tax_id": raw_data.get("tax_id"),
                 "iban": raw_data.get("iban")
             }
+            supabase.table("profiles").upsert(profile_data).execute()
+            await update.message.reply_text("🎉 Profil gespeichert!",
+                                            reply_markup=get_main_keyboard())
 
-            # Сохранение профиля с защитой от разрыва соединения (наша прошлая правка)
-            try:
-                supabase.table("profiles").upsert(profile_data).execute()
-            except Exception as e:
-                logger.warning(
-                    f"Verbindungsproblem (10054?), versuche erneut: {e}")
-                supabase.table("profiles").upsert(profile_data).execute()
-
-            await update.message.reply_text(
-                "🎉 Profil erfolgreich gespeichert!",
-                reply_markup=get_main_keyboard())
-
-        # --- ЛОГИКА СОЗДАНИЯ СЧЕТА (INVOICE) ---
         elif data_type == "create_invoice" or "invoice_data" in raw_data:
             inv = raw_data.get("invoice_data")
-
-            # Подготовка данных для новой таблицы 'invoices'
+            gen_num = f"RE-{datetime.now().year}-{int(time.time()) % 1000000}"
             db_invoice_data = {
                 "user_id": update.effective_user.id,
-                "client_name": inv.get("client_name"),
-                "client_address": inv.get("client_address"),
-                "client_email": inv.get("client_email"),
-                "description": inv.get("description"),
-                "amount": inv.get("amount"),
-                "vat_rate": inv.get("vat_rate"),
-                "total": inv.get("total"),
+                "client_name": inv.get("client_name") or "Kunde",
+                "client_address": inv.get("client_address") or "",
+                "amount": float(inv.get("amount") or 0),
+                "vat_rate": float(inv.get("vat_rate") or 0),
+                "total": float(inv.get("total") or 0),
                 "invoice_date": inv.get("date"),
+                "description": inv.get("description"),
+                "number": gen_num,
                 "status": "created"
             }
-
-            # Сохраняем счет в базу (тоже с защитой от разрыва)
-            try:
-                supabase.table("invoices").insert(db_invoice_data).execute()
-            except Exception:
-                logger.warning(
-                    "Verbindung verloren beim Speichern der Rechnung, versuche erneut..."
-                )
-                supabase.table("invoices").insert(db_invoice_data).execute()
-
+            supabase.table("invoices").insert(db_invoice_data).execute()
+            res = supabase.table("profiles").select("*").eq(
+                "id", update.effective_user.id).single().execute()
+            profile = res.data if res.data else {}
             await update.message.reply_text(
-                f"✅ Rechnung für {inv.get('client_name')} über {inv.get('total')} € wurde gespeichert!\n"
-                "Ich bereite die PDF-Datei vor...",
-                reply_markup=get_main_keyboard())
-            # Сюда позже добавим: await send_invoice_pdf(update, inv)
-
+                f"✅ Rechnung {gen_num} gespeichert!")
+            await generate_invoice_pdf(update, db_invoice_data, profile)
     except Exception as e:
-        logger.error(f"Kritischer Fehler im web_app_data_handler: {e}")
-        await update.message.reply_text(f"❌ Fehler: {str(e)}",
-                                        reply_markup=get_main_keyboard())
+        logger.error(f"Error: {e}")
+        await update.message.reply_text(f"❌ Fehler: {str(e)}")
+
+
+async def generate_invoice_pdf(update: Update, inv_data: dict, profile: dict):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 16)
+
+    pdf.cell(0,
+             10,
+             f"{profile.get('company_name') or 'Meine Firma'}",
+             ln=True,
+             align='R')
+    pdf.set_font("Arial", size=10)
+    pdf.cell(0, 5, f"{profile.get('street') or ''}", ln=True, align='R')
+    pdf.cell(0,
+             5,
+             f"{profile.get('zip') or ''} {profile.get('city') or ''}",
+             ln=True,
+             align='R')
+    pdf.cell(0, 5, f"Email: {profile.get('email') or ''}", ln=True, align='R')
+    pdf.ln(20)
+
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, "Empfänger:", ln=True)
+    pdf.set_font("Arial", size=10)
+    pdf.cell(0, 5, f"{inv_data.get('client_name') or 'Kunde'}", ln=True)
+    pdf.multi_cell(0, 5, f"{inv_data.get('client_address') or ''}")
+    pdf.ln(10)
+
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 10, f"Rechnung Nr.: {inv_data.get('number')}", ln=True)
+    pdf.set_font("Arial", size=10)
+    pdf.cell(0, 5, f"Datum: {inv_data.get('invoice_date') or ''}", ln=True)
+    pdf.ln(10)
+
+    pdf.set_fill_color(240, 240, 240)
+    pdf.cell(120, 10, "Beschreibung", 1, 0, 'C', fill=True)
+    pdf.cell(70, 10, "Betrag", 1, 1, 'C', fill=True)
+    pdf.cell(120, 15, f"{inv_data.get('description') or 'Dienstleistung'}", 1)
+    pdf.cell(70, 15, f"{inv_data.get('amount'):.2f} EUR", 1, 1, 'R')
+
+    pdf.ln(5)
+    pdf.cell(120, 10, "Netto:", 0, 0, 'R')
+    pdf.cell(70, 10, f"{inv_data.get('amount'):.2f} EUR", 0, 1, 'R')
+    vat_sum = (inv_data.get('total') or 0) - (inv_data.get('amount') or 0)
+    pdf.cell(120, 10, f"MwSt ({inv_data.get('vat_rate')}%):", 0, 0, 'R')
+    pdf.cell(70, 10, f"{vat_sum:.2f} EUR", 0, 1, 'R')
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(120, 10, "Gesamtbetrag:", 0, 0, 'R')
+    pdf.cell(70, 10, f"{inv_data.get('total'):.2f} EUR", 0, 1, 'R')
+
+    pdf.ln(20)
+    pdf.set_font("Arial", 'I', 8)
+    pdf.cell(
+        0, 5,
+        f"Steuernummer: {profile.get('tax_id') or ''} | IBAN: {profile.get('iban') or ''}",
+        0, 1, 'C')
+
+    file_name = f"invoice_{inv_data.get('number')}.pdf"
+    pdf.output(file_name)
+    with open(file_name, 'rb') as f:
+        await update.message.reply_document(document=f,
+                                            caption=f"📄 {file_name}")
+    os.remove(file_name)
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Zurück zum Hauptmenü.",
-                                    reply_markup=get_main_keyboard())
+    await start(update, context)
     return ConversationHandler.END
+
+
+async def rechnung_erstellen_start(update: Update,
+                                   context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    res = supabase.table("profiles").select("*").eq("id", user_id).execute()
+    if not res.data:
+        await update.message.reply_text("⚠️ Bitte сначала заполните профиль!",
+                                        reply_markup=get_main_keyboard())
+        return
+    invoice_url = get_invoice_url(user_id)
+    keyboard = ReplyKeyboardMarkup([[
+        KeyboardButton("📄 Rechnung ausfüllen",
+                       web_app=WebAppInfo(url=invoice_url))
+    ], [KeyboardButton("🔙 Zurück")]],
+                                   resize_keyboard=True)
+    await update.message.reply_text("Rechnungsdetails:", reply_markup=keyboard)
 
 
 # --- MAIN ---
@@ -267,10 +349,9 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     app = Application.builder().token(os.getenv("TELEGRAM_BOT_TOKEN")).build()
 
-    settings_regex = r"Einstellungen"
-    rechnung_regex = r"Rechnung erstellen"
-    history_regex = r"Meine Rechnungen"
-    dev_regex = r"Entwickler"
+    back_regex = r".*Zurück"
+    settings_regex = r".*Einstellungen"
+    rechnung_regex = r".*Rechnung erstellen"
 
     settings_conv = ConversationHandler(
         entry_points=[
@@ -278,14 +359,14 @@ def main():
         ],
         states={
             SETTINGS_MENU: [
-                MessageHandler(filters.Regex(r"Aus Dokument laden"),
+                MessageHandler(filters.Regex(r"📄 Aus Dokument laden"),
                                ask_for_document),
-                MessageHandler(filters.Regex(r"Zurück"), cancel)
+                MessageHandler(filters.Regex(back_regex), cancel)
             ],
             WAITING_FOR_DOC: [
                 MessageHandler(filters.PHOTO | filters.Document.ALL,
                                handle_profile_document),
-                MessageHandler(filters.Regex(r"Zurück"), settings_main)
+                MessageHandler(filters.Regex(back_regex), settings_main)
             ]
         },
         fallbacks=[CommandHandler("start", start)],
@@ -296,19 +377,10 @@ def main():
     app.add_handler(
         MessageHandler(filters.StatusUpdate.WEB_APP_DATA,
                        web_app_data_handler))
-
-    # Кнопка создания счета теперь ведет на реальную функцию
     app.add_handler(
         MessageHandler(filters.Regex(rechnung_regex),
                        rechnung_erstellen_start))
-
-    app.add_handler(
-        MessageHandler(filters.Regex(history_regex),
-                       lambda u, c: u.message.reply_text("In Entwicklung...")))
-    app.add_handler(
-        MessageHandler(
-            filters.Regex(dev_regex),
-            lambda u, c: u.message.reply_text("Kontakt: @your_handle")))
+    app.add_handler(MessageHandler(filters.Regex(back_regex), cancel))
 
     print("Bot läuft...")
     app.run_polling()

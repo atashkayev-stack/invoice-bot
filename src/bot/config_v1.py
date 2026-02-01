@@ -1,0 +1,10 @@
+GITHUB_USERNAME = "atashkayev-stack"
+BASE_URL = f"https://{GITHUB_USERNAME}.github.io/invoice-bot"
+SETTINGS_FORM_URL = f"{BASE_URL}/settings_v1.html"
+CREATE_INVOICE_FORM_URL = f"{BASE_URL}/create_invoice_v1.html"
+CREATE_OFFER_FORM_URL = f"{BASE_URL}/create_offer_v1.html"
+CLAUDE_MODEL = "claude-3-haiku-20240307"
+CONVERSATION_TIMEOUT = 900
+INVOICE_FORMATS = ["ZUGFeRD", "XRechnung"]
+UNITS = ["Stk", "Std", "Tag", "kg", "m", "m²", "m³", "km", "l"]
+VAT_RATES = {"STANDARD": 19, "REDUCED": 7, "ZERO": 0}

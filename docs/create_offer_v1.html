@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Angebot erstellen</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; margin-bottom: 24px; font-size: 24px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 500; color: #34495e; font-size: 14px; }
+        input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #3498db; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 2px solid #eee; }
+        .tab { padding: 12px 24px; background: none; border: none; cursor: pointer; font-size: 14px; color: #7f8c8d; border-bottom: 3px solid transparent; transition: all 0.3s; }
+        .tab.active { color: #3498db; border-bottom-color: #3498db; font-weight: 600; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .item-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto; gap: 8px; align-items: end; margin-bottom: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px; }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.3s; }
+        .btn-primary { background: #3498db; color: white; }
+        .btn-primary:hover { background: #2980b9; }
+        .btn-success { background: #27ae60; color: white; width: 100%; padding: 16px; font-size: 16px; }
+        .btn-success:hover { background: #229954; }
+        .btn-secondary { background: #95a5a6; color: white; }
+        .btn-remove { background: #e74c3c; color: white; padding: 8px 16px; }
+        .totals { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 24px; }
+        .total-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px; }
+        .total-row.grand { font-size: 20px; font-weight: bold; color: #27ae60; padding-top: 12px; border-top: 2px solid #ddd; }
+        .nav-buttons { display: flex; gap: 12px; margin-top: 24px; }
+        .format-group { display: flex; gap: 16px; }
+        .radio-option { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; }
+        .radio-option input { width: auto; }
+        .radio-option.selected { border-color: #3498db; background: #ecf0f1; }
+        .help-text { font-size: 12px; color: #7f8c8d; margin-top: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 Angebot erstellen</h1>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab(1)">1️⃣ Kunde</button>
+            <button class="tab" onclick="showTab(2)">2️⃣ Positionen</button>
+            <button class="tab" onclick="showTab(3)">3️⃣ Fertig</button>
+        </div>
+
+        <!-- TAB 1: KUNDE -->
+        <div id="tab1" class="tab-content active">
+            <h2 style="margin-bottom: 16px; color: #2c3e50;">Kundendaten</h2>
+            
+            <div class="form-group">
+                <label for="company_name">Firmenname / Name *</label>
+                <input type="text" id="company_name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="street">Straße *</label>
+                <input type="text" id="street" required>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px;">
+                <div class="form-group">
+                    <label for="postal_code">PLZ *</label>
+                    <input type="text" id="postal_code" required>
+                </div>
+                <div class="form-group">
+                    <label for="city">Stadt *</label>
+                    <input type="text" id="city" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="email">E-Mail</label>
+                <input type="email" id="email">
+            </div>
+
+            <div class="form-group">
+                <label for="phone">Telefon</label>
+                <input type="tel" id="phone">
+            </div>
+
+            <div class="form-group">
+                <label for="customer_id">Kunden-Nr</label>
+                <input type="text" id="customer_id">
+                <div class="help-text">Leer lassen für Auto-Generierung</div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-primary" style="flex: 1;" onclick="showTab(2)">Weiter →</button>
+            </div>
+        </div>
+
+        <!-- TAB 2: POSITIONEN -->
+        <div id="tab2" class="tab-content">
+            <h2 style="margin-bottom: 16px; color: #2c3e50;">Angebotspositionen</h2>
+
+            <div class="form-group">
+                <label for="offer_date">Angebotsdatum *</label>
+                <input type="date" id="offer_date" required>
+            </div>
+
+            <div class="form-group">
+                <label for="valid_until">Gültig bis *</label>
+                <input type="date" id="valid_until" required>
+                <div class="help-text">Standardmäßig 14 Tage ab Angebotsdatum</div>
+            </div>
+
+            <div class="form-group">
+                <label for="purchase_order">Bestellnummer (optional)</label>
+                <input type="text" id="purchase_order">
+            </div>
+
+            <div id="items-container"></div>
+
+            <button class="btn btn-secondary" onclick="addItem()" style="margin-bottom: 24px;">+ Position hinzufügen</button>
+
+            <div class="form-group">
+                <label for="vat_rate">MwSt-Satz (%)</label>
+                <select id="vat_rate" onchange="calculateTotals()">
+                    <option value="19">19% (Standard)</option>
+                    <option value="7">7% (Ermäßigt)</option>
+                    <option value="0">0% (Kleinunternehmer / Export)</option>
+                </select>
+            </div>
+
+            <div class="totals">
+                <div class="total-row">
+                    <span>Netto:</span>
+                    <span id="total_net">0,00 €</span>
+                </div>
+                <div class="total-row">
+                    <span>MwSt:</span>
+                    <span id="total_vat">0,00 €</span>
+                </div>
+                <div class="total-row grand">
+                    <span>Gesamt:</span>
+                    <span id="total_gross">0,00 €</span>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-secondary" onclick="showTab(1)">← Zurück</button>
+                <button class="btn btn-primary" style="flex: 1;" onclick="showTab(3)">Weiter →</button>
+            </div>
+        </div>
+
+        <!-- TAB 3: FERTIG -->
+        <div id="tab3" class="tab-content">
+            <h2 style="margin-bottom: 16px; color: #2c3e50;">Angebot abschließen</h2>
+
+            <div class="form-group">
+                <label>Format wählen:</label>
+                <div class="format-group">
+                    <label class="radio-option selected">
+                        <input type="radio" name="format" value="ZUGFeRD" checked onchange="selectFormat(this)">
+                        <span>📄 ZUGFeRD (PDF + XML)</span>
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="format" value="XRechnung" onchange="selectFormat(this)">
+                        <span>📋 XRechnung (nur XML)</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Notizen (optional)</label>
+                <textarea id="notes" rows="4" placeholder="Zusätzliche Informationen..."></textarea>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-secondary" onclick="showTab(2)">← Zurück</button>
+                <button class="btn btn-success" onclick="submitOffer()">✅ Angebot erstellen</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let itemCount = 0;
+
+        // Auto-fill bei Laden
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const clientData = urlParams.get('client');
+            
+            if (clientData) {
+                try {
+                    const data = JSON.parse(atob(decodeURIComponent(clientData)));
+                    if (data.company_name) document.getElementById('company_name').value = data.company_name;
+                    if (data.street) document.getElementById('street').value = data.street;
+                    if (data.postal_code) document.getElementById('postal_code').value = data.postal_code;
+                    if (data.city) document.getElementById('city').value = data.city;
+                    if (data.email) document.getElementById('email').value = data.email;
+                    if (data.phone) document.getElementById('phone').value = data.phone;
+                    if (data.customer_id) document.getElementById('customer_id').value = data.customer_id;
+                } catch(e) {
+                    console.error('Error parsing client data:', e);
+                }
+            }
+
+            // Setze Datum + Gültig bis (14 Tage)
+            const today = new Date();
+            const validUntil = new Date(today);
+            validUntil.setDate(today.getDate() + 14);
+            
+            document.getElementById('offer_date').value = today.toISOString().split('T')[0];
+            document.getElementById('valid_until').value = validUntil.toISOString().split('T')[0];
+
+            // Bei Änderung des Datums -> Gültig bis neu berechnen
+            document.getElementById('offer_date').addEventListener('change', function() {
+                const offerDate = new Date(this.value);
+                const newValidUntil = new Date(offerDate);
+                newValidUntil.setDate(offerDate.getDate() + 14);
+                document.getElementById('valid_until').value = newValidUntil.toISOString().split('T')[0];
+            });
+
+            addItem();
+        });
+
+        function showTab(num) {
+            for(let i = 1; i <= 3; i++) {
+                document.getElementById('tab' + i).classList.remove('active');
+                document.querySelectorAll('.tab')[i-1].classList.remove('active');
+            }
+            document.getElementById('tab' + num).classList.add('active');
+            document.querySelectorAll('.tab')[num-1].classList.add('active');
+        }
+
+        function addItem() {
+            itemCount++;
+            const container = document.getElementById('items-container');
+            const div = document.createElement('div');
+            div.className = 'item-row';
+            div.innerHTML = `
+                <div>
+                    <label>Beschreibung *</label>
+                    <input type="text" class="item-desc" required>
+                </div>
+                <div>
+                    <label>Menge *</label>
+                    <input type="number" class="item-qty" value="1" step="0.01" min="0" required onchange="calculateTotals()">
+                </div>
+                <div>
+                    <label>Einheit</label>
+                    <select class="item-unit">
+                        <option>Stk</option>
+                        <option>Std</option>
+                        <option>Tag</option>
+                        <option>kg</option>
+                        <option>m</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Preis (€) *</label>
+                    <input type="number" class="item-price" step="0.01" min="0" required onchange="calculateTotals()">
+                </div>
+                <div>
+                    <label>Gesamt (€)</label>
+                    <input type="text" class="item-total" readonly>
+                </div>
+                <div>
+                    <label>&nbsp;</label>
+                    <button class="btn btn-remove" onclick="removeItem(this)">🗑️</button>
+                </div>
+            `;
+            container.appendChild(div);
+            calculateTotals();
+        }
+
+        function removeItem(btn) {
+            if(document.querySelectorAll('.item-row').length > 1) {
+                btn.closest('.item-row').remove();
+                calculateTotals();
+            }
+        }
+
+        function calculateTotals() {
+            let totalNet = 0;
+            document.querySelectorAll('.item-row').forEach(row => {
+                const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+                const price = parseFloat(row.querySelector('.item-price').value) || 0;
+                const itemTotal = qty * price;
+                row.querySelector('.item-total').value = itemTotal.toFixed(2);
+                totalNet += itemTotal;
+            });
+
+            const vatRate = parseFloat(document.getElementById('vat_rate').value) || 0;
+            const totalVat = totalNet * (vatRate / 100);
+            const totalGross = totalNet + totalVat;
+
+            document.getElementById('total_net').textContent = totalNet.toFixed(2) + ' €';
+            document.getElementById('total_vat').textContent = totalVat.toFixed(2) + ' €';
+            document.getElementById('total_gross').textContent = totalGross.toFixed(2) + ' €';
+        }
+
+        function selectFormat(radio) {
+            document.querySelectorAll('.radio-option').forEach(opt => opt.classList.remove('selected'));
+            radio.closest('.radio-option').classList.add('selected');
+        }
+
+        function submitOffer() {
+            const items = [];
+            document.querySelectorAll('.item-row').forEach(row => {
+                items.push({
+                    description: row.querySelector('.item-desc').value,
+                    quantity: parseFloat(row.querySelector('.item-qty').value),
+                    unit: row.querySelector('.item-unit').value,
+                    unit_price: parseFloat(row.querySelector('.item-price').value),
+                    total_price: parseFloat(row.querySelector('.item-total').value),
+                    vat_rate: parseFloat(document.getElementById('vat_rate').value)
+                });
+            });
+
+            const data = {
+                type: "create_offer",
+                offer_date: document.getElementById('offer_date').value,
+                valid_until: document.getElementById('valid_until').value,
+                client_data: {
+                    company_name: document.getElementById('company_name').value,
+                    street: document.getElementById('street').value,
+                    postal_code: document.getElementById('postal_code').value,
+                    city: document.getElementById('city').value,
+                    email: document.getElementById('email').value,
+                    phone: document.getElementById('phone').value,
+                    customer_id: document.getElementById('customer_id').value
+                },
+                purchase_order: document.getElementById('purchase_order').value,
+                offer_items: items,
+                vat_rate: parseFloat(document.getElementById('vat_rate').value),
+                total_net: parseFloat(document.getElementById('total_net').textContent),
+                total_gross: parseFloat(document.getElementById('total_gross').textContent),
+                format_type: document.querySelector('input[name="format"]:checked').value,
+                notes: document.getElementById('notes').value
+            };
+
+            if(window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.sendData(JSON.stringify(data));
+            } else {
+                alert('Bitte über Telegram öffnen');
+            }
+        }
+    </script>
+</body>
+</html>
