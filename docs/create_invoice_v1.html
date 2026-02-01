@@ -10,7 +10,7 @@
         body {
             font-family: -apple-system, sans-serif;
             background: #f5f5f5;
-            padding-bottom: 80px;
+            padding-bottom: 20px;
         }
         .tabs {
             display: flex;
@@ -51,6 +51,31 @@
             margin-bottom: 10px;
             font-size: 15px;
         }
+        
+        /* Toggle Switch */
+        .toggle-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            padding: 4px;
+        }
+        .toggle-option {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .toggle-option.active {
+            background: white;
+            color: #0088cc;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
         label {
             display: block;
             font-size: 13px;
@@ -66,8 +91,17 @@
             border-radius: 8px;
             font-size: 15px;
         }
+        input:read-only {
+            background: #f0f0f0;
+            color: #999;
+        }
+        input.is-invalid {
+            border-color: #ff3b30;
+            background: #fff5f5;
+        }
         .row { display: flex; gap: 10px; }
         .row > div { flex: 1; }
+        
         .item-row {
             background: #f9f9f9;
             padding: 10px;
@@ -75,12 +109,13 @@
             border-radius: 8px;
             border-left: 3px solid #0088cc;
         }
-        .item-row input { margin-top: 5px; }
+        .item-row input, .item-row select { margin-top: 5px; }
         .delete-item {
             color: #ff3b30;
             cursor: pointer;
             float: right;
             font-weight: bold;
+            font-size: 20px;
         }
         .add-item-btn {
             background: #4CAF50;
@@ -102,31 +137,62 @@
         .total-row {
             display: flex;
             justify-content: space-between;
-            margin: 8px 0;
+            margin-bottom: 8px;
+            font-size: 15px;
         }
         .total-row.grand {
+            font-weight: bold;
             font-size: 18px;
+            color: #1976D2;
+            border-top: 2px solid #90CAF9;
+            padding-top: 8px;
+            margin-top: 8px;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .btn-back {
+            background: #999;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
             font-weight: 600;
-            color: #0088cc;
-            border-top: 2px solid #0088cc;
-            padding-top: 10px;
-            margin-top: 10px;
+        }
+        .btn-next {
+            flex: 1;
+            background: #0088cc;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        
+        /* Footer показывается только на Tab 3 */
+        .footer {
+            display: none;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .footer.visible {
+            display: block;
         }
         .submit-btn {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: linear-gradient(135deg, #0088cc 0%, #0077b3 100%);
+            background: #0088cc;
             color: white;
-            padding: 16px;
+            padding: 15px;
             border: none;
-            font-weight: 600;
+            border-radius: 10px;
+            width: 100%;
+            font-weight: bold;
             font-size: 16px;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            cursor: pointer;
         }
-        .ai-badge {
-            display: inline-block;
+        .badge {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 3px 8px;
@@ -170,343 +236,361 @@
         <div class="tab" onclick="switchTab(2)">✅ Fertig</div>
     </div>
 
-    <!-- TAB 1: Kundendaten -->
-    <div class="tab-content active" id="tab-0">
+    <!-- TAB 1: KUNDE -->
+    <div class="tab-content active">
         <div class="section">
-            <div class="section-title">
-                👤 Kundendaten
-                <span id="ai-badge" class="ai-badge" style="display:none;">KI erkannt</span>
+            <div class="section-title">Kundentyp</div>
+            <div class="toggle-container">
+                <div class="toggle-option active" onclick="toggleClientType('private')">👤 Privatperson</div>
+                <div class="toggle-option" onclick="toggleClientType('business')">🏢 Firma</div>
             </div>
             
-            <label class="required">Firmenname / Name</label>
-            <input type="text" id="company_name" required>
+            <div id="private-fields">
+                <label class="required">Vor- und Nachname</label>
+                <input type="text" id="client_name" placeholder="Max Mustermann">
+            </div>
             
-            <label>Kunden-Nr. (für XRechnung)</label>
-            <input type="text" id="customer_id" placeholder="KUND-001">
-            <div style="font-size:11px;color:#999;margin-top:2px;">Wird automatisch generiert, falls leer</div>
+            <div id="business-fields" style="display:none;">
+                <label class="required">Firmenname</label>
+                <input type="text" id="company_name" placeholder="Mustermann GmbH">
+                
+                <label>USt-IdNr. (für EU/B2B)</label>
+                <input type="text" id="vat_id" placeholder="DE123456789">
+            </div>
             
-            <label class="required">Adresse</label>
-            <textarea id="address" rows="3" required></textarea>
+            <label class="required">Straße</label>
+            <input type="text" id="street" placeholder="Musterstraße 123">
             
             <div class="row">
                 <div>
-                    <label>E-Mail</label>
-                    <input type="email" id="email">
+                    <label class="required">PLZ</label>
+                    <input type="text" id="postal_code" placeholder="12345">
                 </div>
                 <div>
-                    <label>Telefon</label>
-                    <input type="tel" id="phone">
+                    <label class="required">Stadt</label>
+                    <input type="text" id="city" placeholder="Berlin">
                 </div>
             </div>
             
-            <div class="row">
-                <div>
-                    <label>Steuernummer</label>
-                    <input type="text" id="tax_id">
-                </div>
-                <div>
-                    <label>USt-ID</label>
-                    <input type="text" id="vat_id">
-                </div>
-            </div>
+            <label>E-Mail</label>
+            <input type="email" id="email" placeholder="kunde@beispiel.de">
             
-            <label>Bestellnummer (optional)</label>
-            <input type="text" id="purchase_order" placeholder="Auftragsnummer des Kunden">
+            <label>Telefon</label>
+            <input type="tel" id="phone" placeholder="+49 123 456789">
         </div>
         
-        <button onclick="switchTab(1)" style="background:#0088cc;color:white;border:none;padding:12px;border-radius:8px;width:100%;font-weight:600;">
-            Weiter zu Positionen →
-        </button>
+        <div class="nav-buttons">
+            <button class="btn-next" onclick="validateAndProceed(0)">Weiter →</button>
+        </div>
     </div>
 
-    <!-- TAB 2: Positionen -->
-    <div class="tab-content" id="tab-1">
+    <!-- TAB 2: POSITIONEN -->
+    <div class="tab-content">
         <div class="section">
-            <div class="section-title">📦 Rechnungspositionen</div>
-            
-            <div id="items-container">
-                <!-- Позиции добавляются динамически -->
-            </div>
-            
+            <div class="section-title">Rechnungspositionen</div>
+            <div id="items-list"></div>
             <button class="add-item-btn" onclick="addItem()">+ Position hinzufügen</button>
         </div>
-        
-        <div class="section">
-            <div class="section-title">💰 MwSt-Satz</div>
-            <select id="vat_rate" onchange="calculateTotals()">
-                <option value="19">19% (Standard)</option>
-                <option value="7">7% (ermäßigt)</option>
-                <option value="0">0% (Kleinunternehmer)</option>
-            </select>
-        </div>
-        
+
         <div class="total-box">
             <div class="total-row">
-                <span>Nettosumme:</span>
-                <span id="total_net">0,00 €</span>
+                <span>Netto:</span>
+                <span id="net_total">0,00 €</span>
             </div>
             <div class="total-row">
-                <span>MwSt (<span id="vat_percent">19</span>%):</span>
-                <span id="total_vat">0,00 €</span>
+                <span>MwSt (<span id="vat_label">19</span>%):</span>
+                <span id="vat_total">0,00 €</span>
             </div>
             <div class="total-row grand">
-                <span>Gesamtbetrag:</span>
-                <span id="total_gross">0,00 €</span>
+                <span>Gesamt:</span>
+                <span id="gross_total">0,00 €</span>
             </div>
         </div>
         
-        <button onclick="switchTab(2)" style="background:#4CAF50;color:white;border:none;padding:12px;border-radius:8px;width:100%;font-weight:600;margin-top:15px;">
-            Weiter zu Abschluss →
-        </button>
+        <div class="nav-buttons">
+            <button class="btn-back" onclick="switchTab(0)">← Zurück</button>
+            <button class="btn-next" onclick="validateAndProceed(1)">Weiter →</button>
+        </div>
     </div>
 
-    <!-- TAB 3: Abschluss -->
-    <div class="tab-content" id="tab-2">
+    <!-- TAB 3: FERTIG -->
+    <div class="tab-content">
         <div class="section">
-            <div class="section-title">📅 Rechnungsdatum</div>
+            <div class="section-title">Rechnungsdetails</div>
+            
+            <label class="required">Rechnungsdatum</label>
             <input type="date" id="invoice_date" required>
-        </div>
-        
-        <div class="section">
-            <div class="section-title">📄 E-Rechnungs-Format</div>
+            
+            <label>Fälligkeitsdatum</label>
+            <input type="date" id="due_date">
+            
+            <label>MwSt-Satz</label>
+            <select id="vat_rate" onchange="calculateTotals()">
+                <option value="19">19% (Standard)</option>
+                <option value="7">7% (Ermäßigt)</option>
+                <option value="0">0% (§19 UStG)</option>
+            </select>
+            
+            <label>Format<span class="badge">E-Rechnung</span></label>
             <div class="format-selector">
-                <div class="format-option selected" onclick="selectFormat('ZUGFeRD')">
+                <div class="format-option selected" onclick="selectFormat(this, 'ZUGFeRD')">
                     <div class="title">📄 ZUGFeRD</div>
-                    <div class="desc">PDF + XML<br>Für B2B ideal</div>
+                    <div class="desc">PDF + XML</div>
                 </div>
-                <div class="format-option" onclick="selectFormat('XRechnung')">
+                <div class="format-option" onclick="selectFormat(this, 'XRechnung')">
                     <div class="title">📋 XRechnung</div>
-                    <div class="desc">Nur XML<br>Pflicht für Behörden</div>
+                    <div class="desc">Nur XML</div>
                 </div>
             </div>
+            
+            <label>Notizen</label>
+            <textarea id="notes" rows="4" placeholder="Zusätzliche Hinweise..."></textarea>
         </div>
         
-        <div class="section">
-            <div class="section-title">📝 Hinweise (optional)</div>
-            <textarea id="notes" rows="3" placeholder="z.B. Vielen Dank für Ihren Auftrag!"></textarea>
+        <div class="nav-buttons">
+            <button class="btn-back" onclick="switchTab(1)">← Zurück</button>
         </div>
         
-        <div class="section" style="background:#e3f2fd;border-left:3px solid #0088cc;">
-            <div style="font-weight:600;margin-bottom:8px;">📋 Zusammenfassung:</div>
-            <div style="font-size:13px;">
-                <div>👤 <span id="summary_client">—</span></div>
-                <div>📦 <span id="summary_items">0</span> Position(en)</div>
-                <div>💰 <span id="summary_total">0,00 €</span></div>
-                <div>📄 <span id="summary_format">ZUGFeRD</span></div>
-            </div>
+        <!-- КНОПКА ОТПРАВКИ ТОЛЬКО ЗДЕСЬ -->
+        <div class="footer visible">
+            <button class="submit-btn" onclick="sendData()">📨 Rechnung senden</button>
         </div>
     </div>
-
-    <button class="submit-btn" onclick="submitInvoice()">✅ Rechnung erstellen</button>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        tg.MainButton.hide();
-
+        
+        let items = [];
+        let itemIdCounter = 1;
+        let currentTab = 0;
         let selectedFormat = 'ZUGFeRD';
-        let itemCounter = 0;
+        let clientType = 'private';
 
-        // Загрузка предзаполненных данных клиента
-        const params = new URLSearchParams(window.location.search);
-        const clientEncoded = params.get('client');
+        window.onload = function() {
+            const today = new Date();
+            const dueDate = new Date(today);
+            dueDate.setDate(today.getDate() + 14);
+            
+            document.getElementById('invoice_date').value = today.toISOString().split('T')[0];
+            document.getElementById('due_date').value = dueDate.toISOString().split('T')[0];
+            
+            const params = new URLSearchParams(window.location.search);
+            const dataEncoded = params.get('data');
+            if (dataEncoded) {
+                try {
+                    const profile = JSON.parse(atob(dataEncoded));
+                    if (profile.is_kleinunternehmer) {
+                        document.getElementById('vat_rate').value = "0";
+                    } else if (profile.default_vat_rate !== undefined) {
+                        document.getElementById('vat_rate').value = profile.default_vat_rate;
+                    }
+                } catch(e) {}
+            }
+            
+            addItem();
+        };
 
-        if (clientEncoded) {
-            try {
-                const clientData = JSON.parse(atob(decodeURIComponent(clientEncoded)));
-                
-                document.getElementById('ai-badge').style.display = 'inline-block';
-                
-                if (clientData.company_name) document.getElementById('company_name').value = clientData.company_name;
-                if (clientData.customer_id) document.getElementById('customer_id').value = clientData.customer_id;
-                if (clientData.email) document.getElementById('email').value = clientData.email;
-                if (clientData.phone) document.getElementById('phone').value = clientData.phone;
-                if (clientData.tax_id) document.getElementById('tax_id').value = clientData.tax_id;
-                if (clientData.vat_id) document.getElementById('vat_id').value = clientData.vat_id;
-                
-                // Формируем адрес
-                let addressParts = [];
-                if (clientData.street) addressParts.push(clientData.street);
-                if (clientData.postal_code && clientData.city) {
-                    addressParts.push(clientData.postal_code + ' ' + clientData.city);
-                }
-                if (clientData.country) addressParts.push(clientData.country);
-                
-                if (addressParts.length > 0) {
-                    document.getElementById('address').value = addressParts.join('\n');
-                }
-                
-            } catch (e) {
-                console.error('Client data parse error:', e);
+        function toggleClientType(type) {
+            clientType = type;
+            document.querySelectorAll('.toggle-option').forEach(opt => opt.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (type === 'private') {
+                document.getElementById('private-fields').style.display = 'block';
+                document.getElementById('business-fields').style.display = 'none';
+            } else {
+                document.getElementById('private-fields').style.display = 'none';
+                document.getElementById('business-fields').style.display = 'block';
             }
         }
 
-        // Установка сегодняшней даты
-        document.getElementById('invoice_date').valueAsDate = new Date();
-
-        // Добавляем первую позицию
-        addItem();
-
         function switchTab(index) {
-            document.querySelectorAll('.tab').forEach((t, i) => {
-                t.classList.toggle('active', i === index);
-            });
-            document.querySelectorAll('.tab-content').forEach((t, i) => {
-                t.classList.toggle('active', i === index);
-            });
+            const tabs = document.querySelectorAll('.tab');
+            const contents = document.querySelectorAll('.tab-content');
             
-            if (index === 2) {
-                updateSummary();
+            tabs.forEach((t, i) => {
+                if (i === index) {
+                    t.classList.add('active');
+                    contents[i].classList.add('active');
+                } else {
+                    t.classList.remove('active');
+                    contents[i].classList.remove('active');
+                }
+            });
+            currentTab = index;
+        }
+
+        function validateAndProceed(fromTab) {
+            if (fromTab === 0) {
+                let requiredFields = ['street', 'postal_code', 'city'];
+                
+                if (clientType === 'private') {
+                    requiredFields.push('client_name');
+                } else {
+                    requiredFields.push('company_name');
+                }
+                
+                for (let fieldId of requiredFields) {
+                    const input = document.getElementById(fieldId);
+                    if (!input.value.trim()) {
+                        input.classList.add('is-invalid');
+                        input.focus();
+                        setTimeout(() => input.classList.remove('is-invalid'), 2000);
+                        alert('Bitte alle Pflichtfelder (*) ausfüllen!');
+                        return;
+                    }
+                }
+                
+                requiredFields.forEach(fieldId => {
+                    document.getElementById(fieldId).setAttribute('readonly', true);
+                });
+                
+                switchTab(1);
+            } else if (fromTab === 1) {
+                if (items.length === 0 || items.every(i => !i.description)) {
+                    alert('Bitte mindestens eine Position hinzufügen!');
+                    return;
+                }
+                switchTab(2);
             }
+        }
+
+        function selectFormat(element, format) {
+            document.querySelectorAll('.format-option').forEach(opt => opt.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedFormat = format;
         }
 
         function addItem() {
-            itemCounter++;
-            const container = document.getElementById('items-container');
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'item-row';
-            itemDiv.id = 'item-' + itemCounter;
-            itemDiv.innerHTML = `
-                <span class="delete-item" onclick="deleteItem(${itemCounter})">✕</span>
-                <div style="font-weight:600;margin-bottom:8px;">Position ${itemCounter}</div>
-                <label>Beschreibung *</label>
-                <input type="text" class="item-desc" placeholder="z.B. Website-Entwicklung" required>
-                <div class="row">
-                    <div style="flex:0.8;">
-                        <label>Menge *</label>
-                        <input type="number" class="item-qty" value="1" min="0.01" step="0.01" onchange="calculateTotals()">
-                    </div>
-                    <div style="flex:0.7;">
-                        <label>Einheit</label>
-                        <select class="item-unit">
-                            <option>Stk</option>
-                            <option>Std</option>
-                            <option>Tag</option>
-                            <option>kg</option>
-                            <option>m</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>Einzelpreis (€) *</label>
-                        <input type="number" class="item-price" placeholder="0.00" step="0.01" min="0" onchange="calculateTotals()" required>
-                    </div>
-                </div>
-                <div style="text-align:right;font-weight:600;margin-top:5px;">
-                    Gesamt: <span class="item-total">0,00 €</span>
-                </div>
-            `;
-            container.appendChild(itemDiv);
-            calculateTotals();
+            const id = itemIdCounter++;
+            items.push({ 
+                id: id,
+                description: '',
+                quantity: 1,
+                unit: 'Stk',
+                price: 0,
+                total: 0
+            });
+            renderItems();
         }
 
-        function deleteItem(id) {
-            if (document.querySelectorAll('.item-row').length === 1) {
+        function removeItem(id) {
+            if (items.length <= 1) {
                 alert('Mindestens eine Position erforderlich!');
                 return;
             }
-            document.getElementById('item-' + id).remove();
+            items = items.filter(i => i.id !== id);
+            renderItems();
+        }
+
+        function updateItem(id, field, value) {
+            const item = items.find(i => i.id === id);
+            if (!item) return;
+            
+            if (field === 'description' || field === 'unit') {
+                item[field] = value;
+            } else {
+                item[field] = parseFloat(value) || 0;
+            }
+            
+            item.total = item.quantity * item.price;
+            renderItems();
             calculateTotals();
         }
 
+        function renderItems() {
+            const container = document.getElementById('items-list');
+            container.innerHTML = items.map(item => `
+                <div class="item-row">
+                    <span class="delete-item" onclick="removeItem(${item.id})">×</span>
+                    <label>Beschreibung</label>
+                    <input type="text" value="${item.description}" 
+                           onchange="updateItem(${item.id}, 'description', this.value)">
+                    
+                    <div class="row">
+                        <div>
+                            <label>Menge</label>
+                            <input type="number" step="0.01" value="${item.quantity}" 
+                                   onchange="updateItem(${item.id}, 'quantity', this.value)">
+                        </div>
+                        <div>
+                            <label>Einheit</label>
+                            <select onchange="updateItem(${item.id}, 'unit', this.value)">
+                                <option value="Stk" ${item.unit === 'Stk' ? 'selected' : ''}>Stk</option>
+                                <option value="Std" ${item.unit === 'Std' ? 'selected' : ''}>Std</option>
+                                <option value="Tag" ${item.unit === 'Tag' ? 'selected' : ''}>Tag</option>
+                                <option value="kg" ${item.unit === 'kg' ? 'selected' : ''}>kg</option>
+                                <option value="m" ${item.unit === 'm' ? 'selected' : ''}>m</option>
+                                <option value="m²" ${item.unit === 'm²' ? 'selected' : ''}>m²</option>
+                                <option value="m³" ${item.unit === 'm³' ? 'selected' : ''}>m³</option>
+                                <option value="km" ${item.unit === 'km' ? 'selected' : ''}>km</option>
+                                <option value="l" ${item.unit === 'l' ? 'selected' : ''}>l</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Preis (€)</label>
+                            <input type="number" step="0.01" value="${item.price}" 
+                                   onchange="updateItem(${item.id}, 'price', this.value)">
+                        </div>
+                        <div>
+                            <label>Gesamt</label>
+                            <input type="text" value="${item.total.toFixed(2)} €" readonly>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
         function calculateTotals() {
-            let totalNet = 0;
+            const vatRate = parseFloat(document.getElementById('vat_rate').value) || 0;
+            const net = items.reduce((sum, item) => sum + item.total, 0);
+            const vat = net * (vatRate / 100);
+            const gross = net + vat;
             
-            document.querySelectorAll('.item-row').forEach(row => {
-                const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
-                const price = parseFloat(row.querySelector('.item-price').value) || 0;
-                const itemTotal = qty * price;
-                
-                row.querySelector('.item-total').textContent = itemTotal.toFixed(2) + ' €';
-                totalNet += itemTotal;
-            });
+            document.getElementById('net_total').textContent = net.toFixed(2) + ' €';
+            document.getElementById('vat_total').textContent = vat.toFixed(2) + ' €';
+            document.getElementById('gross_total').textContent = gross.toFixed(2) + ' €';
+            document.getElementById('vat_label').textContent = vatRate;
             
-            const vatRate = parseFloat(document.getElementById('vat_rate').value);
-            const totalVat = totalNet * (vatRate / 100);
-            const totalGross = totalNet + totalVat;
-            
-            document.getElementById('total_net').textContent = totalNet.toFixed(2) + ' €';
-            document.getElementById('total_vat').textContent = totalVat.toFixed(2) + ' €';
-            document.getElementById('total_gross').textContent = totalGross.toFixed(2) + ' €';
-            document.getElementById('vat_percent').textContent = vatRate;
+            return { net, vat, gross, vatRate };
         }
 
-        function selectFormat(format) {
-            selectedFormat = format;
-            document.querySelectorAll('.format-option').forEach(opt => {
-                opt.classList.toggle('selected', opt.textContent.includes(format));
-            });
-        }
-
-        function updateSummary() {
-            document.getElementById('summary_client').textContent = 
-                document.getElementById('company_name').value || '—';
-            document.getElementById('summary_items').textContent = 
-                document.querySelectorAll('.item-row').length;
-            document.getElementById('summary_total').textContent = 
-                document.getElementById('total_gross').textContent;
-            document.getElementById('summary_format').textContent = selectedFormat;
-        }
-
-        function submitInvoice() {
-            // Валидация
-            if (!document.getElementById('company_name').value) {
-                alert('Bitte Kundenname eingeben!');
-                switchTab(0);
-                return;
-            }
+        function sendData() {
+            const totals = calculateTotals();
             
-            const items = [];
-            let hasError = false;
-            
-            document.querySelectorAll('.item-row').forEach((row, idx) => {
-                const desc = row.querySelector('.item-desc').value;
-                const qty = parseFloat(row.querySelector('.item-qty').value);
-                const unit = row.querySelector('.item-unit').value;
-                const price = parseFloat(row.querySelector('.item-price').value);
-                
-                if (!desc || !qty || !price) {
-                    alert(`Position ${idx + 1}: Bitte alle Felder ausfüllen!`);
-                    switchTab(1);
-                    hasError = true;
-                    return;
-                }
-                
-                items.push({
-                    description: desc,
-                    quantity: qty,
-                    unit: unit,
-                    unit_price: price,
-                    total: qty * price,
-                    vat_rate: parseFloat(document.getElementById('vat_rate').value)
-                });
-            });
-            
-            if (hasError) return;
-            
-            const vatRate = parseFloat(document.getElementById('vat_rate').value);
-            const totalNet = items.reduce((sum, item) => sum + item.total, 0);
-            const totalVat = totalNet * (vatRate / 100);
-            const totalGross = totalNet + totalVat;
+            const clientName = clientType === 'private' 
+                ? document.getElementById('client_name').value 
+                : document.getElementById('company_name').value;
             
             const data = {
+                type: "invoice_creation",
+                client_type: clientType,
                 client_data: {
-                    company_name: document.getElementById('company_name').value,
-                    customer_id: document.getElementById('customer_id').value || null,
-                    address: document.getElementById('address').value,
-                    email: document.getElementById('email').value || null,
-                    phone: document.getElementById('phone').value || null,
-                    tax_id: document.getElementById('tax_id').value || null,
-                    vat_id: document.getElementById('vat_id').value || null
+                    company_name: clientName,
+                    vat_id: clientType === 'business' ? document.getElementById('vat_id').value : null,
+                    address: [
+                        document.getElementById('street').value,
+                        document.getElementById('postal_code').value + ' ' + document.getElementById('city').value
+                    ].filter(Boolean).join(', '),
+                    email: document.getElementById('email').value,
+                    phone: document.getElementById('phone').value
                 },
+                invoice_items: items.map(item => ({
+                    description: item.description,
+                    quantity: item.quantity,
+                    unit: item.unit,
+                    price: item.price,
+                    total: item.total
+                })),
                 invoice_date: document.getElementById('invoice_date').value,
-                purchase_order: document.getElementById('purchase_order').value || null,
-                invoice_items: items,
-                total_net: totalNet,
-                total_vat: totalVat,
-                total_gross: totalGross,
-                vat_rate: vatRate,
+                due_date: document.getElementById('due_date').value,
+                total_net: totals.net,
+                total_vat: totals.vat,
+                total_gross: totals.gross,
+                vat_rate: totals.vatRate,
                 format_type: selectedFormat,
-                notes: document.getElementById('notes').value || null
+                notes: document.getElementById('notes').value
             };
             
             tg.sendData(JSON.stringify(data));

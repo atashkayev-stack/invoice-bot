@@ -51,6 +51,31 @@
             margin-bottom: 10px;
             font-size: 15px;
         }
+        
+        /* Toggle Switch */
+        .toggle-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            padding: 4px;
+        }
+        .toggle-option {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .toggle-option.active {
+            background: white;
+            color: #0088cc;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
         label {
             display: block;
             font-size: 13px;
@@ -66,8 +91,17 @@
             border-radius: 8px;
             font-size: 15px;
         }
+        input:read-only {
+            background: #f0f0f0;
+            color: #999;
+        }
+        input.is-invalid {
+            border-color: #ff3b30;
+            background: #fff5f5;
+        }
         .row { display: flex; gap: 10px; }
         .row > div { flex: 1; }
+        
         .item-row {
             background: #f9f9f9;
             padding: 10px;
@@ -114,6 +148,30 @@
             padding-top: 8px;
             margin-top: 8px;
         }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .btn-back {
+            background: #999;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .btn-next {
+            flex: 1;
+            background: #0088cc;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        
         .footer {
             position: fixed;
             bottom: 0;
@@ -182,29 +240,48 @@
     <!-- TAB 1: KUNDE -->
     <div class="tab-content active">
         <div class="section">
-            <div class="section-title">Kundendaten</div>
-            <label class="required">Firma / Name</label>
-            <input type="text" id="company_name" required>
+            <div class="section-title">Kundentyp</div>
+            <div class="toggle-container">
+                <div class="toggle-option active" onclick="toggleClientType('private')">👤 Privatperson</div>
+                <div class="toggle-option" onclick="toggleClientType('business')">🏢 Firma</div>
+            </div>
             
-            <label>Straße</label>
-            <input type="text" id="street">
+            <div id="private-fields">
+                <label class="required">Vor- und Nachname</label>
+                <input type="text" id="client_name" placeholder="Max Mustermann">
+            </div>
+            
+            <div id="business-fields" style="display:none;">
+                <label class="required">Firmenname</label>
+                <input type="text" id="company_name" placeholder="Mustermann GmbH">
+                
+                <label>USt-IdNr. (für EU/B2B)</label>
+                <input type="text" id="vat_id" placeholder="DE123456789">
+            </div>
+            
+            <label class="required">Straße</label>
+            <input type="text" id="street" placeholder="Musterstraße 123">
             
             <div class="row">
                 <div>
-                    <label>PLZ</label>
-                    <input type="text" id="postal_code">
+                    <label class="required">PLZ</label>
+                    <input type="text" id="postal_code" placeholder="12345">
                 </div>
                 <div>
-                    <label>Stadt</label>
-                    <input type="text" id="city">
+                    <label class="required">Stadt</label>
+                    <input type="text" id="city" placeholder="Berlin">
                 </div>
             </div>
             
             <label>E-Mail</label>
-            <input type="email" id="email">
+            <input type="email" id="email" placeholder="kunde@beispiel.de">
             
             <label>Telefon</label>
-            <input type="tel" id="phone">
+            <input type="tel" id="phone" placeholder="+49 123 456789">
+        </div>
+        
+        <div class="nav-buttons">
+            <button class="btn-next" onclick="validateAndProceed(0)">Weiter →</button>
         </div>
     </div>
 
@@ -229,6 +306,11 @@
                 <span>Gesamt:</span>
                 <span id="gross_total">0,00 €</span>
             </div>
+        </div>
+        
+        <div class="nav-buttons">
+            <button class="btn-back" onclick="switchTab(0)">← Zurück</button>
+            <button class="btn-next" onclick="validateAndProceed(1)">Weiter →</button>
         </div>
     </div>
 
@@ -265,6 +347,10 @@
             <label>Notizen</label>
             <textarea id="notes" rows="4" placeholder="Zusätzliche Hinweise..."></textarea>
         </div>
+        
+        <div class="nav-buttons">
+            <button class="btn-back" onclick="switchTab(1)">← Zurück</button>
+        </div>
     </div>
 
     <div class="footer">
@@ -279,10 +365,9 @@
         let itemIdCounter = 1;
         let currentTab = 0;
         let selectedFormat = 'ZUGFeRD';
+        let clientType = 'private'; // private или business
 
-        // Инициализация
         window.onload = function() {
-            // Автозаполнение дат
             const today = new Date();
             const validUntil = new Date(today);
             validUntil.setDate(today.getDate() + 14);
@@ -290,7 +375,6 @@
             document.getElementById('offer_date').value = today.toISOString().split('T')[0];
             document.getElementById('valid_until').value = validUntil.toISOString().split('T')[0];
             
-            // При изменении даты - пересчитываем срок
             document.getElementById('offer_date').addEventListener('change', function() {
                 const offerDate = new Date(this.value);
                 const newValidUntil = new Date(offerDate);
@@ -298,30 +382,35 @@
                 document.getElementById('valid_until').value = newValidUntil.toISOString().split('T')[0];
             });
             
-            // Загрузка профиля из URL
             const params = new URLSearchParams(window.location.search);
             const dataEncoded = params.get('data');
             if (dataEncoded) {
                 try {
                     const profile = JSON.parse(atob(dataEncoded));
-                    
-                    // Kleinunternehmer проверка
                     if (profile.is_kleinunternehmer) {
                         document.getElementById('vat_rate').value = "0";
-                    } 
-                    // Или берем default_vat_rate из профиля
-                    else if (profile.default_vat_rate !== undefined) {
+                    } else if (profile.default_vat_rate !== undefined) {
                         document.getElementById('vat_rate').value = profile.default_vat_rate;
                     }
-                    
-                } catch(e) {
-                    console.error('Profile parse error:', e);
-                }
+                } catch(e) {}
             }
             
-            // ВАЖНО: Добавляем первую позицию сразу
             addItem();
         };
+
+        function toggleClientType(type) {
+            clientType = type;
+            document.querySelectorAll('.toggle-option').forEach(opt => opt.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (type === 'private') {
+                document.getElementById('private-fields').style.display = 'block';
+                document.getElementById('business-fields').style.display = 'none';
+            } else {
+                document.getElementById('private-fields').style.display = 'none';
+                document.getElementById('business-fields').style.display = 'block';
+            }
+        }
 
         function switchTab(index) {
             const tabs = document.querySelectorAll('.tab');
@@ -337,6 +426,44 @@
                 }
             });
             currentTab = index;
+        }
+
+        function validateAndProceed(fromTab) {
+            if (fromTab === 0) {
+                // Валидация клиента
+                let requiredFields = ['street', 'postal_code', 'city'];
+                
+                if (clientType === 'private') {
+                    requiredFields.push('client_name');
+                } else {
+                    requiredFields.push('company_name');
+                }
+                
+                for (let fieldId of requiredFields) {
+                    const input = document.getElementById(fieldId);
+                    if (!input.value.trim()) {
+                        input.classList.add('is-invalid');
+                        input.focus();
+                        setTimeout(() => input.classList.remove('is-invalid'), 2000);
+                        alert('Bitte alle Pflichtfelder (*) ausfüllen!');
+                        return;
+                    }
+                }
+                
+                // Блокируем поля после успешной валидации
+                requiredFields.forEach(fieldId => {
+                    document.getElementById(fieldId).setAttribute('readonly', true);
+                });
+                
+                switchTab(1);
+            } else if (fromTab === 1) {
+                // Валидация позиций
+                if (items.length === 0 || items.every(i => !i.description)) {
+                    alert('Bitte mindestens eine Position hinzufügen!');
+                    return;
+                }
+                switchTab(2);
+            }
         }
 
         function selectFormat(element, format) {
@@ -427,7 +554,6 @@
 
         function calculateTotals() {
             const vatRate = parseFloat(document.getElementById('vat_rate').value) || 0;
-            
             const net = items.reduce((sum, item) => sum + item.total, 0);
             const vat = net * (vatRate / 100);
             const gross = net + vat;
@@ -441,29 +567,24 @@
         }
 
         function sendData() {
-            // Валидация
-            if (!document.getElementById('company_name').value) {
-                alert('Bitte Firma/Name eingeben!');
-                switchTab(0);
-                return;
-            }
-            
-            if (items.length === 0 || items.every(i => !i.description)) {
-                alert('Bitte mindestens eine Position hinzufügen!');
-                switchTab(1);
-                return;
-            }
-            
             const totals = calculateTotals();
+            
+            const clientName = clientType === 'private' 
+                ? document.getElementById('client_name').value 
+                : document.getElementById('company_name').value;
             
             const data = {
                 type: "offer_creation",
+                client_type: clientType,
                 client_data: {
-                    company_name: document.getElementById('company_name').value,
+                    company_name: clientName,
+                    vat_id: clientType === 'business' ? document.getElementById('vat_id').value : null,
                     address: [
                         document.getElementById('street').value,
                         document.getElementById('postal_code').value + ' ' + document.getElementById('city').value
-                    ].filter(Boolean).join(', ')
+                    ].filter(Boolean).join(', '),
+                    email: document.getElementById('email').value,
+                    phone: document.getElementById('phone').value
                 },
                 offer_items: items.map(item => ({
                     description: item.description,
@@ -482,7 +603,6 @@
                 notes: document.getElementById('notes').value
             };
             
-            console.log('Sending data:', data);
             tg.sendData(JSON.stringify(data));
         }
     </script>
