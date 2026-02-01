@@ -23,7 +23,7 @@ def main():
     settings_conv = ConversationHandler(
         entry_points=[
             MessageHandler(filters.Regex("^⚙️ Einstellungen$"),
-                           handlers_v1.settings_main)
+                           handlers_v1.settings_command)
         ],
         states={
             handlers_v1.SETTINGS_MENU: [
