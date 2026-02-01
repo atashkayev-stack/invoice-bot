@@ -300,48 +300,51 @@
             radio.closest('.radio-option').classList.add('selected');
         }
 
-        function submitOffer() {
-            const items = [];
-            document.querySelectorAll('.item-row').forEach(row => {
-                items.push({
-                    description: row.querySelector('.item-desc').value,
-                    quantity: parseFloat(row.querySelector('.item-qty').value),
-                    unit: row.querySelector('.item-unit').value,
-                    unit_price: parseFloat(row.querySelector('.item-price').value),
-                    total_price: parseFloat(row.querySelector('.item-total').value),
-                    vat_rate: parseFloat(document.getElementById('vat_rate').value)
-                });
-            });
+       function submitOffer() {
+    const items = [];
+    document.querySelectorAll('.item-row').forEach(row => {
+        items.push({
+            description: row.querySelector('.item-desc').value,
+            quantity: parseFloat(row.querySelector('.item-qty').value),
+            unit: row.querySelector('.item-unit').value,
+            unit_price: parseFloat(row.querySelector('.item-price').value),
+            total_price: parseFloat(row.querySelector('.item-total').value),
+            vat_rate: parseFloat(document.getElementById('vat_rate').value)
+        });
+    });
 
-            const data = {
-                type: "create_offer",
-                offer_date: document.getElementById('offer_date').value,
-                valid_until: document.getElementById('valid_until').value,
-                client_data: {
-                    company_name: document.getElementById('company_name').value,
-                    street: document.getElementById('street').value,
-                    postal_code: document.getElementById('postal_code').value,
-                    city: document.getElementById('city').value,
-                    email: document.getElementById('email').value,
-                    phone: document.getElementById('phone').value,
-                    customer_id: document.getElementById('customer_id').value
-                },
-                purchase_order: document.getElementById('purchase_order').value,
-                offer_items: items,
-                vat_rate: parseFloat(document.getElementById('vat_rate').value),
-                total_net: parseFloat(document.getElementById('total_net').textContent),
-                total_gross: parseFloat(document.getElementById('total_gross').textContent),
-                format_type: document.querySelector('input[name="format"]:checked').value,
-                notes: document.getElementById('notes').value
-            };
+    const data = {
+        type: "create_offer",
+        offer_date: document.getElementById('offer_date').value,
+        valid_until: document.getElementById('valid_until').value,
+        client_data: {
+            company_name: document.getElementById('company_name').value,
+            street: document.getElementById('street').value,
+            postal_code: document.getElementById('postal_code').value,
+            city: document.getElementById('city').value,
+            email: document.getElementById('email').value,
+            phone: document.getElementById('phone').value,
+            customer_id: document.getElementById('customer_id').value
+        },
+        purchase_order: document.getElementById('purchase_order').value,
+        offer_items: items,
+        vat_rate: parseFloat(document.getElementById('vat_rate').value),
+        total_net: parseFloat(document.getElementById('total_net').textContent),
+        total_gross: parseFloat(document.getElementById('total_gross').textContent),
+        format_type: document.querySelector('input[name="format"]:checked').value,
+        notes: document.getElementById('notes').value
+    };
 
-            try {
-    window.Telegram.WebApp.sendData(JSON.stringify(data));
-} catch(e) {
-    alert('Error: ' + e.message);
-    console.error('Data:', data);
+    // ИСПРАВЛЕННАЯ ПРОВЕРКА:
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.sendData) {
+        window.Telegram.WebApp.sendData(JSON.stringify(data));
+    } else {
+        // Для отладки - покажи данные
+        console.log('Telegram WebApp недоступен');
+        console.log('Data:', data);
+        alert('Ошибка: Открой через Telegram бота!\n\nДанные в консоли.');
+    }
 }
-        }
     </script>
 </body>
 </html>
