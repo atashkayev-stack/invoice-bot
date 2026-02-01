@@ -176,11 +176,21 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Открывает форму настроек сразу"""
+    user_id = update.effective_user.id
+    profile = db.get_profile(user_id) or {}
+
+    # Формируем URL с данными профиля
+    data_json = json.dumps(profile, default=str)
+    encoded = base64.urlsafe_b64encode(data_json.encode()).decode().strip("=")
+    url = f"{SETTINGS_FORM_URL}?data={urllib.parse.quote(encoded)}"
+
     keyboard = ReplyKeyboardMarkup([[
-        KeyboardButton("📄 Aus Dokument laden"),
-        KeyboardButton("ввести руками")
-    ], [KeyboardButton("🔙 Zurück")]],
+        KeyboardButton("📝 Ihre Kontaktdaten eingeben / prüfen",
+                       web_app=WebAppInfo(url=url))
+    ], [KeyboardButton("📄 Aus Dokument laden")], [KeyboardButton("🔙 Zurück")]],
                                    resize_keyboard=True)
+
     await update.message.reply_text("⚙️ Einstellungen:", reply_markup=keyboard)
     return SETTINGS_MENU
 
@@ -242,19 +252,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await angebot_erstellen_start(update, context)
     elif t == "⚙️ Einstellungen":
         await settings_command(update, context)
-    elif t == "ввести руками" or t == "✍️ Manuell eingeben":
-        # Открываем форму настроек
-        user_id = update.effective_user.id
-        profile = db.get_profile(user_id) or {}
-        encoded = base64.urlsafe_b64encode(
-            json.dumps(profile).encode()).decode().strip("=")
-        url = f"{SETTINGS_FORM_URL}?data={encoded}"
-        await update.message.reply_text(
-            "Öffnen Sie das Formular:",
-            reply_markup=ReplyKeyboardMarkup([[
-                KeyboardButton("📝 Einstellungen", web_app=WebAppInfo(url=url))
-            ], [KeyboardButton("🔙 Zurück")]],
-                                             resize_keyboard=True))
     elif t == "🔙 Zurück":
         await update.message.reply_text("Hauptmenü",
                                         reply_markup=get_main_keyboard())
