@@ -58,23 +58,63 @@ async def web_app_data_handler(update: Update,
 
         # Собираем данные без старых ключей zip и address
         profile_data = {
-            "company_name": data.get('company_name'),
-            "street": data.get('street'),  # Новое поле из формы
-            "postal_code": data.get('postal_code'),  # Новое поле из формы
-            "city": data.get('city'),
-            "email": data.get('email'),
-            "phone": data.get('phone'),
-            "tax_id": data.get('tax_id'),
-            "vat_id": data.get('vat_id'),
-            "bank_name": data.get('bank_name'),
-            "iban": data.get('iban'),
-            "bic": data.get('bic'),
-            "legal_form":
-            data.get('legal_form',
-                     'Einzelunternehmer'),  # Поле для ZUGFeRD 2.4
-            "is_kleinunternehmer": data.get('is_kleinunternehmer', False),
-            "default_vat_rate": float(data.get('default_vat_rate', 19.0)),
-            "payment_terms_days": int(data.get('payment_terms', 14))
+            "id": user_id,
+
+            # Базовые данные
+            "company_name": data.get("company_name"),
+            "street": data.get("street"),
+            "postal_code": data.get("postal_code"),
+            "city": data.get("city"),
+            "country_code": data.get("country_code", "DE"),
+            "email": data.get("email"),
+            "phone": data.get("phone"),
+            "fax": data.get("fax"),
+            "website": data.get("website"),
+
+            # Правовая информация
+            "legal_form": data.get("legal_form"),
+            "trade_register_number": data.get("trade_register_number"),
+            "trade_register_court": data.get("trade_register_court"),
+            "managing_director": data.get("managing_director"),
+            "contact_person": data.get("contact_person"),
+            "contact_department": data.get("contact_department"),
+
+            # Налоги
+            "tax_id": data.get("tax_id"),
+            "vat_id": data.get("vat_id"),
+            "tax_office": data.get("tax_office"),
+            "is_kleinunternehmer": data.get("is_kleinunternehmer", False),
+            "default_vat_rate": data.get("default_vat_rate", 19),
+            "global_location_number": data.get("global_location_number"),
+            "duns_number": data.get("duns_number"),
+
+            # Банк
+            "bank_name": data.get("bank_name"),
+            "iban": data.get("iban"),
+            "bic": data.get("bic"),
+            "sepa_creditor_id": data.get("sepa_creditor_id"),
+            "sepa_mandate_reference": data.get("sepa_mandate_reference"),
+            "payment_terms_days": data.get("payment_terms_days", 14),
+
+            # Нумерация счетов
+            "invoice_number_prefix": data.get("invoice_number_prefix", "RE-"),
+            "invoice_number_format": data.get("invoice_number_format", 4),
+            "next_invoice_number": data.get("next_invoice_number", 1),
+
+            # Нумерация офферов
+            "offer_number_prefix": data.get("offer_number_prefix", "ANG-"),
+            "offer_number_format": data.get("offer_number_format", 4),
+            "next_offer_number": data.get("next_offer_number", 1),
+            "offer_validity_days": data.get("offer_validity_days", 14),
+
+            # Нумерация клиентов
+            "customer_id_prefix": data.get("customer_id_prefix", "KUND-"),
+            "next_customer_number": data.get("next_customer_number", 1),
+
+            # Настройки документов
+            "default_currency": data.get("default_currency", "EUR"),
+            "default_language": data.get("default_language", "de"),
+            "invoice_note_default": data.get("invoice_note_default"),
         }
 
         if db.update_profile(user_id, profile_data):

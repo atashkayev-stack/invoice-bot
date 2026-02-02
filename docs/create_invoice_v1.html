@@ -55,20 +55,32 @@
             padding-bottom: 5px;
         }
         .form-group { margin-bottom: 12px; }
-        label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; }
+        label {
+            display: block;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 4px;
+        }
         input, select, textarea {
             width: 100%;
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 8px;
             font-size: 15px;
+            outline: none;
         }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        input:focus { border-color: #0088cc; }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
         .item-card {
             background: #f9f9f9;
-            padding: 10px;
+            padding: 12px;
             border-radius: 8px;
             margin-bottom: 10px;
+            border: 1px solid #eee;
             position: relative;
         }
         .btn {
@@ -80,244 +92,259 @@
             width: 100%;
             font-size: 16px;
             font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn:active { background: #006699; }
+        .btn-secondary {
+            background: #eee;
+            color: #333;
             margin-top: 10px;
         }
-        .btn-add { background: #4caf50; margin-bottom: 10px; }
-        .btn-danger { background: #ff4444; padding: 5px 10px; font-size: 12px; }
-        .totals { text-align: right; font-size: 15px; }
-        .totals div { margin-bottom: 5px; }
-        .total-gross { font-size: 18px; font-weight: bold; color: #0088cc; }
+        .btn-add {
+            background: #4caf50;
+            margin-bottom: 10px;
+        }
+        .btn-danger {
+            background: #ff4444;
+            padding: 5px 10px;
+            font-size: 12px;
+            width: auto;
+            margin-top: 5px;
+        }
+        .totals {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #f0f0f0;
+            text-align: right;
+        }
+        .total-row {
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #666;
+        }
+        .total-gross {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0088cc;
+        }
+        .format-selector {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .format-btn {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #0088cc;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .format-btn.active {
+            background: #0088cc;
+            color: white;
+        }
     </style>
 </head>
 <body>
     <div class="tabs">
-        <div class="tab active" data-type="business" onclick="switchTab('business')">Gewerblich</div>
-        <div class="tab" data-type="private" onclick="switchTab('private')">Privat</div>
+        <div class="tab active" onclick="switchTab('business', this)">Gewerblich</div>
+        <div class="tab" onclick="switchTab('private', this)">Privat</div>
     </div>
 
-    <div class="container">
+    <div id="step-1" class="tab-content active">
         <div class="section">
             <div class="section-title">Empfänger</div>
-            <div class="form-group">
-                <label id="name_label">Firmenname</label>
+            <div class="form-group" id="company_field">
+                <label>Firmenname</label>
                 <input type="text" id="company_name" placeholder="Muster GmbH">
             </div>
-            
-            <div id="vat_group" class="form-group">
+            <div class="form-group" id="name_field" style="display:none">
+                <label>Nachname, Vorname</label>
+                <input type="text" id="client_name" placeholder="Schmidt, Hans">
+            </div>
+            <div class="form-group" id="vat_field">
                 <label>USt-IdNr.</label>
                 <input type="text" id="vat_id" placeholder="DE123456789">
             </div>
-
+            
             <div class="form-group">
                 <label>Straße & Hausnummer</label>
-                <input type="text" id="street">
+                <input type="text" id="street" placeholder="Musterstraße 1">
             </div>
-
             <div class="grid">
                 <div class="form-group">
                     <label>PLZ</label>
-                    <input type="text" id="postal_code">
+                    <input type="text" id="postal_code" placeholder="12345">
                 </div>
                 <div class="form-group">
                     <label>Stadt</label>
-                    <input type="text" id="city">
+                    <input type="text" id="city" placeholder="Berlin">
                 </div>
             </div>
 
-            <div class="grid">
-                <div class="form-group">
-                    <label>E-Mail</label>
-                    <input type="email" id="email">
-                </div>
-                <div class="form-group">
-                    <label>Telefon</label>
-                    <input type="text" id="phone">
-                </div>
+            <div class="form-group">
+                <label>E-Mail</label>
+                <input type="email" id="email" placeholder="kunde@example.com">
             </div>
+            <div class="form-group">
+                <label>Telefon (Optional)</label>
+                <input type="tel" id="phone" placeholder="+49...">
+            </div>
+            <button class="btn" onclick="nextStep(2)">Weiter</button>
         </div>
+    </div>
 
+    <div id="step-2" class="tab-content">
         <div class="section">
             <div class="section-title">Rechnungsdetails</div>
             <div class="grid">
                 <div class="form-group">
-                    <label>Datum</label>
+                    <label>Rechnungsdatum</label>
                     <input type="date" id="invoice_date">
                 </div>
                 <div class="form-group">
-                    <label>Fällig am</label>
+                    <label>Fälligkeitsdatum</label>
                     <input type="date" id="due_date">
                 </div>
             </div>
+            <div class="form-group">
+                <label>Format</label>
+                <div class="format-selector">
+                    <div class="format-btn active" onclick="setFormat('standard', this)">PDF Standard</div>
+                    <div class="format-btn" onclick="setFormat('zugferd', this)">ZUGFeRD (XML)</div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Anmerkungen</label>
+                <textarea id="notes" rows="3" placeholder="Zahlbar внутри 14 дней..."></textarea>
+            </div>
+            <button class="btn" onclick="nextStep(3)">Weiter</button>
+            <button class="btn btn-secondary" onclick="nextStep(1)">Zurück</button>
         </div>
+    </div>
 
+    <div id="step-3" class="tab-content">
         <div class="section">
             <div class="section-title">Positionen</div>
             <div id="items_list"></div>
             <button class="btn btn-add" onclick="addItem()">+ Position hinzufügen</button>
             
             <div class="totals">
-                <div>Netto: <span id="total_net">0.00</span> €</div>
-                <div class="grid">
-                    <label>USt-Satz (%)</label>
-                    <input type="number" id="vat_rate" value="19" onchange="calculateTotals()">
-                </div>
-                <div>USt: <span id="total_vat">0.00</span> €</div>
+                <div class="total-row">Netto: <span id="total_net">0.00</span> €</div>
+                <div class="total-row">USt (19%): <span id="total_vat">0.00</span> €</div>
                 <div class="total-gross">Gesamt: <span id="total_gross">0.00</span> €</div>
             </div>
+            <button class="btn" onclick="sendData()" style="margin-top:20px; background:#4caf50">Rechnung erstellen</button>
+            <button class="btn btn-secondary" onclick="nextStep(2)">Zurück</button>
         </div>
-
-        <div class="section">
-            <div class="section-title">Anmerkungen</div>
-            <textarea id="notes" rows="3"></textarea>
-        </div>
-
-        <div class="section">
-            <div class="section-title">Format</div>
-            <select id="format_type">
-                <option value="ZUGFeRD">ZUGFeRD (Standard)</option>
-                <option value="XRechnung">XRechnung (Behörden)</option>
-                <option value="Standard">Nur PDF</option>
-            </select>
-        </div>
-
-        <button class="btn" onclick="generateInvoice()">Rechnung erstellen</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
+        let clientType = 'business';
         let items = [];
-        let totals = { net: 0, vat: 0, gross: 0, vatRate: 19 };
+        let selectedFormat = 'standard';
 
-        // Инициализация дат
-        const now = new Date();
-        document.getElementById('invoice_date').valueAsDate = now;
-        const due = new Date();
-        due.setDate(now.getDate() + 14);
-        document.getElementById('due_date').valueAsDate = due;
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('invoice_date').value = today;
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 14);
+        document.getElementById('due_date').value = dueDate.toISOString().split('T')[0];
 
-        function switchTab(type) {
+        function switchTab(type, el) {
+            clientType = type;
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelector(`.tab[data-type="${type}"]`).classList.add('active');
-            
-            const nameLabel = document.getElementById('name_label');
-            const vatGroup = document.getElementById('vat_group');
-            
-            if (type === 'private') {
-                nameLabel.innerText = "Vor- und Nachname";
-                vatGroup.style.display = 'none';
-            } else {
-                nameLabel.innerText = "Firmenname";
-                vatGroup.style.display = 'block';
-            }
+            el.classList.add('active');
+            document.getElementById('company_field').style.display = type === 'business' ? 'block' : 'none';
+            document.getElementById('name_field').style.display = type === 'private' ? 'block' : 'none';
+            document.getElementById('vat_field').style.display = type === 'business' ? 'block' : 'none';
+        }
+
+        function nextStep(step) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById('step-' + step).classList.add('active');
+            window.scrollTo(0, 0);
+        }
+
+        function setFormat(format, el) {
+            selectedFormat = format;
+            document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
         }
 
         function addItem() {
             const id = Date.now();
-            items.push({ id, description: '', quantity: 1, unit: 'C62', price: 0, total: 0 });
+            items.push({ id, description: '', quantity: 1, unit: 'Stk', price: 0, total: 0 });
             renderItems();
         }
 
         function removeItem(id) {
             items = items.filter(i => i.id !== id);
             renderItems();
-            calculateTotals();
         }
 
         function updateItem(id, field, value) {
             const item = items.find(i => i.id === id);
             if (item) {
-                item[field] = value;
+                item[field] = field === 'description' || field === 'unit' ? value : parseFloat(value) || 0;
                 item.total = item.quantity * item.price;
                 renderItems();
-                calculateTotals();
             }
         }
 
         function renderItems() {
-            const list = document.getElementById('items_list');
-            list.innerHTML = items.map(item => `
+            const container = document.getElementById('items_list');
+            container.innerHTML = items.map(item => `
                 <div class="item-card">
                     <div class="form-group">
                         <label>Beschreibung</label>
                         <input type="text" value="${item.description}" onchange="updateItem(${item.id}, 'description', this.value)">
                     </div>
                     <div class="grid">
-                        <div>
+                        <div class="form-group">
                             <label>Menge</label>
-                            <input type="number" value="${item.quantity}" onchange="updateItem(${item.id}, 'quantity', parseFloat(this.value))">
+                            <input type="number" value="${item.quantity}" onchange="updateItem(${item.id}, 'quantity', this.value)" step="0.1">
                         </div>
-                        <div>
+                        <div class="form-group">
                             <label>Einheit</label>
                             <select onchange="updateItem(${item.id}, 'unit', this.value)">
-                                <option value="C62" ${item.unit === 'C62' ? 'selected' : ''}>Stück (C62)</option>
-                                <option value="HUR" ${item.unit === 'HUR' ? 'selected' : ''}>Stunden (HUR)</option>
-                                <option value="DAY" ${item.unit === 'DAY' ? 'selected' : ''}>Tage (DAY)</option>
-                                <option value="LS" ${item.unit === 'LS' ? 'selected' : ''}>Pauschal (LS)</option>
+                                <option value="Stk" ${item.unit === 'Stk' ? 'selected' : ''}>Stk</option>
+                                <option value="Std" ${item.unit === 'Std' ? 'selected' : ''}>Std</option>
+                                <option value="Tag" ${item.unit === 'Tag' ? 'selected' : ''}>Tag</option>
                             </select>
                         </div>
                     </div>
-                    <div class="grid">
-                        <div>
-                            <label>Preis (€)</label>
-                            <input type="number" value="${item.price}" step="0.01" onchange="updateItem(${item.id}, 'price', parseFloat(this.value))">
-                        </div>
-                        <div style="text-align: right; padding-top: 25px;">
-                            <strong>${item.total.toFixed(2)} €</strong>
-                        </div>
+                    <div class="form-group">
+                        <label>Preis (€)</label>
+                        <input type="number" value="${item.price}" onchange="updateItem(${item.id}, 'price', this.value)" step="0.01">
                     </div>
-                    <button class="btn btn-danger" onclick="removeItem(${item.id})">Löschen</button>
+                    <button class="btn btn-danger" onclick="removeItem(${item.id})">Entfernen</button>
                 </div>
             `).join('');
+            calculateTotals();
         }
 
         function calculateTotals() {
-            const vatRate = parseFloat(document.getElementById('vat_rate').value) || 0;
             const net = items.reduce((sum, item) => sum + item.total, 0);
-            const vat = net * (vatRate / 100);
+            const vat = net * 0.19;
             const gross = net + vat;
-
-            totals = { net, vat, gross, vatRate };
-
             document.getElementById('total_net').innerText = net.toFixed(2);
             document.getElementById('total_vat').innerText = vat.toFixed(2);
             document.getElementById('total_gross').innerText = gross.toFixed(2);
+            return { net, vat, gross, vatRate: 19 };
         }
 
-        function validateForm() {
-            const clientType = document.querySelector('.tab.active').dataset.type;
-            const companyName = document.getElementById('company_name').value.trim();
-            const street = document.getElementById('street').value.trim();
-            const postalCode = document.getElementById('postal_code').value.trim();
-            const city = document.getElementById('city').value.trim();
-            const email = document.getElementById('email').value.trim();
-
-            let errors = [];
-            if (clientType === 'business') {
-                if (!companyName) errors.push("Firmenname fehlt");
-                if (!email) errors.push("E-Mail fehlt (erforderlich für ZUGFeRD)");
-            } else {
-                if (!companyName) errors.push("Vor- und Nachname fehlt");
-            }
-            if (!street) errors.push("Straße fehlt");
-            if (!postalCode) errors.push("PLZ fehlt");
-            if (!city) errors.push("Stadt fehlt");
-            if (items.length === 0) errors.push("Keine Positionen hinzugefügt");
-
-            if (errors.length > 0) {
-                alert("Pflichtfelder fehlen:\n- " + errors.join("\n- "));
-                return false;
-            }
-            return true;
-        }
-
-        function generateInvoice() {
-            if (!validateForm()) return;
-
-            const clientType = document.querySelector('.tab.active').dataset.type;
-            const clientName = document.getElementById('company_name').value;
-            const selectedFormat = document.getElementById('format_type').value;
+        function sendData() {
+            const totals = calculateTotals();
+            const unitMap = { "Stk": "C62", "Std": "HUR", "Tag": "DAY" };
+            const clientName = clientType === 'private' 
+                ? document.getElementById('client_name').value 
+                : document.getElementById('company_name').value;
             
             const data = {
                 type: "invoice_creation",
@@ -325,6 +352,7 @@
                 client_data: {
                     company_name: clientName,
                     vat_id: clientType === 'business' ? document.getElementById('vat_id').value : null,
+                    // РАЗДЕЛЬНЫЕ ПОЛЯ ДЛЯ БАЗЫ:
                     street: document.getElementById('street').value,
                     postal_code: document.getElementById('postal_code').value,
                     city: document.getElementById('city').value,
@@ -334,7 +362,8 @@
                 invoice_items: items.map(item => ({
                     description: item.description,
                     quantity: item.quantity,
-                    unit_code: item.unit,
+                    unit: item.unit,
+                    unit_code: unitMap[item.unit] || "C62",
                     price: item.price,
                     total: item.total
                 })),
@@ -343,13 +372,9 @@
                 total_net: totals.net,
                 total_vat: totals.vat,
                 total_gross: totals.gross,
-                vat_rate: totals.vatRate,
-                format_type: selectedFormat,
                 notes: document.getElementById('notes').value
             };
-            
             tg.sendData(JSON.stringify(data));
-            tg.close();
         }
     </script>
 </body>

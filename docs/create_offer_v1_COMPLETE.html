@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Angebot erstellen</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, sans-serif;
+            background: #f5f5f5;
+            padding-bottom: 80px;
+        }
+        .tabs {
+            display: flex;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: 500;
+            color: #666;
+        }
+        .tab.active {
+            color: #0088cc;
+            border-bottom-color: #0088cc;
+            background: #f9f9f9;
+        }
+        .tab-content {
+            display: none;
+            padding: 15px;
+        }
+        .tab-content.active { display: block; }
+        .section {
+            background: white;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+        }
+        .section-title {
+            font-weight: 600;
+            color: #0088cc;
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+        
+        /* Toggle Switch */
+        .toggle-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            padding: 4px;
+        }
+        .toggle-option {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .toggle-option.active {
+            background: white;
+            color: #0088cc;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        label {
+            display: block;
+            font-size: 13px;
+            color: #666;
+            margin-top: 10px;
+            margin-bottom: 4px;
+        }
+        .required::after { content: " *"; color: #f00; }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+        input:read-only {
+            background: #f0f0f0;
+            color: #999;
+        }
+        input.is-invalid {
+            border-color: #ff3b30;
+            background: #fff5f5;
+        }
+        .row { display: flex; gap: 10px; }
+        .row > div { flex: 1; }
+        
+        .item-row {
+            background: #f9f9f9;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            border-left: 3px solid #0088cc;
+        }
+        .item-row input, .item-row select { margin-top: 5px; }
+        .delete-item {
+            color: #ff3b30;
+            cursor: pointer;
+            float: right;
+            font-weight: bold;
+            font-size: 20px;
+        }
+        .add-item-btn {
+            background: #4CAF50;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            width: 100%;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .total-box {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+        .total-row.grand {
+            font-weight: bold;
+            font-size: 18px;
+            color: #1976D2;
+            border-top: 2px solid #90CAF9;
+            padding-top: 8px;
+            margin-top: 8px;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .btn-back {
+            background: #999;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .btn-next {
+            flex: 1;
+            background: #0088cc;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+        .submit-btn {
+            background: #0088cc;
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            width: 100%;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-left: 5px;
+        }
+        .format-selector {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .format-option {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .format-option.selected {
+            border-color: #0088cc;
+            background: #e3f2fd;
+        }
+        .format-option .title {
+            font-weight: 600;
+            color: #333;
+        }
+        .format-option .desc {
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab(0)">👤 Kunde</div>
+        <div class="tab" onclick="switchTab(1)">📦 Positionen</div>
+        <div class="tab" onclick="switchTab(2)">✅ Fertig</div>
+    </div>
+
+    <!-- TAB 1: KUNDE -->
+    <div class="tab-content active">
+        <div class="section">
+            <div class="section-title">Kundentyp</div>
+            <div class="toggle-container">
+                <div class="toggle-option active" onclick="toggleClientType('private')">👤 Privatperson</div>
+                <div class="toggle-option" onclick="toggleClientType('business')">🏢 Firma</div>
+            </div>
+            
+            <div id="private-fields">
+                <label class="required">Vor- und Nachname</label>
+                <input type="text" id="client_name" placeholder="Max Mustermann">
+            </div>
+            
+            <div id="business-fields" style="display:none;">
+                <label class="required">Firmenname</label>
+                <input type="text" id="company_name" placeholder="Mustermann GmbH">
+                
+                <label>USt-IdNr. (für EU/B2B)</label>
+                <input type="text" id="vat_id" placeholder="DE123456789">
+            </div>
+            
+            <label class="required">Straße</label>
+            <input type="text" id="street" placeholder="Musterstraße 123">
+            
+            <div class="row">
+                <div>
+                    <label class="required">PLZ</label>
+                    <input type="text" id="postal_code" placeholder="12345">
+                </div>
+                <div>
+                    <label class="required">Stadt</label>
+                    <input type="text" id="city" placeholder="Berlin">
+                </div>
+            </div>
+            
+            <label>E-Mail</label>
+            <input type="email" id="email" placeholder="kunde@beispiel.de">
+            
+            <label>Telefon</label>
+            <input type="tel" id="phone" placeholder="+49 123 456789">
+        </div>
+        
+        <div class="nav-buttons">
+            <button class="btn-next" onclick="validateAndProceed(0)">Weiter →</button>
+        </div>
+    </div>
+
+    <!-- TAB 2: POSITIONEN -->
+    <div class="tab-content">
+        <div class="section">
+            <div class="section-title">Angebotspositionen</div>
+            <div id="items-list"></div>
+            <button class="add-item-btn" onclick="addItem()">+ Position hinzufügen</button>
+        </div>
+
+        <div class="total-box">
+            <div class="total-row">
+                <span>Netto:</span>
+                <span id="net_total">0,00 €</span>
+            </div>
+            <div class="total-row">
+                <span>MwSt (<span id="vat_label">19</span>%):</span>
+                <span id="vat_total">0,00 €</span>
+            </div>
+            <div class="total-row grand">
+                <span>Gesamt:</span>
+                <span id="gross_total">0,00 €</span>
+            </div>
+        </div>
+        
+        <div class="nav-buttons">
+            <button class="btn-back" onclick="switchTab(0)">← Zurück</button>
+            <button class="btn-next" onclick="validateAndProceed(1)">Weiter →</button>
+        </div>
+    </div>
+
+    <!-- TAB 3: FERTIG -->
+    <div class="tab-content">
+        <div class="section">
+            <div class="section-title">Angebotsdetails</div>
+            
+            <label class="required">Angebotsdatum</label>
+            <input type="date" id="offer_date" required>
+            
+            <label class="required">Gültig bis</label>
+            <input type="date" id="valid_until" required>
+            
+            <label>MwSt-Satz</label>
+            <select id="vat_rate" onchange="calculateTotals()">
+                <option value="19">19% (Standard)</option>
+                <option value="7">7% (Ermäßigt)</option>
+                <option value="0">0% (§19 UStG)</option>
+            </select>
+            
+            <label>Format<span class="badge">E-Rechnung</span></label>
+            <div class="format-selector">
+                <div class="format-option selected" onclick="selectFormat(this, 'ZUGFeRD')">
+                    <div class="title">📄 ZUGFeRD</div>
+                    <div class="desc">PDF + XML</div>
+                </div>
+                <div class="format-option" onclick="selectFormat(this, 'XRechnung')">
+                    <div class="title">📋 XRechnung</div>
+                    <div class="desc">Nur XML</div>
+                </div>
+            </div>
+            
+            <label>Notizen</label>
+            <textarea id="notes" rows="4" placeholder="Zusätzliche Hinweise..."></textarea>
+        </div>
+        
+        <div class="nav-buttons">
+            <button class="btn-back" onclick="switchTab(1)">← Zurück</button>
+        </div>
+    </div>
+
+    <div class="footer">
+        <button class="submit-btn" onclick="sendData()">📨 Angebot senden</button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        
+        let items = [];
+        let itemIdCounter = 1;
+        let currentTab = 0;
+        let selectedFormat = 'ZUGFeRD';
+        let clientType = 'private'; // private или business
+
+        window.onload = function() {
+            const today = new Date();
+            const validUntil = new Date(today);
+            validUntil.setDate(today.getDate() + 14);
+            
+            document.getElementById('offer_date').value = today.toISOString().split('T')[0];
+            document.getElementById('valid_until').value = validUntil.toISOString().split('T')[0];
+            
+            document.getElementById('offer_date').addEventListener('change', function() {
+                const offerDate = new Date(this.value);
+                const newValidUntil = new Date(offerDate);
+                newValidUntil.setDate(offerDate.getDate() + 14);
+                document.getElementById('valid_until').value = newValidUntil.toISOString().split('T')[0];
+            });
+            
+            const params = new URLSearchParams(window.location.search);
+            const dataEncoded = params.get('data');
+            if (dataEncoded) {
+                try {
+                    const profile = JSON.parse(atob(dataEncoded));
+                    if (profile.is_kleinunternehmer) {
+                        document.getElementById('vat_rate').value = "0";
+                    } else if (profile.default_vat_rate !== undefined) {
+                        document.getElementById('vat_rate').value = profile.default_vat_rate;
+                    }
+                } catch(e) {}
+            }
+            
+            addItem();
+        };
+
+        function toggleClientType(type) {
+            clientType = type;
+            document.querySelectorAll('.toggle-option').forEach(opt => opt.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (type === 'private') {
+                document.getElementById('private-fields').style.display = 'block';
+                document.getElementById('business-fields').style.display = 'none';
+            } else {
+                document.getElementById('private-fields').style.display = 'none';
+                document.getElementById('business-fields').style.display = 'block';
+            }
+        }
+
+        function switchTab(index) {
+            const tabs = document.querySelectorAll('.tab');
+            const contents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach((t, i) => {
+                if (i === index) {
+                    t.classList.add('active');
+                    contents[i].classList.add('active');
+                } else {
+                    t.classList.remove('active');
+                    contents[i].classList.remove('active');
+                }
+            });
+            currentTab = index;
+        }
+
+        function validateAndProceed(fromTab) {
+            if (fromTab === 0) {
+                // Валидация клиента
+                let requiredFields = ['street', 'postal_code', 'city'];
+                
+                if (clientType === 'private') {
+                    requiredFields.push('client_name');
+                } else {
+                    requiredFields.push('company_name');
+                }
+                
+                for (let fieldId of requiredFields) {
+                    const input = document.getElementById(fieldId);
+                    if (!input.value.trim()) {
+                        input.classList.add('is-invalid');
+                        input.focus();
+                        setTimeout(() => input.classList.remove('is-invalid'), 2000);
+                        alert('Bitte alle Pflichtfelder (*) ausfüllen!');
+                        return;
+                    }
+                }
+                
+                // Блокируем поля после успешной валидации
+                requiredFields.forEach(fieldId => {
+                    document.getElementById(fieldId).setAttribute('readonly', true);
+                });
+                
+                switchTab(1);
+            } else if (fromTab === 1) {
+                // Валидация позиций
+                if (items.length === 0 || items.every(i => !i.description)) {
+                    alert('Bitte mindestens eine Position hinzufügen!');
+                    return;
+                }
+                switchTab(2);
+            }
+        }
+
+        function selectFormat(element, format) {
+            document.querySelectorAll('.format-option').forEach(opt => opt.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedFormat = format;
+        }
+
+        function addItem() {
+            const id = itemIdCounter++;
+            items.push({ 
+                id: id,
+                description: '',
+                quantity: 1,
+                unit: 'Stk',
+                price: 0,
+                total: 0
+            });
+            renderItems();
+        }
+
+        function removeItem(id) {
+            if (items.length <= 1) {
+                alert('Mindestens eine Position erforderlich!');
+                return;
+            }
+            items = items.filter(i => i.id !== id);
+            renderItems();
+        }
+
+        function updateItem(id, field, value) {
+            const item = items.find(i => i.id === id);
+            if (!item) return;
+            
+            if (field === 'description' || field === 'unit') {
+                item[field] = value;
+            } else {
+                item[field] = parseFloat(value) || 0;
+            }
+            
+            item.total = item.quantity * item.price;
+            renderItems();
+            calculateTotals();
+        }
+
+        function renderItems() {
+            const container = document.getElementById('items-list');
+            container.innerHTML = items.map(item => `
+                <div class="item-row">
+                    <span class="delete-item" onclick="removeItem(${item.id})">×</span>
+                    <label>Beschreibung</label>
+                    <input type="text" value="${item.description}" 
+                           onchange="updateItem(${item.id}, 'description', this.value)">
+                    
+                    <div class="row">
+                        <div>
+                            <label>Menge</label>
+                            <input type="number" step="0.01" value="${item.quantity}" 
+                                   onchange="updateItem(${item.id}, 'quantity', this.value)">
+                        </div>
+                        <div>
+                            <label>Einheit</label>
+                            <select onchange="updateItem(${item.id}, 'unit', this.value)">
+                                <option value="Stk" ${item.unit === 'Stk' ? 'selected' : ''}>Stk</option>
+                                <option value="Std" ${item.unit === 'Std' ? 'selected' : ''}>Std</option>
+                                <option value="Tag" ${item.unit === 'Tag' ? 'selected' : ''}>Tag</option>
+                                <option value="kg" ${item.unit === 'kg' ? 'selected' : ''}>kg</option>
+                                <option value="m" ${item.unit === 'm' ? 'selected' : ''}>m</option>
+                                <option value="m²" ${item.unit === 'm²' ? 'selected' : ''}>m²</option>
+                                <option value="m³" ${item.unit === 'm³' ? 'selected' : ''}>m³</option>
+                                <option value="km" ${item.unit === 'km' ? 'selected' : ''}>km</option>
+                                <option value="l" ${item.unit === 'l' ? 'selected' : ''}>l</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Preis (€)</label>
+                            <input type="number" step="0.01" value="${item.price}" 
+                                   onchange="updateItem(${item.id}, 'price', this.value)">
+                        </div>
+                        <div>
+                            <label>Gesamt</label>
+                            <input type="text" value="${item.total.toFixed(2)} €" readonly>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function calculateTotals() {
+            const vatRate = parseFloat(document.getElementById('vat_rate').value) || 0;
+            const net = items.reduce((sum, item) => sum + item.total, 0);
+            const vat = net * (vatRate / 100);
+            const gross = net + vat;
+            
+            document.getElementById('net_total').textContent = net.toFixed(2) + ' €';
+            document.getElementById('vat_total').textContent = vat.toFixed(2) + ' €';
+            document.getElementById('gross_total').textContent = gross.toFixed(2) + ' €';
+            document.getElementById('vat_label').textContent = vatRate;
+            
+            return { net, vat, gross, vatRate };
+        }
+
+        function sendData() {
+            const totals = calculateTotals();
+            
+            const clientName = clientType === 'private' 
+                ? document.getElementById('client_name').value 
+                : document.getElementById('company_name').value;
+            
+            const data = {
+                type: "offer_creation",
+                client_type: clientType,
+                client_data: {
+                    company_name: clientName,
+                    vat_id: clientType === 'business' ? document.getElementById('vat_id').value : null,
+                    address: [
+                        document.getElementById('street').value,
+                        document.getElementById('postal_code').value + ' ' + document.getElementById('city').value
+                    ].filter(Boolean).join(', '),
+                    email: document.getElementById('email').value,
+                    phone: document.getElementById('phone').value
+                },
+                offer_items: items.map(item => ({
+                    description: item.description,
+                    quantity: item.quantity,
+                    unit: item.unit,
+                    price: item.price,
+                    total: item.total
+                })),
+                offer_date: document.getElementById('offer_date').value,
+                valid_until: document.getElementById('valid_until').value,
+                total_net: totals.net,
+                total_vat: totals.vat,
+                total_gross: totals.gross,
+                vat_rate: totals.vatRate,
+                format_type: selectedFormat,
+                notes: document.getElementById('notes').value
+            };
+            
+            tg.sendData(JSON.stringify(data));
+        }
+    </script>
+</body>
+</html>
