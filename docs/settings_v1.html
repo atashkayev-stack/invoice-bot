@@ -207,8 +207,12 @@
                 Kleinunternehmer (§ 19 UStG)
             </label>
             
-            <label class="required">Standard-USt (%)</label>
-            <input type="number" id="default_vat_rate" step="0.1" value="19.0" required>
+            <label class="required">Standard-USt</label>
+            <select id="default_vat_rate" required>
+                <option value="19">19% (Standard)</option>
+                <option value="7">7% (Ermäßigt)</option>
+                <option value="0">0% (Befreit)</option>
+            </select>
             
             <label>GLN</label>
             <input type="text" id="global_location_number" placeholder="4012345000009">
@@ -388,7 +392,7 @@
                 }
             } else {
                 if (vatInput.value == 0 || vatInput.value == '') {
-                    vatInput.value = 19.0;
+                    vatInput.value = '19';
                 }
                 vatInput.disabled = false;
                 vatInput.style.backgroundColor = '#fff';
@@ -434,7 +438,9 @@
                 if (p.vat_id) document.getElementById('vat_id').value = p.vat_id;
                 if (p.tax_office) document.getElementById('tax_office').value = p.tax_office;
                 document.getElementById('is_kleinunternehmer').checked = p.is_kleinunternehmer || false;
-                if (p.default_vat_rate !== undefined) document.getElementById('default_vat_rate').value = p.default_vat_rate;
+                if (p.default_vat_rate !== undefined) {
+                    document.getElementById('default_vat_rate').value = p.default_vat_rate.toString();
+                }
                 if (p.global_location_number) document.getElementById('global_location_number').value = p.global_location_number;
                 if (p.duns_number) document.getElementById('duns_number').value = p.duns_number;
                 
