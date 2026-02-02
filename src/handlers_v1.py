@@ -115,6 +115,10 @@ async def web_app_data_handler(update: Update,
             "default_currency": data.get("default_currency", "EUR"),
             "default_language": data.get("default_language", "de"),
             "invoice_note_default": data.get("invoice_note_default"),
+
+            #gdpr_consent
+            "gdpr_consent": data.get("gdpr_consent", False),
+            "gdpr_consent_date": data.get("gdpr_consent_date"),
         }
 
         if db.update_profile(user_id, profile_data):

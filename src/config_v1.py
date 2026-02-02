@@ -1,8 +1,15 @@
+import time
+
 GITHUB_USERNAME = "atashkayev-stack"
 BASE_URL = f"https://{GITHUB_USERNAME}.github.io/invoice-bot"
-SETTINGS_FORM_URL = f"{BASE_URL}/settings_v1.html"
-CREATE_INVOICE_FORM_URL = f"{BASE_URL}/create_invoice_v1.html"
-CREATE_OFFER_FORM_URL = f"{BASE_URL}/create_offer_v1.html"
+
+# Автоматическая версия (timestamp)
+VERSION = int(time.time())  # Меняется каждый раз при перезапуске бота
+
+SETTINGS_FORM_URL = f"{BASE_URL}/settings_v1.html?v={VERSION}"
+CREATE_INVOICE_FORM_URL = f"{BASE_URL}/create_invoice_v1.html?v={VERSION}"
+CREATE_OFFER_FORM_URL = f"{BASE_URL}/create_offer_v1.html?v={VERSION}"
+
 CLAUDE_MODEL = "claude-3-haiku-20240307"
 CONVERSATION_TIMEOUT = 900
 INVOICE_FORMATS = ["ZUGFeRD", "XRechnung"]
