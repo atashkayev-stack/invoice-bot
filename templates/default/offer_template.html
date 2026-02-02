@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Angebot</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 15mm 20mm;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
+            color: #333;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 25mm;
+            padding-bottom: 10mm;
+            border-bottom: 3px solid #28a745;
+        }
+        
+        .header h1 {
+            font-size: 28pt;
+            color: #28a745;
+            margin-bottom: 5mm;
+        }
+        
+        .sender {
+            text-align: right;
+            margin-bottom: 15mm;
+            font-size: 10pt;
+        }
+        
+        .sender-company {
+            font-weight: bold;
+            font-size: 12pt;
+            color: #28a745;
+        }
+        
+        .client-box {
+            border: 1px solid #ddd;
+            padding: 10mm;
+            margin-bottom: 15mm;
+            background: #f9f9f9;
+        }
+        
+        .client-label {
+            font-weight: bold;
+            color: #28a745;
+            margin-bottom: 5mm;
+        }
+        
+        .document-info {
+            display: table;
+            width: 100%;
+            margin-bottom: 15mm;
+            font-size: 10pt;
+        }
+        
+        .document-info-row {
+            display: table-row;
+        }
+        
+        .document-info-label {
+            display: table-cell;
+            width: 30%;
+            font-weight: bold;
+            padding: 3mm 0;
+        }
+        
+        .document-info-value {
+            display: table-cell;
+            padding: 3mm 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15mm;
+        }
+        
+        th {
+            background-color: #28a745;
+            color: white;
+            padding: 8pt;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        th.center {
+            text-align: center;
+        }
+        
+        th.right {
+            text-align: right;
+        }
+        
+        td {
+            border-bottom: 1px solid #ddd;
+            padding: 8pt;
+            text-align: left;
+        }
+        
+        td.center {
+            text-align: center;
+        }
+        
+        td.right {
+            text-align: right;
+        }
+        
+        tbody tr:last-child td {
+            border-bottom: 2px solid #28a745;
+        }
+        
+        .totals {
+            float: right;
+            width: 50%;
+            margin-top: 10mm;
+        }
+        
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 3mm 0;
+            font-size: 11pt;
+        }
+        
+        .totals-row.grand {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #28a745;
+            border-top: 2px solid #28a745;
+            padding-top: 5mm;
+            margin-top: 3mm;
+        }
+        
+        .validity-notice {
+            clear: both;
+            margin-top: 15mm;
+            padding: 8mm;
+            background: #fffbea;
+            border-left: 4px solid #ffc107;
+            font-size: 10pt;
+        }
+        
+        .notes-section {
+            clear: both;
+            margin-top: 10mm;
+            padding: 8mm;
+            background: #f9f9f9;
+            border-left: 4px solid #28a745;
+            font-size: 10pt;
+        }
+        
+        .notes-section h3 {
+            color: #28a745;
+            margin-bottom: 5mm;
+            font-size: 11pt;
+        }
+        
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 9pt;
+            color: #666;
+            padding: 5mm 0;
+            border-top: 1px solid #ddd;
+        }
+        
+        .kleinunternehmer-note {
+            font-style: italic;
+            color: #666;
+            margin-top: 5mm;
+            font-size: 9pt;
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <div class="header">
+        <h1>ANGEBOT</h1>
+    </div>
+    
+    <!-- SENDER -->
+    <div class="sender">
+        <div class="sender-company">{{ sender_company }}</div>
+        <div>{{ sender_street }}</div>
+        <div>{{ sender_city }}</div>
+    </div>
+    
+    <!-- CLIENT -->
+    <div class="client-box">
+        <div class="client-label">Empfänger:</div>
+        <div><strong>{{ client_company }}</strong></div>
+        <div>{{ client_address }}</div>
+    </div>
+    
+    <!-- DOCUMENT INFO -->
+    <div class="document-info">
+        <div class="document-info-row">
+            <div class="document-info-label">Angebotsnummer:</div>
+            <div class="document-info-value">{{ offer_number }}</div>
+        </div>
+        <div class="document-info-row">
+            <div class="document-info-label">Angebotsdatum:</div>
+            <div class="document-info-value">{{ offer_date }}</div>
+        </div>
+        <div class="document-info-row">
+            <div class="document-info-label">Gültig bis:</div>
+            <div class="document-info-value">{{ valid_until }}</div>
+        </div>
+    </div>
+    
+    <!-- ITEMS TABLE -->
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 50%">Beschreibung</th>
+                <th class="center" style="width: 15%">Menge</th>
+                <th class="right" style="width: 17.5%">Preis</th>
+                <th class="right" style="width: 17.5%">Gesamt</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.description }}</td>
+                <td class="center">{{ item.quantity }} {{ item.unit }}</td>
+                <td class="right">{{ item.price }} €</td>
+                <td class="right">{{ item.total }} €</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <!-- TOTALS -->
+    <div class="totals">
+        <div class="totals-row">
+            <span>Netto:</span>
+            <span>{{ total_net }} €</span>
+        </div>
+        {% if vat_rate > 0 %}
+        <div class="totals-row">
+            <span>MwSt ({{ vat_rate }}%):</span>
+            <span>{{ total_vat }} €</span>
+        </div>
+        {% else %}
+        <div class="kleinunternehmer-note">
+            Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.
+        </div>
+        {% endif %}
+        <div class="totals-row grand">
+            <span>Gesamtbetrag:</span>
+            <span>{{ total_gross }} €</span>
+        </div>
+    </div>
+    
+    <!-- VALIDITY NOTICE -->
+    <div class="validity-notice">
+        <strong>⚠️ Wichtig:</strong> Dieses Angebot ist gültig bis zum {{ valid_until }}.
+    </div>
+    
+    <!-- NOTES -->
+    {% if notes %}
+    <div class="notes-section">
+        <h3>Zusätzliche Hinweise:</h3>
+        <p>{{ notes }}</p>
+    </div>
+    {% endif %}
+    
+    <!-- FOOTER -->
+    <div class="footer">
+        {% if sender_tax_id %}Steuernummer: {{ sender_tax_id }}{% endif %}
+        {% if sender_tax_id and sender_iban %} | {% endif %}
+        {% if sender_iban %}IBAN: {{ sender_iban }}{% endif %}
+    </div>
+</body>
+</html>

@@ -2,7 +2,14 @@ import logging, json, base64, urllib.parse, io, os, time
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
 from fpdf import FPDF
+import io
+import os
+from jinja2 import Template
 from datetime import datetime
+from src.pdf_from_template import PDFFromTemplate
+
+# Инициализация
+pdf_gen = PDFFromTemplate(templates_dir="templates/default")
 
 # Импорты модулей
 try:
@@ -35,79 +42,7 @@ def get_main_keyboard():
                                resize_keyboard=True)
 
 
-# --- ГЕНЕРАЦИЯ PDF ---
-
-
-def generate_pdf(data, profile, title="RECHNUNG"):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Helvetica", 'B', 16)
-
-    # Заголовок
-    pdf.cell(0, 10, f"{title}", 0, 1, 'L')
-    pdf.set_font("Helvetica", '', 10)
-
-    # Твои данные (из профиля)
-    pdf.cell(0, 5, f"{profile.get('company_name', 'Meine Firma')}", 0, 1)
-    pdf.cell(
-        0, 5,
-        f"{profile.get('street', '')}, {profile.get('postal_code', '')} {profile.get('city', '')}",
-        0, 1)
-    pdf.ln(10)
-
-    # Данные клиента
-    client = data.get('client_data', {})
-    pdf.set_font("Helvetica", 'B', 10)
-    pdf.cell(0, 5, "Empfänger:", 0, 1)
-    pdf.set_font("Helvetica", '', 10)
-    pdf.cell(0, 5, f"{client.get('company_name', '')}", 0, 1)
-    pdf.cell(0, 5, f"{client.get('address', '')}", 0, 1)
-    pdf.ln(10)
-
-    # Таблица позиций
-    pdf.set_font("Helvetica", 'B', 10)
-    pdf.cell(100, 8, "Beschreibung", 1)
-    pdf.cell(20, 8, "Menge", 1)
-    pdf.cell(30, 8, "Preis", 1)
-    pdf.cell(30, 8, "Gesamt", 1, 1)
-
-    pdf.set_font("Helvetica", '', 10)
-    items = data.get('invoice_items') or data.get('offer_items') or []
-    for item in items:
-        pdf.cell(100, 8, str(item.get('description', '')), 1)
-        pdf.cell(20, 8, str(item.get('quantity', 1)), 1)
-        pdf.cell(30, 8, f"{item.get('price', 0):.2f} EUR", 1)
-        pdf.cell(30, 8, f"{item.get('total', 0):.2f} EUR", 1, 1)
-
-    # Итоги
-    pdf.ln(5)
-    pdf.set_font("Helvetica", 'B', 10)
-    pdf.cell(150, 8, "Gesamt Netto:", 0, 0, 'R')
-    pdf.cell(30, 8, f"{data.get('total_net', 0):.2f} EUR", 0, 1, 'R')
-
-    # Проверка на Kleinunternehmer
-    if profile.get('is_kleinunternehmer'):
-        pdf.ln(5)
-        pdf.set_font("Helvetica", 'I', 9)
-        pdf.multi_cell(0, 5,
-                       "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.")
-    else:
-        pdf.set_font("Helvetica", 'B', 10)
-        pdf.cell(150, 8, f"MwSt ({data.get('vat_rate', 19)}%):", 0, 0, 'R')
-        pdf.cell(30, 8, f"{data.get('total_vat', 0):.2f} EUR", 0, 1, 'R')
-
-    pdf.cell(150, 10, "Gesamtbetrag:", 0, 0, 'R')
-    pdf.cell(30, 10, f"{data.get('total_gross', 0):.2f} EUR", 0, 1, 'R')
-
-    out = io.BytesIO()
-    pdf.output(out)
-    out.seek(0)
-    return out
-
-
 # --- ОБРАБОТКА ДАННЫХ ИЗ WEB APP ---
-
-# ЗАМЕНИ функцию web_app_data_handler полностью (строка ~129):
 
 
 async def web_app_data_handler(update: Update,
@@ -119,45 +54,87 @@ async def web_app_data_handler(update: Update,
 
     # ========== СОХРАНЕНИЕ ПРОФИЛЯ ==========
     if data.get('type') == 'profile_update':
-        import os
-        from supabase import create_client
-        supabase = create_client(os.getenv("SUPABASE_URL"),
-                                 os.getenv("SUPABASE_KEY"))
+        user_id = update.effective_user.id
 
+        # Собираем данные без старых ключей zip и address
         profile_data = {
-            "id": user_id,
-            "company_name": data.get("company_name"),
-            "street": data.get("street"),
-            "city": data.get("city"),
-            "postal_code": data.get("postal_code"),
-            "email": data.get("email"),
-            "phone": data.get("phone"),
-            "tax_id": data.get("tax_id"),
-            "iban": data.get("iban"),
-            "is_kleinunternehmer": data.get("is_kleinunternehmer", False),
-            "default_vat_rate": data.get("default_vat_rate", 19)
+            "company_name": data.get('company_name'),
+            "street": data.get('street'),  # Новое поле из формы
+            "postal_code": data.get('postal_code'),  # Новое поле из формы
+            "city": data.get('city'),
+            "email": data.get('email'),
+            "phone": data.get('phone'),
+            "tax_id": data.get('tax_id'),
+            "vat_id": data.get('vat_id'),
+            "bank_name": data.get('bank_name'),
+            "iban": data.get('iban'),
+            "bic": data.get('bic'),
+            "legal_form":
+            data.get('legal_form',
+                     'Einzelunternehmer'),  # Поле для ZUGFeRD 2.4
+            "is_kleinunternehmer": data.get('is_kleinunternehmer', False),
+            "default_vat_rate": float(data.get('default_vat_rate', 19.0)),
+            "payment_terms_days": int(data.get('payment_terms', 14))
         }
 
-        supabase.table("profiles").upsert(profile_data).execute()
-        await update.message.reply_text("✅ Profil gespeichert!",
-                                        reply_markup=get_main_keyboard())
-        return
+        if db.update_profile(user_id, profile_data):
+            await update.message.reply_text("✅ Profil gespeichert!",
+                                            reply_markup=get_main_keyboard())
+        else:
+            await update.message.reply_text("❌ Fehler beim Speichern!")
 
-    # ========== СОЗДАНИЕ СЧЕТА/ОФФЕРА ==========
+        return  # Твое оригинальное окончание — оно остается!
+
+    # ========== СОЗДАНИЕ ДОКУМЕНТА ИЗ ШАБЛОНА ==========
     profile = db.get_profile(user_id) or {}
-    doc_type = "ANGEBOT" if data.get(
-        'type') == "offer_creation" else "RECHNUNG"
 
-    await update.message.reply_text(f"⌛ Generiere {doc_type}...")
+    is_offer = data.get('type') == "offer_creation"
+    doc_type = "ANGEBOT" if is_offer else "RECHNUNG"
+    format_type = data.get('format_type', 'ZUGFeRD')
 
-    # Генерируем PDF
-    pdf_file = generate_pdf(data, profile, title=doc_type)
-    filename = f"{doc_type}_{datetime.now().strftime('%Y%m%d')}.pdf"
+    await update.message.reply_text(
+        f"⌛ Generiere {doc_type} ({format_type})...")
 
-    await update.message.reply_document(
-        document=pdf_file,
-        filename=filename,
-        caption=f"Hier ist Ihr {doc_type.lower()}.")
+    try:
+        # 1. Генерируем PDF из шаблона
+        if is_offer:
+            # Оффер с XML (если выбран ZUGFeRD)
+            pdf_file = pdf_gen.generate_offer_pdf(
+                data, profile, with_xml=(format_type == 'ZUGFeRD'))
+        else:
+            # Счет с XML (если выбран ZUGFeRD)
+            pdf_file = pdf_gen.generate_invoice_pdf(
+                data, profile, with_xml=(format_type == 'ZUGFeRD'))
+
+        pdf_bytes = pdf_file.getvalue()
+
+        # 2. Отправка в зависимости от формата
+        if format_type == 'ZUGFeRD':
+            # PDF + встроенный XML
+            filename = f"{doc_type}_{datetime.now().strftime('%Y%m%d')}.pdf"
+
+            await update.message.reply_document(
+                document=io.BytesIO(pdf_bytes),
+                filename=filename,
+                caption=f"📄 {doc_type} (ZUGFeRD: PDF + XML)")
+
+        elif format_type == 'XRechnung':
+            # Только XML файл
+            xml_string = pdf_gen.generate_xml_only(data, profile)
+            filename = f"{doc_type}_{datetime.now().strftime('%Y%m%d')}.xml"
+
+            await update.message.reply_document(
+                document=io.BytesIO(xml_string.encode('utf-8')),
+                filename=filename,
+                caption=f"📋 {doc_type} (XRechnung: nur XML)")
+
+        await update.message.reply_text("✅ Erfolgreich erstellt!",
+                                        reply_markup=get_main_keyboard())
+
+    except Exception as e:
+        logger.error(f"PDF generation error: {e}")
+        await update.message.reply_text(f"❌ Fehler: {e}",
+                                        reply_markup=get_main_keyboard())
 
 
 # --- ОСТАЛЬНЫЕ ФУНКЦИИ (Обязательные для main_v1.py) ---

@@ -33,286 +33,183 @@
         label { 
             display: block;
             font-weight: 500;
-            font-size: 13px;
-            color: #666;
-            margin-top: 10px;
-            margin-bottom: 4px;
+            margin-bottom: 5px;
+            color: #555;
         }
-        .required::after { content: " *"; color: #ff3b30; }
         input, select { 
             width: 100%;
             padding: 10px;
+            margin-bottom: 12px;
             border: 1px solid #ddd;
             border-radius: 8px;
-            font-size: 15px;
-            background: #fafafa;
+            font-size: 14px;
+            background: #fff;
         }
-        input:focus, select:focus {
-            outline: none;
-            border-color: #0088cc;
-            background: white;
-        }
-        .row {
-            display: flex;
-            gap: 10px;
-            align-items: flex-end;
-        }
-        .row > div { flex: 1; }
-        .info-text {
-            font-size: 12px;
-            color: #999;
-            margin-top: 3px;
-            font-style: italic;
-        }
-        .example {
-            background: #e3f2fd;
-            padding: 8px 10px;
-            border-radius: 6px;
-            font-size: 13px;
-            margin-top: 8px;
-            border-left: 3px solid #0088cc;
-        }
-        .checkbox-container {
-            display: flex;
-            align-items: center;
-            margin-top: 8px;
-            gap: 8px;
-        }
-        .checkbox-container input[type="checkbox"] {
-            width: auto;
-            margin: 0;
-        }
-        .checkbox-container label {
-            margin: 0;
-            font-weight: normal;
-        }
-        button {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #0088cc 0%, #0077b3 100%);
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .btn {
+            background: #0088cc;
             color: white;
             border: none;
+            padding: 12px;
             border-radius: 10px;
-            font-weight: 600;
+            width: 100%;
             font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
-            margin-top: 20px;
-            box-shadow: 0 2px 8px rgba(0,136,204,0.3);
+            margin-top: 10px;
         }
-        button:active {
-            transform: scale(0.98);
+        .preview-box {
+            font-family: monospace;
+            background: #333;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            overflow-x: auto;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Firmendaten -->
         <div class="section">
-            <div class="section-title">🏢 Firmendaten</div>
+            <div class="section-title">Firmendaten</div>
+            <label>Unternehmensname</label>
+            <input type="text" id="company_name" placeholder="Firma GmbH">
             
-            <label class="required">Firma / Name</label>
-            <input type="text" id="company_name" placeholder="z.B. Max Mustermann IT-Beratung" required>
+            <label>Straße & Hausnummer</label>
+            <input type="text" id="street" placeholder="Musterstraße 123">
             
-            <label class="required">Straße & Hausnr.</label>
-            <input type="text" id="street" placeholder="Musterstraße 123" required>
-            
-            <div class="row">
+            <div class="grid">
                 <div>
-                    <label class="required">PLZ</label>
-                    <input type="text" id="postal_code" placeholder="12345" required>
+                    <label>PLZ</label>
+                    <input type="text" id="postal_code" placeholder="12345">
                 </div>
                 <div>
-                    <label class="required">Stadt</label>
-                    <input type="text" id="city" placeholder="Berlin" required>
+                    <label>Stadt</label>
+                    <input type="text" id="city" placeholder="Berlin">
                 </div>
             </div>
             
-            <label>E-Mail</label>
-            <input type="email" id="email" placeholder="kontakt@firma.de">
-            
-            <label>Telefon</label>
-            <input type="tel" id="phone" placeholder="+49 123 456789">
+            <div class="grid">
+                <div>
+                    <label>E-Mail</label>
+                    <input type="email" id="email" placeholder="info@firma.de">
+                </div>
+                <div>
+                    <label>Telefon</label>
+                    <input type="text" id="phone" placeholder="+49 30 1234567">
+                </div>
+            </div>
         </div>
-        
-        <!-- Steuerdaten -->
+
         <div class="section">
-            <div class="section-title">📋 Steuerdaten</div>
-            
+            <div class="section-title">Rechtliche Angaben (ZUGFeRD 2.4)</div>
+            <label>Rechtsform</label>
+            <select id="legal_form">
+                <option value="Einzelunternehmer">Einzelunternehmer</option>
+                <option value="GmbH">GmbH</option>
+                <option value="UG">UG (haftungsbeschränkt)</option>
+                <option value="GbR">GbR</option>
+                <option value="AG">AG</option>
+            </select>
+
+            <label>Standard-Einheit (Unit Code)</label>
+            <select id="default_unit_code">
+                <option value="C62">Stück (C62)</option>
+                <option value="HUR">Stunden (HUR)</option>
+                <option value="DAY">Tage (DAY)</option>
+                <option value="LS">Pauschal (LS)</option>
+            </select>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Steuern & Nummern</div>
             <label>Steuernummer</label>
-            <input type="text" id="tax_id" placeholder="12/345/67890">
-            
+            <input type="text" id="tax_id">
             <label>USt-IdNr.</label>
-            <input type="text" id="vat_id" placeholder="DE123456789">
-            <div class="info-text">Für EU-Geschäfte erforderlich</div>
+            <input type="text" id="vat_id">
+            
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" id="is_kleinunternehmer" style="width: auto; margin: 0;">
+                Kleinunternehmer-Regelung (§ 19 UStG)
+            </label>
+            
+            <label>Standard-USt-Satz (%)</label>
+            <input type="number" id="default_vat_rate" step="0.1" value="19.0">
         </div>
-        
-        <!-- Rechnungsnummern -->
+
         <div class="section">
-            <div class="section-title">📄 Rechnungsnummern-Format</div>
-            
-            <label>Präfix</label>
-            <input type="text" id="invoice_prefix" value="RE-" placeholder="RE- oder INV-">
-            
-            <div class="row">
+            <div class="section-title">Nummern-Kreise</div>
+            <div class="grid">
                 <div>
-                    <label>Anzahl Ziffern</label>
-                    <select id="invoice_digits">
-                        <option value="3">3 (001, 002...)</option>
-                        <option value="4" selected>4 (0001, 0002...)</option>
-                        <option value="5">5 (00001, 00002...)</option>
-                    </select>
+                    <label>Rechnung Präfix</label>
+                    <input type="text" id="invoice_prefix">
                 </div>
                 <div>
-                    <label>Nächste Nummer</label>
-                    <input type="number" id="next_number" value="1" min="1">
+                    <label>Stellen (z.B. 4)</label>
+                    <input type="number" id="invoice_digits">
                 </div>
             </div>
+            <label>Nächste Rechnungsnummer</label>
+            <input type="number" id="next_number">
             
-            <div class="example">
-                📋 Beispiel: <strong id="example_number">RE-0001</strong>
-            </div>
+            <label>Kunden Präfix</label>
+            <input type="text" id="customer_prefix">
         </div>
-        
-        <!-- Kundennummern -->
+
         <div class="section">
-            <div class="section-title">👥 Kundennummern-Format</div>
-            
-            <label>Präfix für Kunden-Nr.</label>
-            <input type="text" id="customer_prefix" value="KUND-" placeholder="KUND- oder K-">
-            <div class="info-text">Wird automatisch vergeben: KUND-001, KUND-002...</div>
-        </div>
-        
-        <!-- Bankverbindung -->
-        <div class="section">
-            <div class="section-title">🏦 Bankverbindung</div>
-            
-            <label>Bank</label>
-            <input type="text" id="bank_name" placeholder="Sparkasse Berlin">
-            
+            <div class="section-title">Bankverbindung</div>
+            <label>Bankname</label>
+            <input type="text" id="bank_name">
             <label>IBAN</label>
-            <input type="text" id="iban" placeholder="DE89 3704 0044 0532 0130 00">
-            
-            <label>BIC / SWIFT</label>
-            <input type="text" id="bic" placeholder="COBADEFFXXX">
+            <input type="text" id="iban">
+            <label>BIC</label>
+            <input type="text" id="bic">
+            <label>Zahlungsfrist (Tage)</label>
+            <input type="number" id="payment_terms" value="14">
         </div>
-        
-        <!-- Zahlungsbedingungen -->
-        <div class="section">
-            <div class="section-title">📅 Zahlungsbedingungen</div>
-            
-            <label>Standard-Zahlungsziel (Tage)</label>
-            <select id="payment_terms">
-                <option value="7">7 Tage</option>
-                <option value="14" selected>14 Tage</option>
-                <option value="21">21 Tage</option>
-                <option value="30">30 Tage</option>
-            </select>
-        </div>
-        
-        <!-- Mehrwertsteuer - ЕДИНСТВЕННАЯ СЕКЦИЯ ПРО НДС -->
-        <div class="section">
-            <div class="section-title">💶 Mehrwertsteuer</div>
-            
-            <div class="checkbox-container">
-                <input type="checkbox" id="is_kleinunternehmer" onchange="toggleVatRate()">
-                <label for="is_kleinunternehmer">Kleinunternehmer (§19 UStG)</label>
-            </div>
-            <div class="info-text">Wenn aktiviert: Keine Umsatzsteuer auf Rechnungen</div>
-            
-            <label id="vat_rate_label">Standard MwSt-Satz</label>
-            <select id="default_vat_rate">
-                <option value="19">19% (Standard)</option>
-                <option value="7">7% (Ermäßigt)</option>
-                <option value="0">0% (Export / Sonstiges)</option>
-            </select>
-            <div class="info-text">Wird automatisch in neuen Rechnungen/Angeboten vorausgewählt</div>
-        </div>
-        
-        <button onclick="saveProfile()">💾 Speichern</button>
+
+        <button class="btn" onclick="saveSettings()">Speichern</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        tg.MainButton.hide();
 
-        // Загрузка существующих данных
-        const params = new URLSearchParams(window.location.search);
-        const encoded = params.get('data');
-
-        if (encoded) {
+        // Заполнение данных из URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const dataParam = urlParams.get('data');
+        if (dataParam) {
             try {
-                const data = JSON.parse(atob(decodeURIComponent(encoded)));
+                const profile = JSON.parse(atob(dataParam));
+                document.getElementById('company_name').value = profile.company_name || '';
+                document.getElementById('street').value = profile.street || '';
+                document.getElementById('postal_code').value = profile.postal_code || '';
+                document.getElementById('city').value = profile.city || '';
+                document.getElementById('email').value = profile.email || '';
+                document.getElementById('phone').value = profile.phone || '';
+                document.getElementById('tax_id').value = profile.tax_id || '';
+                document.getElementById('vat_id').value = profile.vat_id || '';
+                document.getElementById('is_kleinunternehmer').checked = profile.is_kleinunternehmer || false;
+                document.getElementById('default_vat_rate').value = profile.default_vat_rate || 19.0;
+                document.getElementById('invoice_prefix').value = profile.invoice_number_prefix || 'RE-';
+                document.getElementById('invoice_digits').value = profile.invoice_number_format || 4;
+                document.getElementById('next_number').value = profile.next_invoice_number || 1;
+                document.getElementById('customer_prefix').value = profile.customer_id_prefix || 'KUND-';
+                document.getElementById('bank_name').value = profile.bank_name || '';
+                document.getElementById('iban').value = profile.iban || '';
+                document.getElementById('bic').value = profile.bic || '';
+                document.getElementById('payment_terms').value = profile.payment_terms_days || 14;
                 
-                if (data.company_name) document.getElementById('company_name').value = data.company_name;
-                if (data.street) document.getElementById('street').value = data.street;
-                if (data.postal_code || data.zip) document.getElementById('postal_code').value = data.postal_code || data.zip;
-                if (data.city) document.getElementById('city').value = data.city;
-                if (data.email) document.getElementById('email').value = data.email;
-                if (data.phone) document.getElementById('phone').value = data.phone;
-                if (data.tax_id) document.getElementById('tax_id').value = data.tax_id;
-                if (data.vat_id) document.getElementById('vat_id').value = data.vat_id;
-                if (data.bank_name) document.getElementById('bank_name').value = data.bank_name;
-                if (data.iban) document.getElementById('iban').value = data.iban;
-                if (data.bic) document.getElementById('bic').value = data.bic;
-                if (data.is_kleinunternehmer) document.getElementById('is_kleinunternehmer').checked = true;
-                if (data.default_vat_rate !== undefined) document.getElementById('default_vat_rate').value = data.default_vat_rate;
-                if (data.payment_terms) document.getElementById('payment_terms').value = data.payment_terms;
-                if (data.invoice_number_prefix) document.getElementById('invoice_prefix').value = data.invoice_number_prefix;
-                if (data.invoice_number_format) document.getElementById('invoice_digits').value = data.invoice_number_format;
-                if (data.next_invoice_number) document.getElementById('next_number').value = data.next_invoice_number;
-                if (data.customer_id_prefix) document.getElementById('customer_prefix').value = data.customer_id_prefix;
-                
-                updatePreview();
-                toggleVatRate();
-            } catch (e) {
-                console.error('Fehler beim Laden:', e);
-            }
+                // Новые поля
+                if(profile.legal_form) document.getElementById('legal_form').value = profile.legal_form;
+                if(profile.default_unit_code) document.getElementById('default_unit_code').value = profile.default_unit_code;
+            } catch (e) { console.error('Error parsing data', e); }
         }
 
-        // Обновление примера номера счета
-        function updatePreview() {
-            const prefix = document.getElementById('invoice_prefix').value || 'RE-';
-            const digits = parseInt(document.getElementById('invoice_digits').value) || 4;
-            const nextNum = parseInt(document.getElementById('next_number').value) || 1;
-            const example = prefix + String(nextNum).padStart(digits, '0');
-            document.getElementById('example_number').textContent = example;
-        }
-
-        // Обновление при изменении
-        document.getElementById('invoice_prefix').addEventListener('input', updatePreview);
-        document.getElementById('invoice_digits').addEventListener('change', updatePreview);
-        document.getElementById('next_number').addEventListener('input', updatePreview);
-
-        // Переключение НДС
-        function toggleVatRate() {
-            const isKlein = document.getElementById('is_kleinunternehmer').checked;
-            const vatSelect = document.getElementById('default_vat_rate');
-            const vatLabel = document.getElementById('vat_rate_label');
-            
-            if (isKlein) {
-                vatSelect.value = "0";
-                vatSelect.disabled = true;
-                vatLabel.style.opacity = "0.5";
-            } else {
-                vatSelect.disabled = false;
-                vatLabel.style.opacity = "1";
-            }
-        }
-
-        function saveProfile() {
-            // Валидация обязательных полей
-            const required = ['company_name', 'street', 'postal_code', 'city'];
-            for (let field of required) {
-                if (!document.getElementById(field).value.trim()) {
-                    alert('Bitte fülle alle Pflichtfelder (*) aus!');
-                    document.getElementById(field).focus();
-                    return;
-                }
-            }
-            
+        function saveSettings() {
             const data = {
-                type: "profile_update",
+                type: 'profile_update', // Твой оригинальный ключ
                 company_name: document.getElementById('company_name').value,
                 street: document.getElementById('street').value,
                 postal_code: document.getElementById('postal_code').value,
@@ -321,6 +218,11 @@
                 phone: document.getElementById('phone').value || null,
                 tax_id: document.getElementById('tax_id').value || null,
                 vat_id: document.getElementById('vat_id').value || null,
+                
+                // Добавлено:
+                legal_form: document.getElementById('legal_form').value,
+                default_unit_code: document.getElementById('default_unit_code').value,
+                
                 is_kleinunternehmer: document.getElementById('is_kleinunternehmer').checked,
                 default_vat_rate: parseFloat(document.getElementById('default_vat_rate').value),
                 invoice_number_prefix: document.getElementById('invoice_prefix').value,
@@ -336,9 +238,6 @@
             tg.sendData(JSON.stringify(data));
             tg.close();
         }
-        
-        // Инициализация
-        updatePreview();
     </script>
 </body>
 </html>
