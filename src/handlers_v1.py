@@ -42,6 +42,27 @@ def get_main_keyboard():
                                resize_keyboard=True)
 
 
+# В начало файла handlers_v1.py, после импортов
+
+
+def get_vat_info(profile, vat_rate=None):
+    """Маппинг НДС для всех форматов (XML, PDF, HTML)"""
+    is_kleinunternehmer = profile.get('is_kleinunternehmer', False)
+    rate = vat_rate if vat_rate is not None else profile.get(
+        'default_vat_rate', 19)
+
+    if is_kleinunternehmer:
+        return {
+            'rate': 0.00,
+            'category': 'E',
+            'reason': 'Kleinunternehmer gemäß § 19 UStG'
+        }
+    elif rate == 0:
+        return {'rate': 0.00, 'category': 'Z', 'reason': 'Steuerbefreit'}
+    else:
+        return {'rate': float(rate), 'category': 'S', 'reason': None}
+
+
 # --- ОБРАБОТКА ДАННЫХ ИЗ WEB APP ---
 
 

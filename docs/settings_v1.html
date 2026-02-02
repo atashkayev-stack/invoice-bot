@@ -9,95 +9,42 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            padding: 15px;
-            background: #f5f5f5;
-            color: #333;
-            font-size: 14px;
+            padding: 15px; background: #f5f5f5; color: #333; font-size: 14px;
         }
         .container { max-width: 500px; margin: 0 auto; padding-bottom: 80px; }
         .section { 
-            background: white;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            background: white; padding: 15px; margin-bottom: 15px;
+            border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         .section-title { 
-            font-size: 16px;
-            font-weight: 600;
-            color: #0088cc;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #e3f2fd;
+            font-size: 16px; font-weight: 600; color: #0088cc;
+            margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e3f2fd;
         }
         label { 
-            display: block;
-            font-weight: 500;
-            margin-bottom: 5px;
-            color: #555;
-            font-size: 13px;
+            display: block; font-weight: 500; margin-bottom: 5px;
+            color: #555; font-size: 13px;
         }
-        label.required::after {
-            content: " *";
-            color: #e74c3c;
-        }
-        input, select, textarea { 
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 14px;
-            background: #fff;
-        }
-        textarea {
-            min-height: 60px;
-            resize: vertical;
+        label.required::after { content: " *"; color: #e74c3c; }
+        input, select { 
+            width: 100%; padding: 10px; margin-bottom: 12px;
+            border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: #fff;
         }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .btn {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: #0088cc;
-            color: white;
-            border: none;
-            padding: 15px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            transition: background 0.3s;
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: #0088cc; color: white; border: none;
+            padding: 15px; font-size: 16px; font-weight: 600;
+            cursor: pointer; box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
         }
-        .btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
         .checkbox-label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+            cursor: pointer; margin-bottom: 12px;
         }
-        .checkbox-label input[type="checkbox"] {
-            width: auto;
-            margin: 0;
-        }
-        .hint {
-            font-size: 11px;
-            color: #999;
-            margin-top: -8px;
-            margin-bottom: 12px;
-        }
-        .gdpr-section {
-            background: #fff3cd;
-            border: 2px solid #ffc107;
-        }
-        .gdpr-section .section-title {
-            color: #856404;
-        }
+        .checkbox-label input[type="checkbox"] { width: auto; margin: 0; }
+        .hint { font-size: 11px; color: #999; margin-top: -8px; margin-bottom: 12px; }
+        .gdpr-section { background: #fff3cd; border: 2px solid #ffc107; }
+        .gdpr-section .section-title { color: #856404; }
     </style>
 </head>
 <body>
@@ -166,8 +113,6 @@
                 <option value="GmbH">GmbH</option>
                 <option value="UG">UG (haftungsbeschränkt)</option>
                 <option value="GbR">GbR</option>
-                <option value="OHG">OHG</option>
-                <option value="KG">KG</option>
                 <option value="AG">AG</option>
             </select>
             
@@ -180,17 +125,11 @@
             
             <label>Geschäftsführer / Inhaber</label>
             <input type="text" id="managing_director" placeholder="Max Mustermann">
-            
-            <label>Kontaktperson</label>
-            <input type="text" id="contact_person" placeholder="Frau Schmidt">
-            
-            <label>Abteilung</label>
-            <input type="text" id="contact_department" placeholder="Buchhaltung">
         </div>
 
         <!-- 3. STEUERN -->
         <div class="section">
-            <div class="section-title">💰 Steuern & Nummern</div>
+            <div class="section-title">💰 Steuern</div>
             
             <label class="required">Steuernummer</label>
             <input type="text" id="tax_id" placeholder="123/456/78901" required>
@@ -198,9 +137,6 @@
             <label>USt-IdNr.</label>
             <input type="text" id="vat_id" placeholder="DE123456789">
             <div class="hint">Für B2B EU erforderlich</div>
-            
-            <label>Finanzamt</label>
-            <input type="text" id="tax_office" placeholder="Finanzamt München">
             
             <label class="checkbox-label">
                 <input type="checkbox" id="is_kleinunternehmer">
@@ -213,13 +149,6 @@
                 <option value="7">7% (Ermäßigt)</option>
                 <option value="0">0% (Befreit)</option>
             </select>
-            
-            <label>GLN</label>
-            <input type="text" id="global_location_number" placeholder="4012345000009">
-            <div class="hint">Optional für EDI</div>
-            
-            <label>DUNS</label>
-            <input type="text" id="duns_number" placeholder="12-345-6789">
         </div>
 
         <!-- 4. BANK -->
@@ -234,93 +163,11 @@
             
             <label>BIC</label>
             <input type="text" id="bic" placeholder="COBADEFFXXX">
-            
-            <label>SEPA Gläubiger-ID</label>
-            <input type="text" id="sepa_creditor_id" placeholder="DE98ZZZ09999999999">
-            
-            <label>SEPA Mandatsreferenz</label>
-            <input type="text" id="sepa_mandate_reference" placeholder="MREF123456">
-            
-            <label class="required">Zahlungsfrist (Tage)</label>
-            <input type="number" id="payment_terms_days" value="14" required>
         </div>
 
-        <!-- 5. NUMMERNKREISE -->
-        <div class="section">
-            <div class="section-title">🔢 Rechnungsnummern</div>
-            
-            <div class="grid">
-                <div>
-                    <label>Präfix</label>
-                    <input type="text" id="invoice_prefix" value="RE-">
-                </div>
-                <div>
-                    <label>Stellen</label>
-                    <input type="number" id="invoice_digits" value="4">
-                </div>
-            </div>
-            
-            <label>Nächste Nummer</label>
-            <input type="number" id="next_invoice_number" value="1">
-        </div>
-
-        <div class="section">
-            <div class="section-title">🔢 Angebotsnummern</div>
-            
-            <div class="grid">
-                <div>
-                    <label>Präfix</label>
-                    <input type="text" id="offer_prefix" value="ANG-">
-                </div>
-                <div>
-                    <label>Stellen</label>
-                    <input type="number" id="offer_digits" value="4">
-                </div>
-            </div>
-            
-            <label>Nächste Nummer</label>
-            <input type="number" id="next_offer_number" value="1">
-            
-            <label>Gültigkeit (Tage)</label>
-            <input type="number" id="offer_validity_days" value="14">
-        </div>
-
-        <div class="section">
-            <div class="section-title">🔢 Kundennummern</div>
-            
-            <label>Präfix</label>
-            <input type="text" id="customer_prefix" value="KUND-">
-            
-            <label>Nächste Nummer</label>
-            <input type="number" id="next_customer_number" value="1">
-        </div>
-
-        <!-- 6. DOKUMENTE -->
-        <div class="section">
-            <div class="section-title">📄 Dokument-Einstellungen</div>
-            
-            <label>Währung</label>
-            <select id="default_currency">
-                <option value="EUR" selected>EUR (€)</option>
-                <option value="USD">USD ($)</option>
-                <option value="CHF">CHF</option>
-                <option value="GBP">GBP (£)</option>
-            </select>
-            
-            <label>Sprache</label>
-            <select id="default_language">
-                <option value="de" selected>Deutsch</option>
-                <option value="en">English</option>
-                <option value="fr">Français</option>
-            </select>
-            
-            <label>Standard-Hinweis</label>
-            <textarea id="invoice_note_default" placeholder="Vielen Dank für Ihren Auftrag!"></textarea>
-        </div>
-
-        <!-- 7. GDPR CONSENT -->
+        <!-- 5. GDPR -->
         <div class="section gdpr-section">
-            <div class="section-title">🔒 Datenschutz-Einwilligung (DSGVO)</div>
+            <div class="section-title">🔒 Datenschutz (DSGVO)</div>
             
             <label class="checkbox-label" style="align-items: flex-start; margin-bottom: 15px;">
                 <input type="checkbox" id="gdpr_consent" required style="margin-top: 3px;">
@@ -331,13 +178,13 @@
                     <br><br>
                     <span style="color: #666;">
                     Die Speicherung erfolgt nur solange ich den Dienst nutze. 
-                    Ich kann meine Einwilligung jederzeit widerrufen und die Löschung meiner Daten verlangen.
+                    Ich kann meine Einwilligung jederzeit widerrufen.
                     </span>
                 </span>
             </label>
             
             <div class="hint" style="color: #856404; font-weight: 600;">
-                ⚠️ Diese Einwilligung ist erforderlich (DSGVO Art. 6 Abs. 1 lit. a)
+                ⚠️ Diese Einwilligung ist erforderlich (DSGVO Art. 6)
             </div>
             
             <div id="gdpr-status" style="font-size: 12px; color: #27ae60; margin-top: 10px; display: none;">
@@ -352,34 +199,21 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // ========== GDPR CONSENT LOGIC ==========
         const gdprCheckbox = document.getElementById('gdpr_consent');
         const saveBtn = document.getElementById('save-btn');
-        const gdprStatus = document.getElementById('gdpr-status');
-        const consentDateSpan = document.getElementById('consent-date');
+        const kleinCheckbox = document.getElementById('is_kleinunternehmer');
+        const vatSelect = document.getElementById('default_vat_rate');
 
         function updateSaveButton() {
-            if (gdprCheckbox.checked) {
-                saveBtn.disabled = false;
-                saveBtn.style.background = '#0088cc';
-            } else {
-                saveBtn.disabled = true;
-                saveBtn.style.background = '#ccc';
-            }
+            saveBtn.disabled = !gdprCheckbox.checked;
+            saveBtn.style.background = gdprCheckbox.checked ? '#0088cc' : '#ccc';
         }
-
-        gdprCheckbox.addEventListener('change', updateSaveButton);
-
-        // ========== KLEINUNTERNEHMER LOGIC ==========
-        const kleinCheckbox = document.getElementById('is_kleinunternehmer');
-        const vatInput = document.getElementById('default_vat_rate');
 
         function updateVatState() {
             if (kleinCheckbox.checked) {
-                vatInput.value = 0;
-                vatInput.disabled = true;
-                vatInput.style.backgroundColor = '#f0f0f0';
-                vatInput.style.color = '#999';
+                vatSelect.value = '0';
+                vatSelect.disabled = true;
+                vatSelect.style.backgroundColor = '#f0f0f0';
                 
                 let hint = document.getElementById('vat-hint');
                 if (!hint) {
@@ -387,107 +221,65 @@
                     hint.id = 'vat-hint';
                     hint.className = 'hint';
                     hint.style.color = '#e74c3c';
-                    hint.textContent = '⚠️ Kleinunternehmer: Keine Umsatzsteuer (§19 UStG)';
-                    vatInput.parentNode.appendChild(hint);
+                    hint.textContent = '⚠️ Kleinunternehmer: Keine Umsatzsteuer';
+                    vatSelect.parentNode.appendChild(hint);
                 }
             } else {
-                if (vatInput.value == 0 || vatInput.value == '') {
-                    vatInput.value = '19';
-                }
-                vatInput.disabled = false;
-                vatInput.style.backgroundColor = '#fff';
-                vatInput.style.color = '#333';
-                
+                if (vatSelect.value == '0') vatSelect.value = '19';
+                vatSelect.disabled = false;
+                vatSelect.style.backgroundColor = '#fff';
                 const hint = document.getElementById('vat-hint');
                 if (hint) hint.remove();
             }
         }
 
+        gdprCheckbox.addEventListener('change', updateSaveButton);
         kleinCheckbox.addEventListener('change', updateVatState);
 
-        // ========== LOAD PROFILE DATA ==========
+        // UNIVERSAL LOADING
+        const FIELDS = [
+            'company_name', 'street', 'postal_code', 'city', 'country_code',
+            'email', 'phone', 'fax', 'website',
+            'legal_form', 'trade_register_number', 'trade_register_court', 'managing_director',
+            'tax_id', 'vat_id',
+            'bank_name', 'iban', 'bic'
+        ];
+
+        function loadProfile(p) {
+            console.log('Loading:', p);
+            
+            FIELDS.forEach(f => {
+                if (p[f] !== null && p[f] !== undefined) {
+                    const el = document.getElementById(f);
+                    if (el) el.value = p[f];
+                }
+            });
+            
+            if (p.is_kleinunternehmer !== undefined) kleinCheckbox.checked = p.is_kleinunternehmer;
+            if (p.default_vat_rate !== undefined) vatSelect.value = p.default_vat_rate.toString();
+            
+            if (p.gdpr_consent_date) {
+                gdprCheckbox.checked = true;
+                gdprCheckbox.disabled = true;
+                document.getElementById('gdpr-status').style.display = 'block';
+                document.getElementById('consent-date').textContent = new Date(p.gdpr_consent_date).toLocaleDateString('de-DE');
+            }
+            
+            updateVatState();
+            updateSaveButton();
+        }
+
         const urlParams = new URLSearchParams(window.location.search);
         const dataParam = urlParams.get('data');
         
         if (dataParam) {
             try {
-                const p = JSON.parse(atob(dataParam));
-                console.log('Loaded profile:', p);
-                
-                // Базовые данные
-                if (p.company_name) document.getElementById('company_name').value = p.company_name;
-                if (p.street) document.getElementById('street').value = p.street;
-                if (p.postal_code) document.getElementById('postal_code').value = p.postal_code;
-                if (p.city) document.getElementById('city').value = p.city;
-                if (p.country_code) document.getElementById('country_code').value = p.country_code;
-                if (p.email) document.getElementById('email').value = p.email;
-                if (p.phone) document.getElementById('phone').value = p.phone;
-                if (p.fax) document.getElementById('fax').value = p.fax;
-                if (p.website) document.getElementById('website').value = p.website;
-                
-                // Правовые данные
-                if (p.legal_form) document.getElementById('legal_form').value = p.legal_form;
-                if (p.trade_register_number) document.getElementById('trade_register_number').value = p.trade_register_number;
-                if (p.trade_register_court) document.getElementById('trade_register_court').value = p.trade_register_court;
-                if (p.managing_director) document.getElementById('managing_director').value = p.managing_director;
-                if (p.contact_person) document.getElementById('contact_person').value = p.contact_person;
-                if (p.contact_department) document.getElementById('contact_department').value = p.contact_department;
-                
-                // Налоги
-                if (p.tax_id) document.getElementById('tax_id').value = p.tax_id;
-                if (p.vat_id) document.getElementById('vat_id').value = p.vat_id;
-                if (p.tax_office) document.getElementById('tax_office').value = p.tax_office;
-                document.getElementById('is_kleinunternehmer').checked = p.is_kleinunternehmer || false;
-                if (p.default_vat_rate !== undefined) {
-                    document.getElementById('default_vat_rate').value = p.default_vat_rate.toString();
-                }
-                if (p.global_location_number) document.getElementById('global_location_number').value = p.global_location_number;
-                if (p.duns_number) document.getElementById('duns_number').value = p.duns_number;
-                
-                // Банк
-                if (p.bank_name) document.getElementById('bank_name').value = p.bank_name;
-                if (p.iban) document.getElementById('iban').value = p.iban;
-                if (p.bic) document.getElementById('bic').value = p.bic;
-                if (p.sepa_creditor_id) document.getElementById('sepa_creditor_id').value = p.sepa_creditor_id;
-                if (p.sepa_mandate_reference) document.getElementById('sepa_mandate_reference').value = p.sepa_mandate_reference;
-                if (p.payment_terms_days) document.getElementById('payment_terms_days').value = p.payment_terms_days;
-                
-                // Нумерация
-                if (p.invoice_number_prefix) document.getElementById('invoice_prefix').value = p.invoice_number_prefix;
-                if (p.invoice_number_format) document.getElementById('invoice_digits').value = p.invoice_number_format;
-                if (p.next_invoice_number) document.getElementById('next_invoice_number').value = p.next_invoice_number;
-                
-                if (p.offer_number_prefix) document.getElementById('offer_prefix').value = p.offer_number_prefix;
-                if (p.offer_number_format) document.getElementById('offer_digits').value = p.offer_number_format;
-                if (p.next_offer_number) document.getElementById('next_offer_number').value = p.next_offer_number;
-                if (p.offer_validity_days) document.getElementById('offer_validity_days').value = p.offer_validity_days;
-                
-                if (p.customer_id_prefix) document.getElementById('customer_prefix').value = p.customer_id_prefix;
-                if (p.next_customer_number) document.getElementById('next_customer_number').value = p.next_customer_number;
-                
-                // Документы
-                if (p.default_currency) document.getElementById('default_currency').value = p.default_currency;
-                if (p.default_language) document.getElementById('default_language').value = p.default_language;
-                if (p.invoice_note_default) document.getElementById('invoice_note_default').value = p.invoice_note_default;
-                
-                // GDPR Consent
-                if (p.gdpr_consent_date) {
-                    gdprCheckbox.checked = true;
-                    gdprCheckbox.disabled = true; // НЕЛЬЗЯ СНЯТЬ!
-                    gdprStatus.style.display = 'block';
-                    consentDateSpan.textContent = new Date(p.gdpr_consent_date).toLocaleDateString('de-DE');
-                }
-                
-                // Применяем логику
-                updateVatState();
-                updateSaveButton();
-                
-            } catch (e) { 
+                loadProfile(JSON.parse(atob(dataParam)));
+            } catch (e) {
                 console.error('Parse error:', e);
-                alert('Fehler beim Laden: ' + e.message);
+                alert('Fehler: ' + e.message);
             }
         } else {
-            // Первое открытие - кнопка неактивна
             updateSaveButton();
         }
 
@@ -497,11 +289,10 @@
                 return;
             }
 
-            const isKleinunternehmer = document.getElementById('is_kleinunternehmer').checked;
+            const isKlein = kleinCheckbox.checked;
             
             const data = {
                 type: 'profile_update',
-                
                 company_name: document.getElementById('company_name').value,
                 street: document.getElementById('street').value,
                 postal_code: document.getElementById('postal_code').value,
@@ -511,46 +302,17 @@
                 phone: document.getElementById('phone').value || null,
                 fax: document.getElementById('fax').value || null,
                 website: document.getElementById('website').value || null,
-                
                 legal_form: document.getElementById('legal_form').value || null,
                 trade_register_number: document.getElementById('trade_register_number').value || null,
                 trade_register_court: document.getElementById('trade_register_court').value || null,
                 managing_director: document.getElementById('managing_director').value || null,
-                contact_person: document.getElementById('contact_person').value || null,
-                contact_department: document.getElementById('contact_department').value || null,
-                
                 tax_id: document.getElementById('tax_id').value || null,
                 vat_id: document.getElementById('vat_id').value || null,
-                tax_office: document.getElementById('tax_office').value || null,
-                is_kleinunternehmer: isKleinunternehmer,
-                default_vat_rate: isKleinunternehmer ? 0 : parseFloat(document.getElementById('default_vat_rate').value),
-                global_location_number: document.getElementById('global_location_number').value || null,
-                duns_number: document.getElementById('duns_number').value || null,
-                
+                is_kleinunternehmer: isKlein,
+                default_vat_rate: isKlein ? 0 : parseInt(vatSelect.value),
                 bank_name: document.getElementById('bank_name').value || null,
                 iban: document.getElementById('iban').value || null,
                 bic: document.getElementById('bic').value || null,
-                sepa_creditor_id: document.getElementById('sepa_creditor_id').value || null,
-                sepa_mandate_reference: document.getElementById('sepa_mandate_reference').value || null,
-                payment_terms_days: parseInt(document.getElementById('payment_terms_days').value),
-                
-                invoice_number_prefix: document.getElementById('invoice_prefix').value,
-                invoice_number_format: parseInt(document.getElementById('invoice_digits').value),
-                next_invoice_number: parseInt(document.getElementById('next_invoice_number').value),
-                
-                offer_number_prefix: document.getElementById('offer_prefix').value,
-                offer_number_format: parseInt(document.getElementById('offer_digits').value),
-                next_offer_number: parseInt(document.getElementById('next_offer_number').value),
-                offer_validity_days: parseInt(document.getElementById('offer_validity_days').value),
-                
-                customer_id_prefix: document.getElementById('customer_prefix').value,
-                next_customer_number: parseInt(document.getElementById('next_customer_number').value),
-                
-                default_currency: document.getElementById('default_currency').value,
-                default_language: document.getElementById('default_language').value,
-                invoice_note_default: document.getElementById('invoice_note_default').value || null,
-                
-                // GDPR Consent (только если первый раз)
                 gdpr_consent: gdprCheckbox.checked,
                 gdpr_consent_date: gdprCheckbox.disabled ? null : new Date().toISOString()
             };
