@@ -6,7 +6,7 @@ BASE_URL = f"https://{GITHUB_USERNAME}.github.io/invoice-bot"
 # Автоматическая версия (timestamp)
 VERSION = int(time.time())  # Меняется каждый раз при перезапуске бота
 
-SETTINGS_FORM_URL = f"{BASE_URL}/settings_v1.html?v={VERSION}"
+SETTINGS_FORM_URL = f"{BASE_URL}/settings_v2.html?v={VERSION}"
 CREATE_INVOICE_FORM_URL = f"{BASE_URL}/create_invoice_v1.html?v={VERSION}"
 CREATE_OFFER_FORM_URL = f"{BASE_URL}/create_offer_v1.html?v={VERSION}"
 

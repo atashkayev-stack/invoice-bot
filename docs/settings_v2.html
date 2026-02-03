@@ -220,6 +220,8 @@
 
         const debugPanel = document.getElementById('debug-panel');
         const debugLog = document.getElementById('debug-log');
+        
+        let loadedProfile = null; // Сохраняем загруженный профиль для повторного использования
         const gdprCheckbox = document.getElementById('gdpr_consent');
         const saveBtn = document.getElementById('save-btn');
         const kleinCheckbox = document.getElementById('is_kleinunternehmer');
@@ -291,6 +293,8 @@
         ];
 
         function loadProfile(p) {
+            loadedProfile = p; // Сохраняем для использования при сохранении
+            
             log('📥 START Loading profile', '#0ff');
             
             let loaded = 0;
@@ -402,7 +406,9 @@
                 iban: document.getElementById('iban').value || null,
                 bic: document.getElementById('bic').value || null,
                 gdpr_consent: gdprCheckbox.checked,
-                gdpr_consent_date: gdprCheckbox.disabled ? null : new Date().toISOString()
+                gdpr_consent_date: gdprCheckbox.disabled ? 
+                    (loadedProfile?.gdpr_consent_date || null) : 
+                    new Date().toISOString()
             };
             
             log('💾 Saving data...', '#0ff');
