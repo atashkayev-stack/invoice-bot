@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profil-Einstellungen</title>
+    <title>Settings DEBUG</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -12,6 +12,13 @@
             padding: 15px; background: #f5f5f5; color: #333; font-size: 14px;
         }
         .container { max-width: 500px; margin: 0 auto; padding-bottom: 80px; }
+        .debug-panel {
+            background: #000; color: #0f0; padding: 15px;
+            margin-bottom: 20px; border-radius: 8px;
+            font-family: monospace; font-size: 11px;
+            max-height: 300px; overflow-y: auto;
+        }
+        .debug-panel h3 { color: #0ff; margin-bottom: 10px; }
         .section { 
             background: white; padding: 15px; margin-bottom: 15px;
             border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -31,212 +38,136 @@
         }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .btn {
-            position: fixed; bottom: 0; left: 0; right: 0;
             background: #0088cc; color: white; border: none;
             padding: 15px; font-size: 16px; font-weight: 600;
-            cursor: pointer; box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            cursor: pointer; border-radius: 8px; width: 100%;
         }
-        .btn:disabled { background: #ccc; cursor: not-allowed; }
         .checkbox-label {
             display: flex; align-items: center; gap: 8px;
             cursor: pointer; margin-bottom: 12px;
         }
         .checkbox-label input[type="checkbox"] { width: auto; margin: 0; }
-        .hint { font-size: 11px; color: #999; margin-top: -8px; margin-bottom: 12px; }
-        .gdpr-section { background: #fff3cd; border: 2px solid #ffc107; }
-        .gdpr-section .section-title { color: #856404; }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- 1. FIRMENDATEN -->
+        <div class="debug-panel" id="debug">
+            <h3>🐛 DEBUG LOG</h3>
+            <div id="log"></div>
+        </div>
+
         <div class="section">
             <div class="section-title">🏢 Firmendaten</div>
             
             <label class="required">Unternehmensname</label>
-            <input type="text" id="company_name" placeholder="Muster GmbH" required>
+            <input type="text" id="company_name" placeholder="Muster GmbH">
             
-            <label class="required">Straße & Hausnummer</label>
-            <input type="text" id="street" placeholder="Musterstraße 123" required>
+            <label class="required">Straße</label>
+            <input type="text" id="street" placeholder="Musterstraße 123">
             
             <div class="grid">
                 <div>
-                    <label class="required">PLZ</label>
-                    <input type="text" id="postal_code" placeholder="12345" required>
+                    <label>PLZ</label>
+                    <input type="text" id="postal_code" placeholder="12345">
                 </div>
                 <div>
-                    <label class="required">Stadt</label>
-                    <input type="text" id="city" placeholder="Berlin" required>
+                    <label>Stadt</label>
+                    <input type="text" id="city" placeholder="Berlin">
                 </div>
             </div>
             
-            <label class="required">Land</label>
-            <select id="country_code" required>
+            <label>Land</label>
+            <select id="country_code">
                 <option value="DE" selected>🇩🇪 Deutschland</option>
                 <option value="AT">🇦🇹 Österreich</option>
-                <option value="CH">🇨🇭 Schweiz</option>
-                <option value="FR">🇫🇷 Frankreich</option>
-                <option value="NL">🇳🇱 Niederlande</option>
-                <option value="BE">🇧🇪 Belgien</option>
-                <option value="IT">🇮🇹 Italien</option>
-                <option value="ES">🇪🇸 Spanien</option>
-                <option value="PL">🇵🇱 Polen</option>
             </select>
-            <div class="hint">⚠️ Pflichtfeld für ZUGFeRD 2.4</div>
             
-            <div class="grid">
-                <div>
-                    <label>E-Mail</label>
-                    <input type="email" id="email" placeholder="info@firma.de">
-                </div>
-                <div>
-                    <label>Telefon</label>
-                    <input type="text" id="phone" placeholder="+49 30 1234567">
-                </div>
-            </div>
+            <label>E-Mail</label>
+            <input type="email" id="email" placeholder="info@firma.de">
+            
+            <label>Telefon</label>
+            <input type="text" id="phone" placeholder="+49 30 123">
             
             <label>Fax</label>
-            <input type="text" id="fax" placeholder="+49 30 1234568">
+            <input type="text" id="fax" placeholder="+49 30 124">
             
             <label>Website</label>
             <input type="url" id="website" placeholder="https://firma.de">
         </div>
 
-        <!-- 2. RECHTLICHE ANGABEN -->
         <div class="section">
-            <div class="section-title">⚖️ Rechtliche Angaben</div>
+            <div class="section-title">⚖️ Rechtlich</div>
             
-            <label class="required">Rechtsform</label>
+            <label>Rechtsform</label>
             <select id="legal_form">
                 <option value="">Bitte wählen...</option>
-                <option value="Einzelunternehmer">Einzelunternehmer (e.K.)</option>
                 <option value="GmbH">GmbH</option>
-                <option value="UG">UG (haftungsbeschränkt)</option>
-                <option value="GbR">GbR</option>
-                <option value="AG">AG</option>
             </select>
             
-            <label>Handelsregisternummer</label>
-            <input type="text" id="trade_register_number" placeholder="HRB 12345 B">
-            <div class="hint">z.B. HRB 12345 B (für GmbH/AG)</div>
+            <label>HRB</label>
+            <input type="text" id="trade_register_number" placeholder="HRB 12345">
             
-            <label>Registergericht</label>
-            <input type="text" id="trade_register_court" placeholder="Amtsgericht München">
+            <label>Gericht</label>
+            <input type="text" id="trade_register_court" placeholder="Amtsgericht">
             
-            <label>Geschäftsführer / Inhaber</label>
-            <input type="text" id="managing_director" placeholder="Max Mustermann">
+            <label>GF</label>
+            <input type="text" id="managing_director" placeholder="Name">
         </div>
 
-        <!-- 3. STEUERN -->
         <div class="section">
             <div class="section-title">💰 Steuern</div>
             
-            <label class="required">Steuernummer</label>
-            <input type="text" id="tax_id" placeholder="123/456/78901" required>
+            <label>Steuernummer</label>
+            <input type="text" id="tax_id" placeholder="123/456/789">
             
-            <label>USt-IdNr.</label>
+            <label>USt-IdNr</label>
             <input type="text" id="vat_id" placeholder="DE123456789">
-            <div class="hint">Für B2B EU erforderlich</div>
             
             <label class="checkbox-label">
                 <input type="checkbox" id="is_kleinunternehmer">
-                Kleinunternehmer (§ 19 UStG)
+                Kleinunternehmer
             </label>
             
-            <label class="required">Standard-USt</label>
-            <select id="default_vat_rate" required>
-                <option value="19">19% (Standard)</option>
-                <option value="7">7% (Ermäßigt)</option>
-                <option value="0">0% (Befreit)</option>
+            <label>USt %</label>
+            <select id="default_vat_rate">
+                <option value="19">19%</option>
+                <option value="7">7%</option>
+                <option value="0">0%</option>
             </select>
         </div>
 
-        <!-- 4. BANK -->
         <div class="section">
-            <div class="section-title">🏦 Bankverbindung</div>
+            <div class="section-title">🏦 Bank</div>
             
-            <label>Bankname</label>
+            <label>Bank</label>
             <input type="text" id="bank_name" placeholder="Deutsche Bank">
             
-            <label class="required">IBAN</label>
-            <input type="text" id="iban" placeholder="DE89370400440532013000" required>
+            <label>IBAN</label>
+            <input type="text" id="iban" placeholder="DE89...">
             
             <label>BIC</label>
             <input type="text" id="bic" placeholder="COBADEFFXXX">
         </div>
 
-        <!-- 5. GDPR -->
-        <div class="section gdpr-section">
-            <div class="section-title">🔒 Datenschutz (DSGVO)</div>
-            
-            <label class="checkbox-label" style="align-items: flex-start; margin-bottom: 15px;">
-                <input type="checkbox" id="gdpr_consent" required style="margin-top: 3px;">
-                <span style="line-height: 1.6;">
-                    <strong>Ich willige ein</strong>, dass meine personenbezogenen Daten 
-                    (Name/Firma, Adresse, Steuer- und Bankdaten) zum Zweck der Rechnungserstellung 
-                    verarbeitet und gespeichert werden.
-                    <br><br>
-                    <span style="color: #666;">
-                    Die Speicherung erfolgt nur solange ich den Dienst nutze. 
-                    Ich kann meine Einwilligung jederzeit widerrufen.
-                    </span>
-                </span>
-            </label>
-            
-            <div class="hint" style="color: #856404; font-weight: 600;">
-                ⚠️ Diese Einwilligung ist erforderlich (DSGVO Art. 6)
-            </div>
-            
-            <div id="gdpr-status" style="font-size: 12px; color: #27ae60; margin-top: 10px; display: none;">
-                ✅ Einwilligung erteilt am: <span id="consent-date"></span>
-            </div>
-        </div>
-
-        <button class="btn" onclick="saveSettings()" id="save-btn">💾 Speichern</button>
+        <button class="btn" onclick="testSave()">💾 Test Save</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        const gdprCheckbox = document.getElementById('gdpr_consent');
-        const saveBtn = document.getElementById('save-btn');
-        const kleinCheckbox = document.getElementById('is_kleinunternehmer');
-        const vatSelect = document.getElementById('default_vat_rate');
-
-        function updateSaveButton() {
-            saveBtn.disabled = !gdprCheckbox.checked;
-            saveBtn.style.background = gdprCheckbox.checked ? '#0088cc' : '#ccc';
+        const logEl = document.getElementById('log');
+        
+        function log(msg, color = '#0f0') {
+            const time = new Date().toLocaleTimeString();
+            logEl.innerHTML += `<div style="color: ${color}">[${time}] ${msg}</div>`;
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(msg);
         }
 
-        function updateVatState() {
-            if (kleinCheckbox.checked) {
-                vatSelect.value = '0';
-                vatSelect.disabled = true;
-                vatSelect.style.backgroundColor = '#f0f0f0';
-                
-                let hint = document.getElementById('vat-hint');
-                if (!hint) {
-                    hint = document.createElement('div');
-                    hint.id = 'vat-hint';
-                    hint.className = 'hint';
-                    hint.style.color = '#e74c3c';
-                    hint.textContent = '⚠️ Kleinunternehmer: Keine Umsatzsteuer';
-                    vatSelect.parentNode.appendChild(hint);
-                }
-            } else {
-                if (vatSelect.value == '0') vatSelect.value = '19';
-                vatSelect.disabled = false;
-                vatSelect.style.backgroundColor = '#fff';
-                const hint = document.getElementById('vat-hint');
-                if (hint) hint.remove();
-            }
-        }
+        log('🚀 Script started!', '#0ff');
+        log('Telegram WebApp version: ' + (tg.version || 'unknown'), '#ff0');
 
-        gdprCheckbox.addEventListener('change', updateSaveButton);
-        kleinCheckbox.addEventListener('change', updateVatState);
-
-        // UNIVERSAL LOADING
         const FIELDS = [
             'company_name', 'street', 'postal_code', 'city', 'country_code',
             'email', 'phone', 'fax', 'website',
@@ -245,97 +176,89 @@
             'bank_name', 'iban', 'bic'
         ];
 
+        const kleinCheckbox = document.getElementById('is_kleinunternehmer');
+        const vatSelect = document.getElementById('default_vat_rate');
+
         function loadProfile(p) {
-            console.log('📥 Loading profile:', p);
-            console.log('📊 Keys:', Object.keys(p));
+            log('📥 Loading profile...', '#0ff');
+            log('Profile keys: ' + Object.keys(p).length, '#ff0');
+            
+            let loaded = 0;
             
             FIELDS.forEach(f => {
                 if (p[f]) {
                     const el = document.getElementById(f);
                     if (el) {
                         el.value = p[f];
-                        console.log(`✅ ${f} = ${p[f]}`);
+                        loaded++;
+                        log(`✅ ${f} = "${p[f]}"`, '#0f0');
                     } else {
-                        console.warn(`⚠️ Element missing: ${f}`);
+                        log(`❌ Element missing: ${f}`, '#f00');
                     }
+                } else {
+                    log(`⏭️ Skip ${f} (empty)`, '#888');
                 }
             });
             
             if (p.is_kleinunternehmer !== undefined) {
                 kleinCheckbox.checked = p.is_kleinunternehmer;
-                console.log('✅ Kleinunternehmer:', p.is_kleinunternehmer);
+                log(`✅ is_kleinunternehmer = ${p.is_kleinunternehmer}`, '#0f0');
             }
             
             if (p.default_vat_rate !== undefined) {
                 vatSelect.value = String(p.default_vat_rate);
-                console.log('✅ VAT rate:', p.default_vat_rate);
+                log(`✅ default_vat_rate = ${p.default_vat_rate}`, '#0f0');
             }
             
-            if (p.gdpr_consent_date) {
-                gdprCheckbox.checked = true;
-                gdprCheckbox.disabled = true;
-                document.getElementById('gdpr-status').style.display = 'block';
-                document.getElementById('consent-date').textContent = new Date(p.gdpr_consent_date).toLocaleDateString('de-DE');
-                console.log('✅ GDPR consent:', p.gdpr_consent_date);
-            }
-            
-            updateVatState();
-            updateSaveButton();
-            console.log('✅ Loading complete!');
+            log(`✅ DONE! Loaded ${loaded} fields`, '#0ff');
         }
 
+        // ========================================
+        // ПАРСИНГ URL
+        // ========================================
+        log('🔍 Parsing URL...', '#ff0');
+        
         const urlParams = new URLSearchParams(window.location.search);
         const dataParam = urlParams.get('data');
         
+        log('dataParam exists: ' + (dataParam ? 'YES' : 'NO'), dataParam ? '#0f0' : '#f00');
+        
         if (dataParam) {
+            log('dataParam length: ' + dataParam.length, '#ff0');
+            
             try {
-                loadProfile(JSON.parse(atob(dataParam)));
+                const decoded = atob(dataParam);
+                log('✅ Base64 decoded! Length: ' + decoded.length, '#0f0');
+                
+                const profile = JSON.parse(decoded);
+                log('✅ JSON parsed! Keys: ' + Object.keys(profile).length, '#0f0');
+                
+                loadProfile(profile);
+                
             } catch (e) {
-                console.error('Parse error:', e);
-                alert('Fehler: ' + e.message);
+                log('❌ ERROR: ' + e.message, '#f00');
+                log('Error stack: ' + e.stack, '#f00');
             }
         } else {
-            updateSaveButton();
+            log('⚠️ NO DATA in URL!', '#ff0');
+            log('This means handlers_v1.py did NOT send data!', '#ff0');
         }
 
-        function saveSettings() {
-            if (!gdprCheckbox.checked) {
-                alert('Bitte akzeptieren Sie die Datenschutzerklärung!');
-                return;
-            }
-
-            const isKlein = kleinCheckbox.checked;
+        function testSave() {
+            log('💾 Test save clicked', '#0ff');
+            const data = {};
+            FIELDS.forEach(f => {
+                const el = document.getElementById(f);
+                if (el) data[f] = el.value || null;
+            });
+            data.is_kleinunternehmer = kleinCheckbox.checked;
+            data.default_vat_rate = parseInt(vatSelect.value);
             
-            const data = {
-                type: 'profile_update',
-                company_name: document.getElementById('company_name').value,
-                street: document.getElementById('street').value,
-                postal_code: document.getElementById('postal_code').value,
-                city: document.getElementById('city').value,
-                country_code: document.getElementById('country_code').value,
-                email: document.getElementById('email').value || null,
-                phone: document.getElementById('phone').value || null,
-                fax: document.getElementById('fax').value || null,
-                website: document.getElementById('website').value || null,
-                legal_form: document.getElementById('legal_form').value || null,
-                trade_register_number: document.getElementById('trade_register_number').value || null,
-                trade_register_court: document.getElementById('trade_register_court').value || null,
-                managing_director: document.getElementById('managing_director').value || null,
-                tax_id: document.getElementById('tax_id').value || null,
-                vat_id: document.getElementById('vat_id').value || null,
-                is_kleinunternehmer: isKlein,
-                default_vat_rate: isKlein ? 0 : parseInt(vatSelect.value),
-                bank_name: document.getElementById('bank_name').value || null,
-                iban: document.getElementById('iban').value || null,
-                bic: document.getElementById('bic').value || null,
-                gdpr_consent: gdprCheckbox.checked,
-                gdpr_consent_date: gdprCheckbox.disabled ? null : new Date().toISOString()
-            };
-            
-            console.log('Saving:', data);
-            tg.sendData(JSON.stringify(data));
-            tg.close();
+            log('Data: ' + JSON.stringify(data).substring(0, 100) + '...', '#aaa');
+            tg.sendData(JSON.stringify({type: 'profile_update', ...data}));
         }
+
+        log('✅ Script complete!', '#0ff');
     </script>
 </body>
 </html>
