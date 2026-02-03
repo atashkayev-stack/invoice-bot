@@ -228,7 +228,7 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"data_json: {data_json}")
 
     encoded = base64.urlsafe_b64encode(data_json.encode()).decode().strip("=")
-    url = f"{SETTINGS_FORM_URL}?data={urllib.parse.quote(encoded)}"
+    url = f"{SETTINGS_FORM_URL}&data={urllib.parse.quote(encoded)}"
 
     keyboard = ReplyKeyboardMarkup([[
         KeyboardButton("📝 Ihre Kontaktdaten eingeben / prüfen",
