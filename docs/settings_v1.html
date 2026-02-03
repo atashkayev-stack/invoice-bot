@@ -246,27 +246,42 @@
         ];
 
         function loadProfile(p) {
-            console.log('Loading:', p);
+            console.log('📥 Loading profile:', p);
+            console.log('📊 Keys:', Object.keys(p));
             
             FIELDS.forEach(f => {
-                if (p[f] !== null && p[f] !== undefined) {
+                if (p[f]) {
                     const el = document.getElementById(f);
-                    if (el) el.value = p[f];
+                    if (el) {
+                        el.value = p[f];
+                        console.log(`✅ ${f} = ${p[f]}`);
+                    } else {
+                        console.warn(`⚠️ Element missing: ${f}`);
+                    }
                 }
             });
             
-            if (p.is_kleinunternehmer !== undefined) kleinCheckbox.checked = p.is_kleinunternehmer;
-            if (p.default_vat_rate !== undefined) vatSelect.value = p.default_vat_rate.toString();
+            if (p.is_kleinunternehmer !== undefined) {
+                kleinCheckbox.checked = p.is_kleinunternehmer;
+                console.log('✅ Kleinunternehmer:', p.is_kleinunternehmer);
+            }
+            
+            if (p.default_vat_rate !== undefined) {
+                vatSelect.value = String(p.default_vat_rate);
+                console.log('✅ VAT rate:', p.default_vat_rate);
+            }
             
             if (p.gdpr_consent_date) {
                 gdprCheckbox.checked = true;
                 gdprCheckbox.disabled = true;
                 document.getElementById('gdpr-status').style.display = 'block';
                 document.getElementById('consent-date').textContent = new Date(p.gdpr_consent_date).toLocaleDateString('de-DE');
+                console.log('✅ GDPR consent:', p.gdpr_consent_date);
             }
             
             updateVatState();
             updateSaveButton();
+            console.log('✅ Loading complete!');
         }
 
         const urlParams = new URLSearchParams(window.location.search);
