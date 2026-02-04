@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rechnung erstellen</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 15px; background: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; padding-bottom: 80px; }
+        .debug-panel { background: #000; color: #0f0; padding: 15px; margin-bottom: 20px; border-radius: 8px; font-family: monospace; font-size: 11px; max-height: 300px; overflow-y: auto; border: 2px solid #0f0; }
+        .debug-panel h3 { color: #0ff; margin-bottom: 10px; }
+        .debug-panel.hidden { display: none; }
+        .section { background: white; padding: 15px; margin-bottom: 15px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .section-title { font-size: 16px; font-weight: 600; color: #0088cc; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e3f2fd; }
+        label { display: block; font-weight: 500; margin-bottom: 5px; color: #555; font-size: 13px; }
+        input, select, textarea { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .grid3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
+        .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 12px; }
+        .checkbox-label input[type="checkbox"] { width: auto; margin: 0; }
+        .btn { background: #0088cc; color: white; border: none; padding: 12px; font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 8px; width: 100%; margin-top: 10px; }
+        .btn-secondary { background: #27ae60; }
+        .item-row { background: #f9f9f9; padding: 10px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #e0e0e0; }
+        .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .remove-item { background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; }
+        .totals { background: #e3f2fd; padding: 15px; border-radius: 8px; margin-top: 15px; }
+        .totals-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .totals-row.total { font-weight: 700; font-size: 18px; color: #0088cc; padding-top: 8px; border-top: 2px solid #0088cc; }
+        .hint { font-size: 11px; color: #999; margin-top: -8px; margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="debug-panel hidden" id="debug-panel">
+            <h3>🐛 DEBUG MODE</h3>
+            <div id="debug-log"></div>
+        </div>
+
+        <h1 style="margin-bottom: 20px;">📄 Rechnung erstellen</h1>
+
+        <div class="section">
+            <div class="section-title">👤 Kunde</div>
+            <label>Firmenname</label>
+            <input type="text" id="client_name" placeholder="Kunde GmbH" required>
+            <label>Straße</label>
+            <input type="text" id="client_street" placeholder="Kundenstraße 1">
+            <div class="grid">
+                <div><label>PLZ</label><input type="text" id="client_postal_code" placeholder="12345"></div>
+                <div><label>Stadt</label><input type="text" id="client_city" placeholder="Berlin"></div>
+            </div>
+            <label>Land</label>
+            <select id="client_country">
+                <option value="DE" selected>Deutschland</option>
+                <option value="AT">Österreich</option>
+                <option value="CH">Schweiz</option>
+            </select>
+            <label>Kundennummer (optional)</label>
+            <input type="text" id="customer_id" placeholder="KUND-001">
+        </div>
+
+        <div class="section">
+            <div class="section-title">📋 Rechnungsdetails</div>
+            <div class="grid">
+                <div><label>Rechnungsnummer</label><input type="text" id="invoice_number" placeholder="RE-0001" required></div>
+                <div><label>Datum</label><input type="date" id="invoice_date" required></div>
+            </div>
+            <label>Bestellnummer (optional)</label>
+            <input type="text" id="purchase_order" placeholder="PO-12345">
+            <div class="grid">
+                <div><label>Währung</label>
+                    <select id="currency">
+                        <option value="EUR" selected>EUR (€)</option>
+                        <option value="USD">USD ($)</option>
+                        <option value="CHF">CHF</option>
+                    </select>
+                </div>
+                <div><label>Zahlungsziel (Tage)</label>
+                    <input type="number" id="payment_days" value="14" min="0">
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📦 Positionen</div>
+            <label class="checkbox-label">
+                <input type="checkbox" id="vat_per_item">
+                <span>Unterschiedliche MwSt. pro Position</span>
+            </label>
+            <div class="hint">Wenn aktiviert, kann jede Position einen eigenen MwSt.-Satz haben</div>
+
+            <div id="global_vat_section">
+                <label>MwSt. (gesamt)</label>
+                <select id="global_vat_rate">
+                    <option value="19">19% (Standard)</option>
+                    <option value="7">7% (Ermäßigt)</option>
+                    <option value="0">0% (Befreit)</option>
+                </select>
+            </div>
+
+            <div id="items"></div>
+            <button class="btn btn-secondary" onclick="addItem()">+ Position hinzufügen</button>
+        </div>
+
+        <div class="totals">
+            <div class="totals-row"><span>Netto:</span><span id="total_net">0.00 €</span></div>
+            <div class="totals-row"><span>MwSt.:</span><span id="total_vat">0.00 €</span></div>
+            <div class="totals-row total"><span>Gesamt:</span><span id="total_gross">0.00 €</span></div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📄 Format</div>
+            <label class="checkbox-label">
+                <input type="radio" name="format" value="ZUGFeRD" checked>
+                <span>ZUGFeRD 2.4 (PDF + XML)</span>
+            </label>
+            <label class="checkbox-label">
+                <input type="radio" name="format" value="XRechnung">
+                <span>XRechnung (nur XML)</span>
+            </label>
+        </div>
+
+        <div class="section">
+            <label>Notizen (optional)</label>
+            <textarea id="notes" rows="3" placeholder="Zusätzliche Hinweise..."></textarea>
+        </div>
+
+        <button class="btn" onclick="saveInvoice()">💾 Rechnung erstellen</button>
+    </div>
+
+    <script>
+        const DEBUG_MODE = true;
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        const debugPanel = document.getElementById('debug-panel');
+        const debugLog = document.getElementById('debug-log');
+        let loadedProfile = null;
+        let itemCount = 0;
+
+        function log(msg, color = '#0f0') {
+            if (!DEBUG_MODE) return;
+            const time = new Date().toLocaleTimeString();
+            debugLog.innerHTML += `<div style="color: ${color}">[${time}] ${msg}</div>`;
+            debugLog.scrollTop = debugLog.scrollHeight;
+            console.log(msg);
+        }
+
+        if (DEBUG_MODE) {
+            debugPanel.classList.remove('hidden');
+            log('🐛 DEBUG MODE ENABLED', '#ff0');
+        }
+
+        document.getElementById('vat_per_item').addEventListener('change', function() {
+            document.getElementById('global_vat_section').style.display = this.checked ? 'none' : 'block';
+            document.querySelectorAll('.item-vat').forEach(el => el.style.display = this.checked ? 'block' : 'none');
+            log(`VAT per item: ${this.checked}`, '#ff0');
+        });
+
+        function addItem() {
+            itemCount++;
+            const vatPerItem = document.getElementById('vat_per_item').checked;
+            const itemHTML = `
+                <div class="item-row" id="item_${itemCount}">
+                    <div class="item-header">
+                        <strong>Position ${itemCount}</strong>
+                        <button class="remove-item" onclick="removeItem(${itemCount})">×</button>
+                    </div>
+                    <label>Beschreibung</label>
+                    <input type="text" class="item-desc" placeholder="Produktname" required>
+                    <div class="grid3">
+                        <div><label>Menge</label><input type="number" class="item-qty" value="1" min="0.01" step="0.01" onchange="calcTotals()"></div>
+                        <div><label>Einheit</label>
+                            <select class="item-unit">
+                                <option value="Stk">Stk</option>
+                                <option value="Std">Std</option>
+                                <option value="Tag">Tag</option>
+                                <option value="kg">kg</option>
+                                <option value="m">m</option>
+                            </select>
+                        </div>
+                        <div><label>Preis (€)</label><input type="number" class="item-price" value="0" min="0" step="0.01" onchange="calcTotals()"></div>
+                    </div>
+                    <div class="item-vat" style="display: ${vatPerItem ? 'block' : 'none'}">
+                        <label>MwSt.</label>
+                        <select class="item-vat-rate" onchange="calcTotals()">
+                            <option value="19">19%</option>
+                            <option value="7">7%</option>
+                            <option value="0">0%</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+            document.getElementById('items').insertAdjacentHTML('beforeend', itemHTML);
+            log(`Item ${itemCount} added`, '#0f0');
+        }
+
+        function removeItem(id) {
+            document.getElementById(`item_${id}`).remove();
+            calcTotals();
+            log(`Item ${id} removed`, '#f00');
+        }
+
+        function calcTotals() {
+            const vatPerItem = document.getElementById('vat_per_item').checked;
+            const globalVat = parseFloat(document.getElementById('global_vat_rate').value);
+            let totalNet = 0, totalVat = 0;
+
+            document.querySelectorAll('.item-row').forEach(row => {
+                const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+                const price = parseFloat(row.querySelector('.item-price').value) || 0;
+                const itemNet = qty * price;
+                const vatRate = vatPerItem ? parseFloat(row.querySelector('.item-vat-rate').value) : globalVat;
+                const itemVat = itemNet * vatRate / 100;
+                totalNet += itemNet;
+                totalVat += itemVat;
+            });
+
+            document.getElementById('total_net').textContent = totalNet.toFixed(2) + ' €';
+            document.getElementById('total_vat').textContent = totalVat.toFixed(2) + ' €';
+            document.getElementById('total_gross').textContent = (totalNet + totalVat).toFixed(2) + ' €';
+            log(`Totals: Net=${totalNet.toFixed(2)}, VAT=${totalVat.toFixed(2)}`, '#0ff');
+        }
+
+        function saveInvoice() {
+            const vatPerItem = document.getElementById('vat_per_item').checked;
+            const items = [];
+            
+            document.querySelectorAll('.item-row').forEach((row, idx) => {
+                const qty = parseFloat(row.querySelector('.item-qty').value);
+                const price = parseFloat(row.querySelector('.item-price').value);
+                const vat = vatPerItem ? parseFloat(row.querySelector('.item-vat-rate').value) : null;
+                items.push({
+                    position: idx + 1,
+                    description: row.querySelector('.item-desc').value,
+                    quantity: qty,
+                    unit: row.querySelector('.item-unit').value,
+                    unit_price: price,
+                    vat_rate: vat,
+                    total: qty * price
+                });
+            });
+
+            const data = {
+                type: 'invoice_creation',
+                invoice_number: document.getElementById('invoice_number').value,
+                invoice_date: document.getElementById('invoice_date').value,
+                client_name: document.getElementById('client_name').value,
+                client_street: document.getElementById('client_street').value,
+                client_postal_code: document.getElementById('client_postal_code').value,
+                client_city: document.getElementById('client_city').value,
+                client_country: document.getElementById('client_country').value,
+                customer_id: document.getElementById('customer_id').value || null,
+                purchase_order: document.getElementById('purchase_order').value || null,
+                currency: document.getElementById('currency').value,
+                payment_days: parseInt(document.getElementById('payment_days').value),
+                vat_per_item: vatPerItem,
+                global_vat_rate: vatPerItem ? null : parseFloat(document.getElementById('global_vat_rate').value),
+                items: items,
+                format_type: document.querySelector('input[name="format"]:checked').value,
+                notes: document.getElementById('notes').value || null,
+                total_net: parseFloat(document.getElementById('total_net').textContent),
+                total_vat: parseFloat(document.getElementById('total_vat').textContent),
+                total_gross: parseFloat(document.getElementById('total_gross').textContent)
+            };
+
+            log('💾 Saving invoice...', '#0ff');
+            log('Data: ' + JSON.stringify(data).substring(0, 150) + '...', '#aaa');
+            tg.sendData(JSON.stringify(data));
+            tg.close();
+        }
+
+        log('🔍 Loading profile...', '#ff0');
+        const urlParams = new URLSearchParams(window.location.search);
+        const dataParam = urlParams.get('data');
+
+        if (dataParam) {
+            try {
+                const profile = JSON.parse(atob(dataParam));
+                loadedProfile = profile;
+                log('✅ Profile loaded: ' + Object.keys(profile).length + ' keys', '#0f0');
+                
+                const prefix = profile.invoice_number_prefix || 'RE-';
+                const nextNum = profile.next_invoice_number || 1;
+                const digits = profile.invoice_number_format || 4;
+                document.getElementById('invoice_number').value = `${prefix}${String(nextNum).padStart(digits, '0')}`;
+                document.getElementById('invoice_date').value = new Date().toISOString().split('T')[0];
+                document.getElementById('payment_days').value = profile.payment_terms_days || 14;
+                document.getElementById('global_vat_rate').value = String(profile.default_vat_rate || 19);
+                log('✅ Form initialized', '#0f0');
+            } catch (e) {
+                log('❌ ERROR: ' + e.message, '#f00');
+            }
+        }
+
+        addItem();
+        log('✅ Ready!', '#0ff');
+    </script>
+</body>
+</html>

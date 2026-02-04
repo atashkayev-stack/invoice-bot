@@ -150,56 +150,117 @@ async def web_app_data_handler(update: Update,
 
         return  # Твое оригинальное окончание — оно остается!
 
-    # ========== СОЗДАНИЕ ДОКУМЕНТА ИЗ ШАБЛОНА ==========
-    profile = db.get_profile(user_id) or {}
+# ========== СОЗДАНИЕ СЧЕТА ==========
+    if data.get('type') == 'invoice_creation':
+        from src.xml_generator_v2 import XMLGeneratorV2, embed_xml_in_pdf
+        from src.pdf_generator_v2 import PDFGeneratorV2
 
-    is_offer = data.get('type') == "offer_creation"
-    doc_type = "ANGEBOT" if is_offer else "RECHNUNG"
-    format_type = data.get('format_type', 'ZUGFeRD')
+        user_id = update.effective_user.id
+        profile = db.get_profile(user_id) or {}
 
-    await update.message.reply_text(
-        f"⌛ Generiere {doc_type} ({format_type})...")
+        # Создаём/обновляем клиента
+        client_data = {
+            'company_name': data.get('client_name'),
+            'street': data.get('client_street'),
+            'postal_code': data.get('client_postal_code'),
+            'city': data.get('client_city'),
+            'country_code': data.get('client_country', 'DE'),
+            'email': data.get('client_email'),
+            'customer_id': data.get('customer_id'),
+            'vat_id': data.get('client_vat_id'),
+            'legal_form': data.get('client_legal_form'),
+            'trade_register_number': data.get('client_trade_register'),
+            'buyer_reference': data.get('buyer_reference')
+        }
+        client_id = db.create_or_update_client(user_id, client_data)
 
-    try:
-        # 1. Генерируем PDF из шаблона
-        if is_offer:
-            # Оффер с XML (если выбран ZUGFeRD)
-            pdf_file = pdf_gen.generate_offer_pdf(
-                data, profile, with_xml=(format_type == 'ZUGFeRD'))
+        # Создаём счет
+        invoice_data = {
+            'user_id':
+            user_id,
+            'client_id':
+            client_id,
+            'number':
+            data.get('invoice_number'),
+            'invoice_date':
+            data.get('invoice_date'),
+            'due_date':
+            data.get('due_date'),
+            'delivery_date':
+            data.get('delivery_date') or data.get('invoice_date'),
+            'client_name':
+            data.get('client_name'),
+            'client_address':
+            f"{data.get('client_street', '')}, {data.get('client_postal_code', '')} {data.get('client_city', '')}"
+            .strip(', '),
+            'customer_id':
+            data.get('customer_id'),
+            'purchase_order_number':
+            data.get('purchase_order'),
+            'buyer_reference':
+            data.get('buyer_reference'),
+            'currency':
+            data.get('currency', 'EUR'),
+            'payment_days':
+            data.get('payment_days', 14),
+            'payment_means_code':
+            data.get('payment_means', '58'),
+            'vat_per_item':
+            data.get('vat_per_item', False),
+            'global_vat_rate':
+            data.get('global_vat_rate'),
+            'amount':
+            data.get('total_net'),
+            'vat_amount':
+            data.get('total_vat'),
+            'total':
+            data.get('total_gross'),
+            'format_type':
+            data.get('format_type', 'ZUGFeRD'),
+            'notes':
+            data.get('notes'),
+            'status':
+            'draft'
+        }
+
+        invoice_id = db.create_invoice(invoice_data)
+
+        if invoice_id:
+            db.create_invoice_items(invoice_id, data.get('items', []))
+            db.increment_invoice_number(user_id)
+
+            # Генерируем PDF
+            pdf_gen = PDFGeneratorV2()
+            xml_gen = XMLGeneratorV2()
+
+            pdf_buf = pdf_gen.generate_invoice_pdf(data,
+                                                   profile,
+                                                   with_xml=False)
+            pdf_bytes = pdf_buf.getvalue()
+
+            if data.get('format_type') == 'ZUGFeRD':
+                xml_string = xml_gen.generate_zugferd_xml(data, profile)
+                pdf_bytes = embed_xml_in_pdf(pdf_bytes, xml_string)
+                filename = f"Rechnung_{data.get('invoice_number')}_{datetime.now().strftime('%Y%m%d')}.pdf"
+                await update.message.reply_document(
+                    document=io.BytesIO(pdf_bytes),
+                    filename=filename,
+                    caption="✅ Rechnung (ZUGFeRD)")
+            elif data.get('format_type') == 'XRechnung':
+                xml_string = xml_gen.generate_zugferd_xml(data, profile)
+                filename = f"Rechnung_{data.get('invoice_number')}_{datetime.now().strftime('%Y%m%d')}.xml"
+                await update.message.reply_document(
+                    document=io.BytesIO(xml_string.encode('utf-8')),
+                    filename=filename,
+                    caption="✅ XRechnung (XML)")
+
+            await update.message.reply_text("✅ Rechnung gespeichert!",
+                                            reply_markup=get_main_keyboard())
         else:
-            # Счет с XML (если выбран ZUGFeRD)
-            pdf_file = pdf_gen.generate_invoice_pdf(
-                data, profile, with_xml=(format_type == 'ZUGFeRD'))
+            await update.message.reply_text("❌ Fehler!",
+                                            reply_markup=get_main_keyboard())
 
-        pdf_bytes = pdf_file.getvalue()
-
-        # 2. Отправка в зависимости от формата
-        if format_type == 'ZUGFeRD':
-            # PDF + встроенный XML
-            filename = f"{doc_type}_{datetime.now().strftime('%Y%m%d')}.pdf"
-
-            await update.message.reply_document(
-                document=io.BytesIO(pdf_bytes),
-                filename=filename,
-                caption=f"📄 {doc_type} (ZUGFeRD: PDF + XML)")
-
-        elif format_type == 'XRechnung':
-            # Только XML файл
-            xml_string = pdf_gen.generate_xml_only(data, profile)
-            filename = f"{doc_type}_{datetime.now().strftime('%Y%m%d')}.xml"
-
-            await update.message.reply_document(
-                document=io.BytesIO(xml_string.encode('utf-8')),
-                filename=filename,
-                caption=f"📋 {doc_type} (XRechnung: nur XML)")
-
-        await update.message.reply_text("✅ Erfolgreich erstellt!",
-                                        reply_markup=get_main_keyboard())
-
-    except Exception as e:
-        logger.error(f"PDF generation error: {e}")
-        await update.message.reply_text(f"❌ Fehler: {e}",
-                                        reply_markup=get_main_keyboard())
+        return
 
 
 # --- ОСТАЛЬНЫЕ ФУНКЦИИ (Обязательные для main_v1.py) ---

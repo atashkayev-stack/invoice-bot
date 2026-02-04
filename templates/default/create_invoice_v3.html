@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rechnung erstellen</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 15px; background: #f5f5f5; }
+.container { max-width: 600px; margin: 0 auto; padding-bottom: 80px; }
+.debug-panel { background: #000; color: #0f0; padding: 15px; margin-bottom: 20px; border-radius: 8px; font-family: monospace; font-size: 11px; max-height: 250px; overflow-y: auto; }
+.debug-panel.hidden { display: none; }
+.tabs { display: flex; gap: 5px; margin-bottom: 20px; }
+.tab { flex: 1; padding: 12px; background: #ddd; border: none; border-radius: 8px 8px 0 0; cursor: pointer; font-size: 14px; font-weight: 600; }
+.tab.active { background: #0088cc; color: white; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.section { background: white; padding: 15px; margin-bottom: 15px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.section-title { font-size: 16px; font-weight: 600; color: #0088cc; margin-bottom: 12px; }
+label { display: block; font-weight: 500; margin-bottom: 5px; color: #555; font-size: 13px; }
+label.required::after { content: " *"; color: #e74c3c; }
+input, select, textarea { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
+.btn { background: #0088cc; color: white; border: none; padding: 12px; font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 8px; width: 100%; }
+.btn-secondary { background: #27ae60; }
+.btn-group { display: flex; gap: 10px; margin-top: 20px; }
+.toggle-group { display: flex; gap: 10px; margin-bottom: 15px; }
+.toggle-btn { flex: 1; padding: 10px; border: 2px solid #ddd; background: white; border-radius: 8px; cursor: pointer; font-weight: 600; }
+.toggle-btn.active { background: #0088cc; color: white; border-color: #0088cc; }
+.b2b-fields, .item-vat { display: none; }
+.item-row { background: #f9f9f9; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
+.item-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.remove-item { background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+.totals { background: #e3f2fd; padding: 15px; border-radius: 8px; margin-top: 15px; }
+.totals-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.totals-row.total { font-weight: 700; font-size: 18px; color: #0088cc; padding-top: 8px; border-top: 2px solid #0088cc; }
+.error { border-color: #e74c3c !important; }
+.error-msg { color: #e74c3c; font-size: 12px; margin-top: -8px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="debug-panel hidden" id="debug-panel"><h3>🐛 DEBUG</h3><div id="debug-log"></div></div>
+
+<h1 style="margin-bottom: 20px;">📄 Rechnung erstellen</h1>
+
+<div class="tabs">
+<button class="tab active" onclick="showTab(0)">👤 Kunde</button>
+<button class="tab" onclick="showTab(1)">📦 Positionen</button>
+<button class="tab" onclick="showTab(2)">💰 Zahlung</button>
+</div>
+
+<!-- TAB 1: KUNDE -->
+<div class="tab-content active" id="tab0">
+<div class="section">
+<div class="section-title">Kundentyp</div>
+<div class="toggle-group">
+<button class="toggle-btn active" id="b2c-btn" onclick="setClientType('b2c')">👤 Privatkunde</button>
+<button class="toggle-btn" id="b2b-btn" onclick="setClientType('b2b')">🏢 Geschäftskunde</button>
+</div>
+</div>
+
+<div class="section">
+<div class="section-title">Basisdaten</div>
+<label class="required">Name / Firma</label>
+<input type="text" id="client_name" placeholder="Max Mustermann / Firma GmbH" required>
+<label class="required">Straße</label>
+<input type="text" id="client_street" placeholder="Musterstraße 1" required>
+<div class="grid">
+<div><label class="required">PLZ</label><input type="text" id="client_postal_code" placeholder="12345" required></div>
+<div><label class="required">Stadt</label><input type="text" id="client_city" placeholder="Berlin" required></div>
+</div>
+<label class="required">Land</label>
+<select id="client_country" required>
+<option value="DE" selected>Deutschland</option>
+<option value="AT">Österreich</option>
+<option value="CH">Schweiz</option>
+<option value="FR">Frankreich</option>
+</select>
+<label>E-Mail</label>
+<input type="email" id="client_email" placeholder="kunde@example.com">
+<label>Kundennummer</label>
+<input type="text" id="customer_id" placeholder="KUND-001">
+</div>
+
+<div class="section b2b-fields" id="b2b-section">
+<div class="section-title">Geschäftskunde (B2B)</div>
+<label>USt-IdNr.</label>
+<input type="text" id="client_vat_id" placeholder="DE123456789">
+<label>Rechtsform</label>
+<select id="client_legal_form">
+<option value="">Bitte wählen...</option>
+<option value="GmbH">GmbH</option>
+<option value="UG">UG</option>
+<option value="AG">AG</option>
+<option value="KG">KG</option>
+</select>
+<label>Handelsregister</label>
+<input type="text" id="client_trade_register" placeholder="HRB 12345 B">
+<label>Ansprechpartner</label>
+<input type="text" id="buyer_reference" placeholder="Name, Abteilung">
+</div>
+
+<div class="btn-group">
+<button class="btn" onclick="showTab(1)">Weiter →</button>
+</div>
+</div>
+
+<!-- TAB 2: POSITIONEN -->
+<div class="tab-content" id="tab1">
+<div class="section">
+<div class="section-title">Rechnungsdetails</div>
+<div class="grid">
+<div><label class="required">Nummer</label><input type="text" id="invoice_number" required></div>
+<div><label class="required">Datum</label><input type="date" id="invoice_date" required></div>
+</div>
+<label>Bestellnummer</label>
+<input type="text" id="purchase_order" placeholder="PO-12345">
+</div>
+
+<div class="section">
+<div class="section-title">Positionen</div>
+<label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+<input type="checkbox" id="vat_per_item" style="width: auto; margin: 0;">
+<span>Unterschiedliche MwSt. pro Position</span>
+</label>
+<div id="global_vat_section" style="margin-top: 10px;">
+<label>MwSt. (gesamt)</label>
+<select id="global_vat_rate">
+<option value="19">19%</option>
+<option value="7">7%</option>
+<option value="0">0%</option>
+</select>
+</div>
+<div id="items" style="margin-top: 15px;"></div>
+<button class="btn btn-secondary" onclick="addItem()">+ Position</button>
+</div>
+
+<div class="totals">
+<div class="totals-row"><span>Netto:</span><span id="total_net">0.00 €</span></div>
+<div class="totals-row"><span>MwSt.:</span><span id="total_vat">0.00 €</span></div>
+<div class="totals-row total"><span>Gesamt:</span><span id="total_gross">0.00 €</span></div>
+</div>
+
+<div class="btn-group">
+<button class="btn" style="background: #999;" onclick="showTab(0)">← Zurück</button>
+<button class="btn" onclick="showTab(2)">Weiter →</button>
+</div>
+</div>
+
+<!-- TAB 3: ZAHLUNG -->
+<div class="tab-content" id="tab2">
+<div class="section">
+<div class="section-title">Zahlungsbedingungen</div>
+<label>Zahlungsziel (Tage)</label>
+<input type="number" id="payment_days" value="14" min="0">
+<label>Zahlungsart</label>
+<select id="payment_means">
+<option value="58">SEPA Überweisung</option>
+<option value="48">Kreditkarte</option>
+<option value="10">Bar</option>
+<option value="49">PayPal</option>
+</select>
+<div id="sepa_section">
+<label>IBAN (Empfänger)</label>
+<input type="text" id="payment_iban" readonly>
+<label>BIC</label>
+<input type="text" id="payment_bic" readonly>
+</div>
+</div>
+
+<div class="section">
+<div class="section-title">Format</div>
+<label style="display: flex; align-items: center; gap: 8px;">
+<input type="radio" name="format" value="ZUGFeRD" checked style="width: auto; margin: 0;">
+<span>ZUGFeRD 2.4 (PDF + XML)</span>
+</label>
+<label style="display: flex; align-items: center; gap: 8px;">
+<input type="radio" name="format" value="XRechnung" style="width: auto; margin: 0;">
+<span>XRechnung (nur XML)</span>
+</label>
+</div>
+
+<div class="section">
+<label>Notizen</label>
+<textarea id="notes" rows="3" placeholder="Zusätzliche Hinweise..."></textarea>
+</div>
+
+<div class="btn-group">
+<button class="btn" style="background: #999;" onclick="showTab(1)">← Zurück</button>
+<button class="btn" onclick="createInvoice()">💾 Rechnung erstellen</button>
+</div>
+</div>
+
+</div>
+
+<script>
+const DEBUG_MODE = true;
+const tg = window.Telegram.WebApp;
+tg.expand();
+
+let loadedProfile = null;
+let itemCount = 0;
+let clientType = 'b2c';
+
+function log(msg, color = '#0f0') {
+if (!DEBUG_MODE) return;
+const time = new Date().toLocaleTimeString();
+document.getElementById('debug-log').innerHTML += `<div style="color: ${color}">[${time}] ${msg}</div>`;
+}
+
+if (DEBUG_MODE) document.getElementById('debug-panel').classList.remove('hidden');
+log('🚀 Started', '#0ff');
+
+function showTab(n) {
+document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === n));
+document.querySelectorAll('.tab-content').forEach((c, i) => c.classList.toggle('active', i === n));
+log(`Tab ${n} shown`, '#ff0');
+}
+
+function setClientType(type) {
+clientType = type;
+document.getElementById('b2c-btn').classList.toggle('active', type === 'b2c');
+document.getElementById('b2b-btn').classList.toggle('active', type === 'b2b');
+document.getElementById('b2b-section').style.display = type === 'b2b' ? 'block' : 'none';
+log(`Client type: ${type}`, '#0ff');
+}
+
+document.getElementById('vat_per_item').addEventListener('change', function() {
+document.getElementById('global_vat_section').style.display = this.checked ? 'none' : 'block';
+document.querySelectorAll('.item-vat').forEach(el => el.style.display = this.checked ? 'block' : 'none');
+});
+
+document.getElementById('payment_means').addEventListener('change', function() {
+document.getElementById('sepa_section').style.display = this.value === '58' ? 'block' : 'none';
+});
+
+function addItem() {
+itemCount++;
+const vatPerItem = document.getElementById('vat_per_item').checked;
+document.getElementById('items').insertAdjacentHTML('beforeend', `
+<div class="item-row" id="item_${itemCount}">
+<div class="item-header"><strong>Position ${itemCount}</strong><button class="remove-item" onclick="removeItem(${itemCount})">×</button></div>
+<label>Beschreibung</label><input type="text" class="item-desc" placeholder="Produktname" required>
+<div class="grid3">
+<div><label>Menge</label><input type="number" class="item-qty" value="1" min="0.01" step="0.01" onchange="calcTotals()"></div>
+<div><label>Einheit</label><select class="item-unit"><option>Stk</option><option>Std</option><option>Tag</option><option>kg</option><option>m</option></select></div>
+<div><label>Preis (€)</label><input type="number" class="item-price" value="0" min="0" step="0.01" onchange="calcTotals()"></div>
+</div>
+<div class="item-vat" style="display: ${vatPerItem ? 'block' : 'none'}">
+<label>MwSt.</label><select class="item-vat-rate" onchange="calcTotals()"><option value="19">19%</option><option value="7">7%</option><option value="0">0%</option></select>
+</div>
+</div>`);
+log(`Item ${itemCount} added`, '#0f0');
+}
+
+function removeItem(id) {
+document.getElementById(`item_${id}`).remove();
+calcTotals();
+}
+
+function calcTotals() {
+const vatPerItem = document.getElementById('vat_per_item').checked;
+const globalVat = parseFloat(document.getElementById('global_vat_rate').value);
+let totalNet = 0, totalVat = 0;
+document.querySelectorAll('.item-row').forEach(row => {
+const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+const price = parseFloat(row.querySelector('.item-price').value) || 0;
+const itemNet = qty * price;
+const vatRate = vatPerItem ? parseFloat(row.querySelector('.item-vat-rate').value) : globalVat;
+totalNet += itemNet;
+totalVat += itemNet * vatRate / 100;
+});
+document.getElementById('total_net').textContent = totalNet.toFixed(2) + ' €';
+document.getElementById('total_vat').textContent = totalVat.toFixed(2) + ' €';
+document.getElementById('total_gross').textContent = (totalNet + totalVat).toFixed(2) + ' €';
+}
+
+function validateTab(n) {
+const tab = document.getElementById(`tab${n}`);
+let valid = true;
+tab.querySelectorAll('[required]').forEach(el => {
+if (!el.value.trim()) {
+el.classList.add('error');
+valid = false;
+} else {
+el.classList.remove('error');
+}
+});
+return valid;
+}
+
+function createInvoice() {
+if (!validateTab(0) || !validateTab(1)) {
+alert('Bitte füllen Sie alle Pflichtfelder aus!');
+return;
+}
+
+const items = [];
+document.querySelectorAll('.item-row').forEach((row, idx) => {
+const qty = parseFloat(row.querySelector('.item-qty').value);
+const price = parseFloat(row.querySelector('.item-price').value);
+const vat = document.getElementById('vat_per_item').checked ? parseFloat(row.querySelector('.item-vat-rate').value) : null;
+items.push({
+position: idx + 1,
+description: row.querySelector('.item-desc').value,
+quantity: qty,
+unit: row.querySelector('.item-unit').value,
+unit_price: price,
+vat_rate: vat,
+total: qty * price
+});
+});
+
+const paymentDays = parseInt(document.getElementById('payment_days').value);
+const invoiceDate = new Date(document.getElementById('invoice_date').value);
+const dueDate = new Date(invoiceDate);
+dueDate.setDate(dueDate.getDate() + paymentDays);
+
+const data = {
+type: 'invoice_creation',
+client_type: clientType,
+invoice_number: document.getElementById('invoice_number').value,
+invoice_date: document.getElementById('invoice_date').value,
+due_date: dueDate.toISOString().split('T')[0],
+client_name: document.getElementById('client_name').value,
+client_street: document.getElementById('client_street').value,
+client_postal_code: document.getElementById('client_postal_code').value,
+client_city: document.getElementById('client_city').value,
+client_country: document.getElementById('client_country').value,
+client_email: document.getElementById('client_email').value || null,
+customer_id: document.getElementById('customer_id').value || null,
+client_vat_id: clientType === 'b2b' ? document.getElementById('client_vat_id').value : null,
+client_legal_form: clientType === 'b2b' ? document.getElementById('client_legal_form').value : null,
+client_trade_register: clientType === 'b2b' ? document.getElementById('client_trade_register').value : null,
+buyer_reference: clientType === 'b2b' ? document.getElementById('buyer_reference').value : null,
+purchase_order: document.getElementById('purchase_order').value || null,
+payment_days: paymentDays,
+payment_means: document.getElementById('payment_means').value,
+vat_per_item: document.getElementById('vat_per_item').checked,
+global_vat_rate: document.getElementById('vat_per_item').checked ? null : parseFloat(document.getElementById('global_vat_rate').value),
+items: items,
+format_type: document.querySelector('input[name="format"]:checked').value,
+notes: document.getElementById('notes').value || null,
+total_net: parseFloat(document.getElementById('total_net').textContent),
+total_vat: parseFloat(document.getElementById('total_vat').textContent),
+total_gross: parseFloat(document.getElementById('total_gross').textContent)
+};
+
+log('💾 Saving...', '#0ff');
+tg.sendData(JSON.stringify(data));
+tg.close();
+}
+
+const urlParams = new URLSearchParams(window.location.search);
+const dataParam = urlParams.get('data');
+if (dataParam) {
+try {
+const profile = JSON.parse(atob(dataParam));
+loadedProfile = profile;
+const prefix = profile.invoice_number_prefix || 'RE-';
+const nextNum = profile.next_invoice_number || 1;
+const digits = profile.invoice_number_format || 4;
+document.getElementById('invoice_number').value = `${prefix}${String(nextNum).padStart(digits, '0')}`;
+document.getElementById('invoice_date').value = new Date().toISOString().split('T')[0];
+document.getElementById('payment_days').value = profile.payment_terms_days || 14;
+document.getElementById('global_vat_rate').value = String(profile.default_vat_rate || 19);
+document.getElementById('payment_iban').value = profile.iban || '';
+document.getElementById('payment_bic').value = profile.bic || '';
+log('✅ Profile loaded', '#0f0');
+} catch (e) {
+log('❌ ERROR: ' + e.message, '#f00');
+}
+} else {
+document.getElementById('invoice_date').value = new Date().toISOString().split('T')[0];
+}
+
+// Auto-add first item
+addItem();
+log('✅ Ready!', '#0ff');
+</script>
+</body>
+</html>
