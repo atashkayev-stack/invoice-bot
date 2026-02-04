@@ -468,6 +468,22 @@ document.getElementById('payment_days').value = profile.payment_terms_days || 14
 document.getElementById('global_vat_rate').value = String(profile.default_vat_rate || 19);
 document.getElementById('payment_iban').value = profile.iban || '';
 document.getElementById('payment_bic').value = profile.bic || '';
+
+// Kleinunternehmer check
+if (profile.is_kleinunternehmer) {
+    log('⚠️ Kleinunternehmer mode - VAT locked to 0%', '#ff0');
+    document.getElementById('global_vat_rate').value = '0';
+    document.getElementById('global_vat_rate').disabled = true;
+    document.getElementById('vat_per_item').disabled = true;
+    document.getElementById('vat_per_item').checked = false;
+    
+    const vatSection = document.getElementById('global_vat_section');
+    const warning = document.createElement('div');
+    warning.style.cssText = 'background: #fffbea; padding: 10px; border-radius: 5px; margin-bottom: 12px; font-size: 12px; border-left: 3px solid #ffc107;';
+    warning.innerHTML = '⚠️ <strong>Kleinunternehmer §19 UStG:</strong> Keine Umsatzsteuer wird ausgewiesen.';
+    vatSection.parentElement.insertBefore(warning, vatSection);
+}
+
 log('✅ Profile loaded', '#0f0');
 } catch (e) {
 log('❌ ERROR: ' + e.message, '#f00');
