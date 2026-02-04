@@ -110,11 +110,15 @@ class Database:
 
     # INVOICES
     def create_invoice(self, invoice_data: Dict) -> Optional[str]:
+
         try:
+            print(f"🔍 DEBUG invoice_data: {invoice_data}")  # ← ДОБАВЬ
             r = self.client.table("invoices").insert(invoice_data).execute()
             return r.data[0]['id'] if r.data else None
-        except:
-            return None
+        except Exception as e:
+            print(f"❌ ERROR create_invoice: {e}")  # ← ДОБАВЬ
+            logger.error(f"Error create_invoice: {e}")
+        return None
 
     def get_invoices(self, user_id: int, limit: int = 10) -> List[Dict]:
         try:
@@ -142,15 +146,37 @@ class Database:
             return False
 
     def create_invoice_items(self, invoice_id: str, items: List[Dict]) -> bool:
+        """Сохранение позиций счета с правильным маппингом полей"""
         try:
-            for idx, item in enumerate(items, 1):
-                self.client.table("invoice_items").insert({
+            for item in items:
+                # Маппинг полей формы -> БД
+                item_data = {
                     "invoice_id": invoice_id,
-                    "position_number": idx,
-                    **item
-                }).execute()
+                    "position_number": item.get('position_number'),
+                    "description": item.get('description'),
+                    "quantity": item.get('quantity'),
+                    "unit": item.get('unit'),
+                    "unit_price": item.get('unit_price'),
+                    "total_price": item.get('total_price'),
+                    "vat_rate": item.get('vat_rate'),  # None если global VAT
+                    # Дополнительные поля если есть:
+                    "article_number": item.get('article_number'),
+                    "ean_code": item.get('ean_code'),
+                    "discount_percentage": item.get('discount_percentage'),
+                    "discount_amount": item.get('discount_amount')
+                }
+
+                # Убираем None значения
+                item_data = {
+                    k: v
+                    for k, v in item_data.items() if v is not None
+                }
+
+                self.client.table("invoice_items").insert(item_data).execute()
+
             return True
-        except:
+        except Exception as e:
+            logger.error(f"Error create_invoice_items: {e}")
             return False
 
     def get_invoice_items(self, invoice_id: str) -> List[Dict]:

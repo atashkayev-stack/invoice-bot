@@ -1,4 +1,4 @@
-"""xml_generator_v2.py - ZUGFeRD 2.4 Extended с B2B полями"""
+"""xml_generator_v2.py - ZUGFeRD 2.4 COMPLIANT (Dec 2025)"""
 import io
 from datetime import datetime
 from lxml import etree
@@ -16,7 +16,7 @@ class XMLGeneratorV2:
     def generate_zugferd_xml(self, data: dict, profile: dict) -> str:
         root = etree.Element(f"{{{self.ns['rsm']}}}CrossIndustryInvoice", nsmap=self.ns)
         
-        # Context
+        # Context - ИСПРАВЛЕНО: актуальный профиль для ZUGFeRD 2.4
         ctx = etree.SubElement(root, f"{{{self.ns['rsm']}}}ExchangedDocumentContext")
         guide = etree.SubElement(ctx, f"{{{self.ns['ram']}}}GuidelineSpecifiedDocumentContextParameter")
         etree.SubElement(guide, f"{{{self.ns['ram']}}}ID").text = "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:extended"
@@ -24,7 +24,7 @@ class XMLGeneratorV2:
         # Document
         doc = etree.SubElement(root, f"{{{self.ns['rsm']}}}ExchangedDocument")
         etree.SubElement(doc, f"{{{self.ns['ram']}}}ID").text = data.get('invoice_number', 'RE-0001')
-        etree.SubElement(doc, f"{{{self.ns['ram']}}}TypeCode").text = "380"
+        etree.SubElement(doc, f"{{{self.ns['ram']}}}TypeCode").text = data.get('invoice_type_code', '380')
         
         issue_dt = etree.SubElement(doc, f"{{{self.ns['ram']}}}IssueDateTime")
         etree.SubElement(issue_dt, f"{{{self.ns['udt']}}}DateTimeString", format="102").text = \
@@ -32,6 +32,9 @@ class XMLGeneratorV2:
         
         # Transaction
         tx = etree.SubElement(root, f"{{{self.ns['rsm']}}}SupplyChainTradeTransaction")
+        
+        # ИСПРАВЛЕНО: используем get_vat_info для правильных категорий
+        from handlers_v1 import get_vat_info
         
         # Line Items
         items = data.get('items', [])
@@ -56,24 +59,33 @@ class XMLGeneratorV2:
             
             settle = etree.SubElement(li, f"{{{self.ns['ram']}}}SpecifiedLineTradeSettlement")
             
-            # VAT per item
+            # VAT per item - ИСПРАВЛЕНО: используем get_vat_info
             item_vat_rate = item.get('vat_rate') if vat_per_item else global_vat
+            vat_info = get_vat_info(profile, item_vat_rate)
+            
             tax = etree.SubElement(settle, f"{{{self.ns['ram']}}}ApplicableTradeTax")
             etree.SubElement(tax, f"{{{self.ns['ram']}}}TypeCode").text = "VAT"
-            etree.SubElement(tax, f"{{{self.ns['ram']}}}CategoryCode").text = self._get_vat_category(item_vat_rate, profile)
-            etree.SubElement(tax, f"{{{self.ns['ram']}}}RateApplicablePercent").text = f"{item_vat_rate:.2f}"
+            etree.SubElement(tax, f"{{{self.ns['ram']}}}CategoryCode").text = vat_info['category']
+            etree.SubElement(tax, f"{{{self.ns['ram']}}}RateApplicablePercent").text = f"{vat_info['rate']:.2f}"
+            
+            if vat_info['reason']:
+                etree.SubElement(tax, f"{{{self.ns['ram']}}}ExemptionReason").text = vat_info['reason']
             
             monet = etree.SubElement(settle, f"{{{self.ns['ram']}}}SpecifiedTradeSettlementLineMonetarySummation")
             etree.SubElement(monet, f"{{{self.ns['ram']}}}LineTotalAmount").text = f"{item.get('total', 0):.2f}"
         
-        # Trade Agreement (Seller/Buyer)
-        agr = etree.SubElement(tx, f"{{{self.ns['ram']}}}ApplicableHeaderTradeAgreement")
+        # Trade Agreement
+        agr = etree.SubElement(tx, f"{{{self.ns['rsm']}}}ApplicableHeaderTradeAgreement")
         
         # Seller
         seller = etree.SubElement(agr, f"{{{self.ns['ram']}}}SellerTradeParty")
         etree.SubElement(seller, f"{{{self.ns['ram']}}}Name").text = profile.get('company_name', 'Firma')
+        
         if profile.get('legal_form'):
-            etree.SubElement(seller, f"{{{self.ns['ram']}}}SpecifiedLegalOrganization").text = profile.get('legal_form')
+            legal_org = etree.SubElement(seller, f"{{{self.ns['ram']}}}SpecifiedLegalOrganization")
+            etree.SubElement(legal_org, f"{{{self.ns['ram']}}}TradingBusinessName").text = profile.get('legal_form')
+            if profile.get('trade_register_number'):
+                etree.SubElement(legal_org, f"{{{self.ns['ram']}}}ID").text = profile.get('trade_register_number')
         
         seller_addr = etree.SubElement(seller, f"{{{self.ns['ram']}}}PostalTradeAddress")
         etree.SubElement(seller_addr, f"{{{self.ns['ram']}}}PostcodeCode").text = profile.get('postal_code', '')
@@ -81,19 +93,24 @@ class XMLGeneratorV2:
         etree.SubElement(seller_addr, f"{{{self.ns['ram']}}}CityName").text = profile.get('city', '')
         etree.SubElement(seller_addr, f"{{{self.ns['ram']}}}CountryID").text = profile.get('country_code', 'DE')
         
-        seller_tax = etree.SubElement(seller, f"{{{self.ns['ram']}}}SpecifiedTaxRegistration")
-        etree.SubElement(seller_tax, f"{{{self.ns['ram']}}}ID", schemeID="VA").text = profile.get('vat_id', '')
+        if profile.get('vat_id'):
+            seller_tax = etree.SubElement(seller, f"{{{self.ns['ram']}}}SpecifiedTaxRegistration")
+            etree.SubElement(seller_tax, f"{{{self.ns['ram']}}}ID", schemeID="VA").text = profile.get('vat_id')
+        
+        if profile.get('tax_id'):
+            seller_tax2 = etree.SubElement(seller, f"{{{self.ns['ram']}}}SpecifiedTaxRegistration")
+            etree.SubElement(seller_tax2, f"{{{self.ns['ram']}}}ID", schemeID="FC").text = profile.get('tax_id')
         
         # Buyer
         buyer = etree.SubElement(agr, f"{{{self.ns['ram']}}}BuyerTradeParty")
         etree.SubElement(buyer, f"{{{self.ns['ram']}}}Name").text = data.get('client_name', 'Kunde')
         
-        # B2B поля
         if data.get('client_type') == 'b2b':
             if data.get('client_legal_form'):
-                etree.SubElement(buyer, f"{{{self.ns['ram']}}}SpecifiedLegalOrganization").text = data.get('client_legal_form')
-            if data.get('buyer_reference'):
-                etree.SubElement(buyer, f"{{{self.ns['ram']}}}BuyerReference").text = data.get('buyer_reference')
+                buyer_legal = etree.SubElement(buyer, f"{{{self.ns['ram']}}}SpecifiedLegalOrganization")
+                etree.SubElement(buyer_legal, f"{{{self.ns['ram']}}}TradingBusinessName").text = data.get('client_legal_form')
+                if data.get('client_trade_register'):
+                    etree.SubElement(buyer_legal, f"{{{self.ns['ram']}}}ID").text = data.get('client_trade_register')
         
         buyer_addr = etree.SubElement(buyer, f"{{{self.ns['ram']}}}PostalTradeAddress")
         etree.SubElement(buyer_addr, f"{{{self.ns['ram']}}}PostcodeCode").text = data.get('client_postal_code', '')
@@ -105,17 +122,21 @@ class XMLGeneratorV2:
             buyer_tax = etree.SubElement(buyer, f"{{{self.ns['ram']}}}SpecifiedTaxRegistration")
             etree.SubElement(buyer_tax, f"{{{self.ns['ram']}}}ID", schemeID="VA").text = data.get('client_vat_id')
         
+        # Buyer Reference (ОБЯЗАТЕЛЬНО для B2B)
+        if data.get('buyer_reference'):
+            etree.SubElement(agr, f"{{{self.ns['ram']}}}BuyerReference").text = data.get('buyer_reference')
+        
         # Purchase Order
         if data.get('purchase_order'):
-            etree.SubElement(agr, f"{{{self.ns['ram']}}}BuyerOrderReferencedDocument") \
-                .append(etree.Element(f"{{{self.ns['ram']}}}IssuerAssignedID")).text = data.get('purchase_order')
+            buyer_order = etree.SubElement(agr, f"{{{self.ns['ram']}}}BuyerOrderReferencedDocument")
+            etree.SubElement(buyer_order, f"{{{self.ns['ram']}}}IssuerAssignedID").text = data.get('purchase_order')
         
-        # Trade Delivery
+        # Trade Delivery - КРИТИЧНО: Leistungsdatum обязателен!
         delivery = etree.SubElement(tx, f"{{{self.ns['rsm']}}}ApplicableHeaderTradeDelivery")
         deliv_event = etree.SubElement(delivery, f"{{{self.ns['ram']}}}ActualDeliverySupplyChainEvent")
         deliv_dt = etree.SubElement(deliv_event, f"{{{self.ns['ram']}}}OccurrenceDateTime")
-        etree.SubElement(deliv_dt, f"{{{self.ns['udt']}}}DateTimeString", format="102").text = \
-            (data.get('delivery_date') or data.get('invoice_date') or datetime.now().strftime('%Y%m%d')).replace('-', '')
+        delivery_date = data.get('delivery_date') or data.get('invoice_date') or datetime.now().strftime('%Y%m%d')
+        etree.SubElement(deliv_dt, f"{{{self.ns['udt']}}}DateTimeString", format="102").text = delivery_date.replace('-', '')
         
         # Trade Settlement
         settle = etree.SubElement(tx, f"{{{self.ns['rsm']}}}ApplicableHeaderTradeSettlement")
@@ -128,7 +149,6 @@ class XMLGeneratorV2:
         if data.get('payment_means') == '58':  # SEPA
             payee = etree.SubElement(payment, f"{{{self.ns['ram']}}}PayeePartyCreditorFinancialAccount")
             etree.SubElement(payee, f"{{{self.ns['ram']}}}IBANID").text = profile.get('iban', '')
-            
             if profile.get('bic'):
                 inst = etree.SubElement(payment, f"{{{self.ns['ram']}}}PayeeSpecifiedCreditorFinancialInstitution")
                 etree.SubElement(inst, f"{{{self.ns['ram']}}}BICID").text = profile.get('bic')
@@ -139,13 +159,18 @@ class XMLGeneratorV2:
             due = etree.SubElement(terms, f"{{{self.ns['ram']}}}DueDateDateTime")
             etree.SubElement(due, f"{{{self.ns['udt']}}}DateTimeString", format="102").text = data.get('due_date').replace('-', '')
         
-        # Tax Total
+        # Tax Total - ИСПРАВЛЕНО: используем get_vat_info
+        global_vat_info = get_vat_info(profile, global_vat)
+        
         tax_total = etree.SubElement(settle, f"{{{self.ns['ram']}}}ApplicableTradeTax")
         etree.SubElement(tax_total, f"{{{self.ns['ram']}}}CalculatedAmount").text = f"{data.get('total_vat', 0):.2f}"
         etree.SubElement(tax_total, f"{{{self.ns['ram']}}}TypeCode").text = "VAT"
         etree.SubElement(tax_total, f"{{{self.ns['ram']}}}BasisAmount").text = f"{data.get('total_net', 0):.2f}"
-        etree.SubElement(tax_total, f"{{{self.ns['ram']}}}CategoryCode").text = self._get_vat_category(global_vat, profile)
-        etree.SubElement(tax_total, f"{{{self.ns['ram']}}}RateApplicablePercent").text = f"{global_vat:.2f}"
+        etree.SubElement(tax_total, f"{{{self.ns['ram']}}}CategoryCode").text = global_vat_info['category']
+        etree.SubElement(tax_total, f"{{{self.ns['ram']}}}RateApplicablePercent").text = f"{global_vat_info['rate']:.2f}"
+        
+        if global_vat_info['reason']:
+            etree.SubElement(tax_total, f"{{{self.ns['ram']}}}ExemptionReason").text = global_vat_info['reason']
         
         # Monetary Summation
         monet = etree.SubElement(settle, f"{{{self.ns['ram']}}}SpecifiedTradeSettlementHeaderMonetarySummation")
@@ -160,24 +185,56 @@ class XMLGeneratorV2:
     def _get_unit_code(self, unit: str) -> str:
         units = {'Stk': 'C62', 'Std': 'HUR', 'Tag': 'DAY', 'kg': 'KGM', 'm': 'MTR', 'm²': 'MTK', 'm³': 'MTQ', 'km': 'KTM', 'l': 'LTR'}
         return units.get(unit, 'C62')
-    
-    def _get_vat_category(self, vat_rate: float, profile: dict) -> str:
-        if profile.get('is_kleinunternehmer'):
-            return 'E'
-        elif vat_rate == 0:
-            return 'Z'
-        else:
-            return 'S'
 
 
 def embed_xml_in_pdf(pdf_bytes: bytes, xml_string: str) -> bytes:
+    """ИСПРАВЛЕНО: создаём PDF/A-3 compliant контейнер"""
     try:
         import pikepdf
+        from pikepdf import Dictionary, Name, Array
+        
         pdf = pikepdf.Pdf.open(io.BytesIO(pdf_bytes))
-        pdf.attachments['factur-x.xml'] = xml_string.encode('utf-8')
+        
+        # PDF/A-3 metadata (КРИТИЧНО для ZUGFeRD!)
+        with pdf.open_metadata() as meta:
+            meta['pdfaid:part'] = '3'
+            meta['pdfaid:conformance'] = 'B'
+            meta['dc:format'] = 'application/pdf'
+            meta['pdfaExtension:schemas'] = 'Factur-X PDFA Extension Schema'
+        
+        # Создаём embedded file stream
+        xml_stream = pikepdf.Stream(pdf, xml_string.encode('utf-8'))
+        xml_stream.Subtype = Name('/text/xml')
+        
+        # EmbeddedFile
+        embedded = Dictionary(
+            F=xml_stream,
+            UF=xml_stream,
+            Type=Name('/Filespec'),
+            AFRelationship=Name('/Data'),
+            Desc='Factur-X XML'
+        )
+        
+        # Добавляем в Names
+        if '/Names' not in pdf.Root:
+            pdf.Root.Names = Dictionary()
+        if '/EmbeddedFiles' not in pdf.Root.Names:
+            pdf.Root.Names.EmbeddedFiles = Dictionary()
+        
+        pdf.Root.Names.EmbeddedFiles.Names = Array([
+            'factur-x.xml',
+            embedded
+        ])
+        
+        # Associated Files (для PDF/A-3)
+        if '/AF' not in pdf.Root:
+            pdf.Root.AF = Array()
+        pdf.Root.AF.append(embedded)
+        
         output = io.BytesIO()
-        pdf.save(output)
+        pdf.save(output, min_version='1.7')
         output.seek(0)
         return output.getvalue()
-    except:
+    except Exception as e:
+        print(f"⚠️ PDF/A-3 embedding failed: {e}")
         return pdf_bytes

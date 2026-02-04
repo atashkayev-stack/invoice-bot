@@ -6,10 +6,12 @@ import io
 import os
 from jinja2 import Template
 from datetime import datetime
-from src.pdf_from_template import PDFFromTemplate
-
+from src.pdf_from_template import PDFFromTemplateV2
+from src.xml_generator_v2 import XMLGeneratorV2, embed_xml_in_pdf
+from src.pdf_generator_v2 import PDFGeneratorV3
+import traceback
 # Инициализация
-pdf_gen = PDFFromTemplate(templates_dir="templates/default")
+pdf_gen = PDFFromTemplateV2(templates_dir="templates/default")
 
 # Импорты модулей
 try:
@@ -68,6 +70,12 @@ def get_vat_info(profile, vat_rate=None):
 
 async def web_app_data_handler(update: Update,
                                context: ContextTypes.DEFAULT_TYPE):
+
+    logger.info(f"Received WebApp data update: {update}")
+
+    if not update.effective_message:
+        logger.error("effective_message is None in web_app_data_handler")
+        return
     """Обработка данных из WebApp"""
     raw_data = update.effective_message.web_app_data.data
     data = json.loads(raw_data)
@@ -152,8 +160,6 @@ async def web_app_data_handler(update: Update,
 
 # ========== СОЗДАНИЕ СЧЕТА ==========
     if data.get('type') == 'invoice_creation':
-        from src.xml_generator_v2 import XMLGeneratorV2, embed_xml_in_pdf
-        from src.pdf_generator_v2 import PDFGeneratorV2
 
         user_id = update.effective_user.id
         profile = db.get_profile(user_id) or {}
@@ -176,6 +182,7 @@ async def web_app_data_handler(update: Update,
 
         # Создаём счет
         invoice_data = {
+            # ОСНОВНЫЕ
             'user_id':
             user_id,
             'client_id':
@@ -188,6 +195,8 @@ async def web_app_data_handler(update: Update,
             data.get('due_date'),
             'delivery_date':
             data.get('delivery_date') or data.get('invoice_date'),
+
+            # КЛИЕНТ
             'client_name':
             data.get('client_name'),
             'client_address':
@@ -195,33 +204,89 @@ async def web_app_data_handler(update: Update,
             .strip(', '),
             'customer_id':
             data.get('customer_id'),
-            'purchase_order_number':
-            data.get('purchase_order'),
             'buyer_reference':
             data.get('buyer_reference'),
-            'currency':
+
+            # ЗАКАЗ/ПРОЕКТ
+            'purchase_order_number':
+            data.get('purchase_order'),
+            'contract_number':
+            data.get('contract_number'),  # если есть в форме
+            'project_number':
+            data.get('project_number'),  # если есть в форме
+
+            # ОПЛАТА
+            'currency_code':
             data.get('currency', 'EUR'),
-            'payment_days':
-            data.get('payment_days', 14),
             'payment_means_code':
             data.get('payment_means', '58'),
+            'payment_reference':
+            data.get('payment_reference'),  # Verwendungszweck
+
+            # НДС
             'vat_per_item':
             data.get('vat_per_item', False),
-            'global_vat_rate':
+            'vat_rate':
             data.get('global_vat_rate'),
+            'tax_exemption_reason':
+            data.get('tax_exemption_reason')
+            if data.get('global_vat_rate') == 0 else None,
+            'reverse_charge':
+            data.get('reverse_charge', False),  # если EU B2B
+
+            # СУММЫ
             'amount':
             data.get('total_net'),
-            'vat_amount':
-            data.get('total_vat'),
             'total':
             data.get('total_gross'),
+            'discount_amount':
+            data.get('discount_amount', 0),
+            'discount_percentage':
+            data.get('discount_percentage', 0),
+            'shipping_cost':
+            data.get('shipping_cost', 0),
+            'shipping_vat_rate':
+            data.get('shipping_vat_rate'),
+            'rounding_amount':
+            data.get('rounding_amount', 0),
+
+            # СКИДКИ
+            'skonto_percentage':
+            data.get('skonto_percentage'),  # если есть
+            'skonto_days':
+            data.get('skonto_days'),  # если есть
+
+            # ФОРМАТ
             'format_type':
             data.get('format_type', 'ZUGFeRD'),
+            'zugferd_profile':
+            'EN16931',  # или BASIC/EXTENDED
+            'invoice_type_code':
+            '380',  # Commercial invoice
+
+            # ДОСТАВКА (если нужно)
+            'ship_to_name':
+            data.get('ship_to_name'),
+            'ship_to_street':
+            data.get('ship_to_street'),
+            'ship_to_postal_code':
+            data.get('ship_to_postal_code'),
+            'ship_to_city':
+            data.get('ship_to_city'),
+            'ship_to_country_code':
+            data.get('ship_to_country_code'),
+
+            # ПРОЧЕЕ
             'notes':
             data.get('notes'),
             'status':
-            'draft'
+            'draft',
+            'payment_status':
+            'unpaid'
         }
+
+        # Убери None значения
+        invoice_data = {k: v for k, v in invoice_data.items() if v is not None}
 
         invoice_id = db.create_invoice(invoice_data)
 
@@ -374,3 +439,11 @@ async def view_offer_details(update, context):
 
 async def convert_offer_to_invoice(update, context):
     pass
+
+
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    # Это выведет полную трассировку ошибки в консоль
+    tb_list = traceback.format_exception(None, context.error,
+                                         context.error.__traceback__)
+    tb_string = "".join(tb_list)
+    logger.error(f"Full traceback:\n{tb_string}")
