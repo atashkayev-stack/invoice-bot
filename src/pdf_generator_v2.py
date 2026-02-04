@@ -194,21 +194,28 @@ class PDFGeneratorV3:
             c.drawRightString(w - 20 * mm, y, f"{shipping:.2f} €")
 
         # MwSt
-        vat_rate = data.get('global_vat_rate', 19)
+        y -= 5 * mm
+        vat_per_item = data.get('vat_per_item', False)
         total_vat = data.get('total_vat', 0)
+        vat_rate = data.get('vat_rate')
 
-        if vat_rate > 0 or total_vat > 0:
-            y -= 5 * mm
-            if vat_per_item:
-                c.drawString(125 * mm, y, "MwSt (gemischt):")
-            else:
-                c.drawString(125 * mm, y, f"MwSt ({vat_rate:.0f}%):")
-            c.drawRightString(w - 20 * mm, y, f"{total_vat:.2f} €")
-        else:
-            y -= 5 * mm
+        # Kleinunternehmer проверка
+        is_kleinunternehmer = profile.get('is_kleinunternehmer', False)
+
+        if is_kleinunternehmer or (vat_rate is not None and vat_rate == 0):
             c.setFont("Helvetica-Oblique", 8)
             c.drawString(105 * mm, y,
                          "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.")
+        elif total_vat > 0:
+            if vat_per_item:
+                c.setFont("Helvetica", 9)
+                c.drawString(125 * mm, y, "MwSt (gemischt):")
+            else:
+                c.setFont("Helvetica", 9)
+                display_vat = vat_rate if vat_rate is not None else profile.get(
+                    'default_vat_rate', 19)
+                c.drawString(125 * mm, y, f"MwSt ({display_vat:.0f}%):")
+            c.drawRightString(w - 20 * mm, y, f"{total_vat:.2f} €")
 
         # Gesamtbetrag
         y -= 7 * mm

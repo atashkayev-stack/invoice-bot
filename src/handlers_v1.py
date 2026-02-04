@@ -227,12 +227,13 @@ async def web_app_data_handler(update: Update,
             'vat_per_item':
             data.get('vat_per_item', False),
             'vat_rate':
-            data.get('global_vat_rate'),
+            data.get('global_vat_rate')
+            if not data.get('vat_per_item') else None,  # ← ИЗМЕНЕНО
             'tax_exemption_reason':
             data.get('tax_exemption_reason')
             if data.get('global_vat_rate') == 0 else None,
             'reverse_charge':
-            data.get('reverse_charge', False),  # если EU B2B
+            data.get('reverse_charge', False),
 
             # СУММЫ
             'amount':
@@ -295,7 +296,7 @@ async def web_app_data_handler(update: Update,
             db.increment_invoice_number(user_id)
 
             # Генерируем PDF
-            pdf_gen = PDFGeneratorV2()
+            pdf_gen = PDFGeneratorV3()
             xml_gen = XMLGeneratorV2()
 
             pdf_buf = pdf_gen.generate_invoice_pdf(data,
