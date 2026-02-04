@@ -164,6 +164,8 @@ async def web_app_data_handler(update: Update,
         user_id = update.effective_user.id
         profile = db.get_profile(user_id) or {}
 
+        vat_mode = data.get('vat_mode', 'standard')
+
         # Создаём/обновляем клиента
         client_data = {
             'company_name': data.get('client_name'),
@@ -224,16 +226,18 @@ async def web_app_data_handler(update: Update,
             data.get('payment_reference'),  # Verwendungszweck
 
             # НДС
+            'vat_mode':
+            data.get('vat_mode', 'standard'),
             'vat_per_item':
             data.get('vat_per_item', False),
             'vat_rate':
             data.get('global_vat_rate')
-            if not data.get('vat_per_item') else None,  # ← ИЗМЕНЕНО
+            if not data.get('vat_per_item') else None,
+            'total_vat':
+            data.get('total_vat', 0),  # Важно: берем уже готовый расчет из JS
             'tax_exemption_reason':
-            data.get('tax_exemption_reason')
-            if data.get('global_vat_rate') == 0 else None,
-            'reverse_charge':
-            data.get('reverse_charge', False),
+            data.get('tax_exemption_reason'),
+            'reverse_charge': (data.get('vat_mode') == 'reverse'),
 
             # СУММЫ
             'amount':
@@ -250,6 +254,10 @@ async def web_app_data_handler(update: Update,
             data.get('shipping_vat_rate'),
             'rounding_amount':
             data.get('rounding_amount', 0),
+            'total_net':
+            data.get('total_net'),  # Для XML
+            'total_gross':
+            data.get('total_gross'),
 
             # СКИДКИ
             'skonto_percentage':
@@ -303,6 +311,8 @@ async def web_app_data_handler(update: Update,
                                                    profile,
                                                    with_xml=False)
             pdf_bytes = pdf_buf.getvalue()
+
+            data['vat_mode'] = vat_mode  # Гарантируем наличие ключа в словаре
 
             if data.get('format_type') == 'ZUGFeRD':
                 xml_string = xml_gen.generate_zugferd_xml(data, profile)
