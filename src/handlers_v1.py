@@ -10,6 +10,7 @@ from src.pdf_from_template import PDFFromTemplateV2
 from src.xml_generator_v2 import XMLGeneratorV2, embed_xml_in_pdf
 from src.pdf_generator_v2 import PDFGeneratorV3
 import traceback
+
 # Инициализация
 pdf_gen = PDFFromTemplateV2(templates_dir="templates/default")
 
@@ -44,52 +45,58 @@ def get_main_keyboard():
                                resize_keyboard=True)
 
 
-# В начало файла handlers_v1.py, после импортов
-
-
-def get_vat_info(profile, vat_rate=None):
+def get_vat_info(profile, vat_rate=None, vat_mode='standard'):
     """Маппинг НДС для всех форматов (XML, PDF, HTML)"""
     is_kleinunternehmer = profile.get('is_kleinunternehmer', False)
-    rate = vat_rate if vat_rate is not None else profile.get(
-        'default_vat_rate', 19)
 
     if is_kleinunternehmer:
+        vat_mode = 'klein'
+
+    rate = float(vat_rate) if vat_rate is not None else float(
+        profile.get('default_vat_rate', 19))
+
+    if vat_mode == 'klein':
         return {
             'rate': 0.00,
             'category': 'E',
-            'reason': 'Kleinunternehmer gemäß § 19 UStG'
+            'reason': 'Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.'
         }
-    elif rate == 0:
-        return {'rate': 0.00, 'category': 'Z', 'reason': 'Steuerbefreit'}
+    elif vat_mode == 'reverse':
+        return {
+            'rate':
+            0.00,
+            'category':
+            'AE',
+            'reason':
+            'Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge).'
+        }
+    elif vat_mode == 'export':
+        return {
+            'rate': 0.00,
+            'category': 'G',
+            'reason': 'Steuerfreie Ausfuhrlieferung.'
+        }
     else:
-        return {'rate': float(rate), 'category': 'S', 'reason': None}
-
-
-# --- ОБРАБОТКА ДАННЫХ ИЗ WEB APP ---
+        category = 'S' if rate > 0 else 'Z'
+        return {'rate': rate, 'category': category, 'reason': None}
 
 
 async def web_app_data_handler(update: Update,
                                context: ContextTypes.DEFAULT_TYPE):
-
     logger.info(f"Received WebApp data update: {update}")
 
     if not update.effective_message:
         logger.error("effective_message is None in web_app_data_handler")
         return
-    """Обработка данных из WebApp"""
+
     raw_data = update.effective_message.web_app_data.data
     data = json.loads(raw_data)
     user_id = update.effective_user.id
 
     # ========== СОХРАНЕНИЕ ПРОФИЛЯ ==========
     if data.get('type') == 'profile_update':
-        user_id = update.effective_user.id
-
-        # Собираем данные без старых ключей zip и address
         profile_data = {
             "id": user_id,
-
-            # Базовые данные
             "company_name": data.get("company_name"),
             "street": data.get("street"),
             "postal_code": data.get("postal_code"),
@@ -99,16 +106,12 @@ async def web_app_data_handler(update: Update,
             "phone": data.get("phone"),
             "fax": data.get("fax"),
             "website": data.get("website"),
-
-            # Правовая информация
             "legal_form": data.get("legal_form"),
             "trade_register_number": data.get("trade_register_number"),
             "trade_register_court": data.get("trade_register_court"),
             "managing_director": data.get("managing_director"),
             "contact_person": data.get("contact_person"),
             "contact_department": data.get("contact_department"),
-
-            # Налоги
             "tax_id": data.get("tax_id"),
             "vat_id": data.get("vat_id"),
             "tax_office": data.get("tax_office"),
@@ -116,36 +119,24 @@ async def web_app_data_handler(update: Update,
             "default_vat_rate": data.get("default_vat_rate", 19),
             "global_location_number": data.get("global_location_number"),
             "duns_number": data.get("duns_number"),
-
-            # Банк
             "bank_name": data.get("bank_name"),
             "iban": data.get("iban"),
             "bic": data.get("bic"),
             "sepa_creditor_id": data.get("sepa_creditor_id"),
             "sepa_mandate_reference": data.get("sepa_mandate_reference"),
             "payment_terms_days": data.get("payment_terms_days", 14),
-
-            # Нумерация счетов
             "invoice_number_prefix": data.get("invoice_number_prefix", "RE-"),
             "invoice_number_format": data.get("invoice_number_format", 4),
             "next_invoice_number": data.get("next_invoice_number", 1),
-
-            # Нумерация офферов
             "offer_number_prefix": data.get("offer_number_prefix", "ANG-"),
             "offer_number_format": data.get("offer_number_format", 4),
             "next_offer_number": data.get("next_offer_number", 1),
             "offer_validity_days": data.get("offer_validity_days", 14),
-
-            # Нумерация клиентов
             "customer_id_prefix": data.get("customer_id_prefix", "KUND-"),
             "next_customer_number": data.get("next_customer_number", 1),
-
-            # Настройки документов
             "default_currency": data.get("default_currency", "EUR"),
             "default_language": data.get("default_language", "de"),
             "invoice_note_default": data.get("invoice_note_default"),
-
-            #gdpr_consent
             "gdpr_consent": data.get("gdpr_consent", False),
             "gdpr_consent_date": data.get("gdpr_consent_date"),
         }
@@ -155,15 +146,12 @@ async def web_app_data_handler(update: Update,
                                             reply_markup=get_main_keyboard())
         else:
             await update.message.reply_text("❌ Fehler beim Speichern!")
+        return
 
-        return  # Твое оригинальное окончание — оно остается!
-
-# ========== СОЗДАНИЕ СЧЕТА ==========
+    # ========== СОЗДАНИЕ СЧЕТА ==========
     if data.get('type') == 'invoice_creation':
-
         user_id = update.effective_user.id
         profile = db.get_profile(user_id) or {}
-
         vat_mode = data.get('vat_mode', 'standard')
 
         # Создаём/обновляем клиента
@@ -175,16 +163,12 @@ async def web_app_data_handler(update: Update,
             'country_code': data.get('client_country', 'DE'),
             'email': data.get('client_email'),
             'customer_id': data.get('customer_id'),
-            'vat_id': data.get('client_vat_id'),
-            'legal_form': data.get('client_legal_form'),
-            'trade_register_number': data.get('client_trade_register'),
-            'buyer_reference': data.get('buyer_reference')
+            'vat_id': data.get('client_vat_id')
         }
         client_id = db.create_or_update_client(user_id, client_data)
 
-        # Создаём счет
+        # Формируем словарь СТРОГО под колонки твоей БД
         invoice_data = {
-            # ОСНОВНЫЕ
             'user_id':
             user_id,
             'client_id':
@@ -197,104 +181,34 @@ async def web_app_data_handler(update: Update,
             data.get('due_date'),
             'delivery_date':
             data.get('delivery_date') or data.get('invoice_date'),
-
-            # КЛИЕНТ
             'client_name':
             data.get('client_name'),
             'client_address':
             f"{data.get('client_street', '')}, {data.get('client_postal_code', '')} {data.get('client_city', '')}"
             .strip(', '),
-            'customer_id':
-            data.get('customer_id'),
-            'buyer_reference':
-            data.get('buyer_reference'),
-
-            # ЗАКАЗ/ПРОЕКТ
-            'purchase_order_number':
-            data.get('purchase_order'),
-            'contract_number':
-            data.get('contract_number'),  # если есть в форме
-            'project_number':
-            data.get('project_number'),  # если есть в форме
-
-            # ОПЛАТА
             'currency_code':
-            data.get('currency', 'EUR'),
-            'payment_means_code':
-            data.get('payment_means', '58'),
-            'payment_reference':
-            data.get('payment_reference'),  # Verwendungszweck
-
-            # НДС
-            'vat_mode':
-            data.get('vat_mode', 'standard'),
-            'vat_per_item':
-            data.get('vat_per_item', False),
-            'vat_rate':
-            data.get('global_vat_rate')
-            if not data.get('vat_per_item') else None,
-            'total_vat':
-            data.get('total_vat', 0),  # Важно: берем уже готовый расчет из JS
-            'tax_exemption_reason':
-            data.get('tax_exemption_reason'),
-            'reverse_charge': (data.get('vat_mode') == 'reverse'),
-
-            # СУММЫ
+            'EUR',
             'amount':
-            data.get('total_net'),
+            float(data.get('total_net', 0)),
+            'tax_amount':
+            float(data.get('total_vat', 0)),
             'total':
-            data.get('total_gross'),
+            float(data.get('total_gross', 0)),
             'discount_amount':
-            data.get('discount_amount', 0),
-            'discount_percentage':
-            data.get('discount_percentage', 0),
+            float(data.get('discount_amount', 0)),
             'shipping_cost':
-            data.get('shipping_cost', 0),
-            'shipping_vat_rate':
-            data.get('shipping_vat_rate'),
-            'rounding_amount':
-            data.get('rounding_amount', 0),
-            'total_net':
-            data.get('total_net'),  # Для XML
-            'total_gross':
-            data.get('total_gross'),
-
-            # СКИДКИ
-            'skonto_percentage':
-            data.get('skonto_percentage'),  # если есть
-            'skonto_days':
-            data.get('skonto_days'),  # если есть
-
-            # ФОРМАТ
-            'format_type':
-            data.get('format_type', 'ZUGFeRD'),
-            'zugferd_profile':
-            'EN16931',  # или BASIC/EXTENDED
-            'invoice_type_code':
-            '380',  # Commercial invoice
-
-            # ДОСТАВКА (если нужно)
-            'ship_to_name':
-            data.get('ship_to_name'),
-            'ship_to_street':
-            data.get('ship_to_street'),
-            'ship_to_postal_code':
-            data.get('ship_to_postal_code'),
-            'ship_to_city':
-            data.get('ship_to_city'),
-            'ship_to_country_code':
-            data.get('ship_to_country_code'),
-
-            # ПРОЧЕЕ
-            'notes':
-            data.get('notes'),
+            float(data.get('shipping_cost', 0)),
+            'vat_mode':
+            vat_mode,
             'status':
             'draft',
             'payment_status':
-            'unpaid'
+            'unpaid',
+            'notes':
+            data.get('notes')
         }
 
-        # Убери None значения
+        # Очистка от None
         invoice_data = {k: v for k, v in invoice_data.items() if v is not None}
 
         invoice_id = db.create_invoice(invoice_data)
@@ -303,43 +217,35 @@ async def web_app_data_handler(update: Update,
             db.create_invoice_items(invoice_id, data.get('items', []))
             db.increment_invoice_number(user_id)
 
-            # Генерируем PDF
-            pdf_gen = PDFGeneratorV3()
+            pdf_gen_v3 = PDFGeneratorV3()
             xml_gen = XMLGeneratorV2()
 
-            pdf_buf = pdf_gen.generate_invoice_pdf(data,
-                                                   profile,
-                                                   with_xml=False)
+            pdf_buf = pdf_gen_v3.generate_invoice_pdf(data,
+                                                      profile,
+                                                      with_xml=False)
             pdf_bytes = pdf_buf.getvalue()
-
-            data['vat_mode'] = vat_mode  # Гарантируем наличие ключа в словаре
 
             if data.get('format_type') == 'ZUGFeRD':
                 xml_string = xml_gen.generate_zugferd_xml(data, profile)
                 pdf_bytes = embed_xml_in_pdf(pdf_bytes, xml_string)
-                filename = f"Rechnung_{data.get('invoice_number')}_{datetime.now().strftime('%Y%m%d')}.pdf"
+                filename = f"Rechnung_{data.get('invoice_number')}.pdf"
                 await update.message.reply_document(
                     document=io.BytesIO(pdf_bytes),
                     filename=filename,
                     caption="✅ Rechnung (ZUGFeRD)")
-            elif data.get('format_type') == 'XRechnung':
-                xml_string = xml_gen.generate_zugferd_xml(data, profile)
-                filename = f"Rechnung_{data.get('invoice_number')}_{datetime.now().strftime('%Y%m%d')}.xml"
+            else:
+                filename = f"Rechnung_{data.get('invoice_number')}.pdf"
                 await update.message.reply_document(
-                    document=io.BytesIO(xml_string.encode('utf-8')),
+                    document=io.BytesIO(pdf_bytes),
                     filename=filename,
-                    caption="✅ XRechnung (XML)")
+                    caption="✅ Rechnung (PDF)")
 
             await update.message.reply_text("✅ Rechnung gespeichert!",
                                             reply_markup=get_main_keyboard())
         else:
-            await update.message.reply_text("❌ Fehler!",
+            await update.message.reply_text("❌ Fehler при сохранении в базу!",
                                             reply_markup=get_main_keyboard())
-
         return
-
-
-# --- ОСТАЛЬНЫЕ ФУНКЦИИ (Обязательные для main_v1.py) ---
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -350,52 +256,20 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     reply_markup=get_main_keyboard())
 
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Nutzen Sie die Buttons.")
-
-
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Открывает форму настроек сразу"""
     user_id = update.effective_user.id
     profile = db.get_profile(user_id) or {}
-
-    # Формируем URL с данными профиля
     data_json = json.dumps(profile, default=str)
-
-    logger.error(f"data_json: {data_json}")
-
     encoded = base64.urlsafe_b64encode(data_json.encode()).decode().strip("=")
     url = f"{SETTINGS_FORM_URL}&data={urllib.parse.quote(encoded)}"
 
     keyboard = ReplyKeyboardMarkup([[
-        KeyboardButton("📝 Ihre Kontaktdaten eingeben / prüfen",
-                       web_app=WebAppInfo(url=url))
+        KeyboardButton("📝 Kontaktdaten prüfen", web_app=WebAppInfo(url=url))
     ], [KeyboardButton("📄 Aus Dokument laden")], [KeyboardButton("🔙 Zurück")]],
                                    resize_keyboard=True)
 
     await update.message.reply_text("⚙️ Einstellungen:", reply_markup=keyboard)
     return SETTINGS_MENU
-
-
-async def ask_for_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Bitte Foto senden.")
-    return WAITING_FOR_DOC
-
-
-async def handle_profile_document(update: Update,
-                                  context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ Dokument erhalten (Dummy)")
-    return SETTINGS_MENU
-
-
-async def settings_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    return await settings_command(update, context)
-
-
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Abgebrochen.",
-                                    reply_markup=get_main_keyboard())
-    return ConversationHandler.END
 
 
 async def rechnung_erstellen_start(update: Update,
@@ -412,26 +286,10 @@ async def rechnung_erstellen_start(update: Update,
             resize_keyboard=True))
 
 
-async def angebot_erstellen_start(update: Update,
-                                  context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    profile = db.get_profile(user_id) or {}
-    encoded = base64.urlsafe_b64encode(
-        json.dumps(profile).encode()).decode().strip("=")
-    url = f"{CREATE_OFFER_FORM_URL}?data={encoded}"
-    await update.message.reply_text(
-        "Öffnen Sie das Formular:",
-        reply_markup=ReplyKeyboardMarkup(
-            [[KeyboardButton("📋 Angebot", web_app=WebAppInfo(url=url))]],
-            resize_keyboard=True))
-
-
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     t = update.message.text
     if t == "📝 Rechnung erstellen":
         await rechnung_erstellen_start(update, context)
-    elif t == "📋 Angebot erstellen":
-        await angebot_erstellen_start(update, context)
     elif t == "⚙️ Einstellungen":
         await settings_command(update, context)
     elif t == "🔙 Zurück":
@@ -440,21 +298,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    logger.error(f"Error: {context.error}")
-
-
-# Заглушки для Callback-ов (если они есть в main_v1.py)
-async def view_offer_details(update, context):
-    pass
-
-
-async def convert_offer_to_invoice(update, context):
-    pass
-
-
-async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    # Это выведет полную трассировку ошибки в консоль
     tb_list = traceback.format_exception(None, context.error,
                                          context.error.__traceback__)
-    tb_string = "".join(tb_list)
-    logger.error(f"Full traceback:\n{tb_string}")
+    logger.error(f"Full traceback:\n{''.join(tb_list)}")

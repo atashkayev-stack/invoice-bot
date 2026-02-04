@@ -57,6 +57,7 @@ class XMLGeneratorV2:
         # Налоговые параметры
         vat_mode = data.get('vat_mode', 'standard')
         global_vat = float(data.get('global_vat_rate', 19))
+
         items = data.get('items', [])
 
         # --- LINE ITEMS ---
@@ -156,43 +157,48 @@ class XMLGeneratorV2:
             h_settle, f"{{{self.ns['ram']}}}InvoiceCurrencyCode").text = "EUR"
 
         # ИТОГОВЫЙ НДС
-        global_effective_rate = 0 if vat_mode != 'standard' else global_vat
-        g_vat_info = get_vat_info(profile, global_effective_rate)
+        # ИТОГОВЫЙ НДС
+        effective_global_rate = 0 if vat_mode != 'standard' else global_vat
+        g_vat_info = get_vat_info(profile,
+                                  effective_global_rate,
+                                  vat_mode=data.get('vat_mode', 'standard'))
 
+        # Секция Tax Total (Используем tax_amount и amount вместо total_vat)
         trade_tax = etree.SubElement(
             h_settle, f"{{{self.ns['ram']}}}ApplicableTradeTax")
         etree.SubElement(trade_tax, f"{{{self.ns['ram']}}}CalculatedAmount"
-                         ).text = f"{float(data.get('total_vat', 0)):.2f}"
+                         ).text = f"{float(data.get('tax_amount', 0)):.2f}"
         etree.SubElement(trade_tax,
                          f"{{{self.ns['ram']}}}TypeCode").text = "VAT"
         etree.SubElement(trade_tax, f"{{{self.ns['ram']}}}BasisAmount"
-                         ).text = f"{float(data.get('total_net', 0)):.2f}"
+                         ).text = f"{float(data.get('amount', 0)):.2f}"
         etree.SubElement(
             trade_tax,
             f"{{{self.ns['ram']}}}CategoryCode").text = g_vat_info['category']
         etree.SubElement(trade_tax,
                          f"{{{self.ns['ram']}}}RateApplicablePercent"
                          ).text = f"{g_vat_info['rate']:.2f}"
+
         if g_vat_info['reason']:
             etree.SubElement(trade_tax, f"{{{self.ns['ram']}}}ExemptionReason"
                              ).text = g_vat_info['reason']
 
-        # Monetary Summation
+        # Monetary Summation (Используем amount, tax_amount и total)
         total_sum = etree.SubElement(
             h_settle,
             f"{{{self.ns['ram']}}}SpecifiedTradeSettlementHeaderMonetarySummation"
         )
         etree.SubElement(total_sum, f"{{{self.ns['ram']}}}LineTotalAmount"
-                         ).text = f"{float(data.get('total_net', 0)):.2f}"
+                         ).text = f"{float(data.get('amount', 0)):.2f}"
         etree.SubElement(total_sum, f"{{{self.ns['ram']}}}TaxBasisTotalAmount"
-                         ).text = f"{float(data.get('total_net', 0)):.2f}"
+                         ).text = f"{float(data.get('amount', 0)):.2f}"
         etree.SubElement(
             total_sum, f"{{{self.ns['ram']}}}TaxTotalAmount",
-            currencyID="EUR").text = f"{float(data.get('total_vat', 0)):.2f}"
+            currencyID="EUR").text = f"{float(data.get('tax_amount', 0)):.2f}"
         etree.SubElement(total_sum, f"{{{self.ns['ram']}}}GrandTotalAmount"
-                         ).text = f"{float(data.get('total_gross', 0)):.2f}"
+                         ).text = f"{float(data.get('total', 0)):.2f}"
         etree.SubElement(total_sum, f"{{{self.ns['ram']}}}DuePayableAmount"
-                         ).text = f"{float(data.get('total_gross', 0)):.2f}"
+                         ).text = f"{float(data.get('total', 0)):.2f}"
 
         return etree.tostring(root,
                               pretty_print=True,

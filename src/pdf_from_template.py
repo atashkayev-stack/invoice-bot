@@ -173,12 +173,14 @@ class PDFFromTemplateV2:
             f"{shipping_cost:.2f}",
             'shipping_vat_rate':
             shipping_vat_rate,
+
+            # Totals (Берем данные из колонок БД)
             'total_net':
-            f"{total_net:.2f}",
+            f"{float(data.get('amount', 0)):.2f}",
             'total_vat':
-            f"{total_vat:.2f}",
+            f"{float(data.get('tax_amount', 0)):.2f}",
             'total_gross':
-            f"{(total_net + total_vat):.2f}",
+            f"{float(data.get('total', 0)):.2f}",
             'vat_rate':
             f"{global_vat:.0f}",
 
