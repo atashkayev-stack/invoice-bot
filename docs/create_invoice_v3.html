@@ -213,7 +213,7 @@
   <body>
     <div class="container">
       <div class="debug-panel hidden" id="debug-panel">
-        <h3>🐛 DEBUG</h3>
+        <h3>🐛 DEBUG 1</h3>
         <div id="debug-log"></div>
       </div>
 
@@ -656,15 +656,39 @@
         buyerVatId,
         isKleinunternehmer,
       }) {
+        log(
+          `detectVatMode(): clientType=${clientType}, country=${buyerCountry}, vatId=${buyerVatId || "-"}, klein=${isKleinunternehmer}`,
+          "#888",
+        );
+
         const EU_COUNTRIES = ["DE", "AT", "FR", "NL", "BE", "IT", "ES", "PL"];
 
-        if (isKleinunternehmer) return "klein";
-        if (!EU_COUNTRIES.includes(buyerCountry)) return "export";
-        if (clientType === "b2c") return "standard";
-        if (buyerCountry === "DE") return "standard";
-        if (clientType === "b2b" && buyerVatId && buyerVatId.trim() !== "")
-          return "reverse";
+        if (isKleinunternehmer) {
+          log("→ VAT MODE = KLEIN", "#ff0");
+          return "klein";
+        }
 
+        if (!EU_COUNTRIES.includes(buyerCountry)) {
+          log("→ VAT MODE = EXPORT", "#ff0");
+          return "export";
+        }
+
+        if (clientType === "b2c") {
+          log("→ VAT MODE = STANDARD (B2C)", "#0f0");
+          return "standard";
+        }
+
+        if (buyerCountry === "DE") {
+          log("→ VAT MODE = STANDARD (DE B2B)", "#0f0");
+          return "standard";
+        }
+
+        if (clientType === "b2b" && buyerVatId && buyerVatId.trim() !== "") {
+          log("→ VAT MODE = REVERSE", "#ff0");
+          return "reverse";
+        }
+
+        log("→ VAT MODE = STANDARD (fallback)", "#0f0");
         return "standard";
       }
 
@@ -772,13 +796,21 @@
       }
 
       function calcTotals() {
+        log(
+          `calcTotals(): profileLoaded=${!!loadedProfile}, klein=${loadedProfile?.is_kleinunternehmer ?? "n/a"}`,
+          "#09f",
+        );
+
         // 1. Определяем режим НДС динамически
+
         const vatMode = detectVatMode({
           clientType: clientType,
           buyerCountry: document.getElementById("client_country").value,
           buyerVatId: document.getElementById("client_vat_id")?.value || "",
           isKleinunternehmer: loadedProfile?.is_kleinunternehmer || false,
         });
+
+        log(`calcTotals(): vatMode=${vatMode}`, "#09f");
 
         const vatPerItem = document.getElementById("vat_per_item").checked;
         const globalVat = parseFloat(
@@ -796,6 +828,8 @@
 
         // Блокировка выбора НДС, если режим не Standard
         if (vatMode !== "standard") {
+          log("UI: VAT CONTROLS DISABLED", "#f66");
+
           // чекбокс
           const vatPerItemEl = document.getElementById("vat_per_item");
           vatPerItemEl.checked = false;
@@ -817,6 +851,8 @@
           shipVat.value = "0";
           shipVat.disabled = true;
         } else {
+          log("UI: VAT CONTROLS ENABLED", "#6f6");
+
           document.getElementById("vat_per_item").disabled = false;
           document.getElementById("global_vat_rate").disabled = false;
           document.getElementById("shipping_vat_rate").disabled = false;
@@ -954,6 +990,12 @@
         try {
           const profile = JSON.parse(atob(dataParam));
           loadedProfile = profile;
+
+          log(
+            `Profile parsed: klein=${profile.is_kleinunternehmer}, defaultVat=${profile.default_vat_rate}`,
+            "#0ff",
+          );
+
           document.getElementById("invoice_number").value =
             `${profile.invoice_number_prefix || "RE-"}${String(profile.next_invoice_number || 1).padStart(profile.invoice_number_format || 4, "0")}`;
           document.getElementById("invoice_date").value = new Date()
@@ -972,6 +1014,8 @@
             log("⚠️ Kleinunternehmer mode", "#ff0");
             document.getElementById("global_vat_rate").disabled = true;
           }
+
+          log("Calling calcTotals() after profile load", "#ff0");
 
           calcTotals(); // 🔥 ОБЯЗАТЕЛЬНО
 
