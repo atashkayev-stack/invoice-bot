@@ -713,15 +713,19 @@
       document
         .getElementById("vat_per_item")
         .addEventListener("change", function () {
+          if (this.disabled) return;
+
           document.getElementById("global_vat_section").style.display = this
             .checked
             ? "none"
             : "block";
+
           document
             .querySelectorAll(".item-vat")
             .forEach(
               (el) => (el.style.display = this.checked ? "block" : "none"),
             );
+
           calcTotals();
         });
 
@@ -792,11 +796,34 @@
 
         // Блокировка выбора НДС, если режим не Standard
         if (vatMode !== "standard") {
-          document.getElementById("vat_per_item").checked = false;
-          document.getElementById("vat_per_item").disabled = true;
-          document.getElementById("global_vat_rate").value = "0";
+          // чекбокс
+          const vatPerItemEl = document.getElementById("vat_per_item");
+          vatPerItemEl.checked = false;
+          vatPerItemEl.disabled = true;
+
+          // глобальный НДС
+          const globalVatEl = document.getElementById("global_vat_rate");
+          globalVatEl.value = "0";
+          globalVatEl.disabled = true;
+
+          // НДС по позициям
+          document.querySelectorAll(".item-vat-rate").forEach((sel) => {
+            sel.value = "0";
+            sel.disabled = true;
+          });
+
+          // НДС доставки
+          const shipVat = document.getElementById("shipping_vat_rate");
+          shipVat.value = "0";
+          shipVat.disabled = true;
         } else {
           document.getElementById("vat_per_item").disabled = false;
+          document.getElementById("global_vat_rate").disabled = false;
+          document.getElementById("shipping_vat_rate").disabled = false;
+
+          document.querySelectorAll(".item-vat-rate").forEach((sel) => {
+            sel.disabled = false;
+          });
         }
 
         let totalNet = 0,
@@ -945,6 +972,9 @@
             log("⚠️ Kleinunternehmer mode", "#ff0");
             document.getElementById("global_vat_rate").disabled = true;
           }
+
+          calcTotals(); // 🔥 ОБЯЗАТЕЛЬНО
+
           log("✅ Profile loaded", "#0f0");
         } catch (e) {
           log("❌ ERROR: " + e.message, "#f00");

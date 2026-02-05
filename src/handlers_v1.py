@@ -163,11 +163,14 @@ async def web_app_data_handler(update: Update,
             'country_code': data.get('client_country', 'DE'),
             'email': data.get('client_email'),
             'customer_id': data.get('customer_id'),
-            'vat_id': data.get('client_vat_id')
+            'vat_id': data.get('client_vat_id'),
+            'legal_form': data.get('client_legal_form'),
+            'trade_register_number': data.get('client_trade_register'),
+            'buyer_reference': data.get('buyer_reference')
         }
         client_id = db.create_or_update_client(user_id, client_data)
 
-        # Формируем словарь СТРОГО под колонки твоей БД
+        # Создаём счет - ПРАВКА ПОЛЕЙ ПОД ТВОЮ БД
         invoice_data = {
             'user_id':
             user_id,
@@ -187,65 +190,81 @@ async def web_app_data_handler(update: Update,
             f"{data.get('client_street', '')}, {data.get('client_postal_code', '')} {data.get('client_city', '')}"
             .strip(', '),
             'currency_code':
-            'EUR',
-            'amount':
-            float(data.get('total_net', 0)),
-            'tax_amount':
-            float(data.get('total_vat', 0)),
-            'total':
-            float(data.get('total_gross', 0)),
-            'discount_amount':
-            float(data.get('discount_amount', 0)),
-            'shipping_cost':
-            float(data.get('shipping_cost', 0)),
+            data.get('currency', 'EUR'),
+            'payment_means_code':
+            data.get('payment_means', '58'),
             'vat_mode':
             vat_mode,
+            'amount':
+            data.get('total_net'),  # Поле из твоего CSV
+            'vat_amount':
+            data.get('total_vat'),  # Поле из твоего CSV
+            'total':
+            data.get('total_gross'),  # Поле из твоего CSV
+            'discount_amount':
+            data.get('discount_amount', 0),
+            'shipping_cost':
+            data.get('shipping_cost', 0),
+            'notes':
+            data.get('notes'),
             'status':
             'draft',
             'payment_status':
-            'unpaid',
-            'notes':
-            data.get('notes')
+            'unpaid'
         }
 
-        # Очистка от None
         invoice_data = {k: v for k, v in invoice_data.items() if v is not None}
-
         invoice_id = db.create_invoice(invoice_data)
 
         if invoice_id:
-            db.create_invoice_items(invoice_id, data.get('items', []))
-            db.increment_invoice_number(user_id)
+            try:
+                db.create_invoice_items(invoice_id, data.get('items', []))
+                db.increment_invoice_number(user_id)
 
-            pdf_gen_v3 = PDFGeneratorV3()
-            xml_gen = XMLGeneratorV2()
+                logger.info("Starting PDF/XML generation...")
 
-            pdf_buf = pdf_gen_v3.generate_invoice_pdf(data,
-                                                      profile,
-                                                      with_xml=False)
-            pdf_bytes = pdf_buf.getvalue()
+                pdf_gen_v3 = PDFGeneratorV3()
+                xml_gen = XMLGeneratorV2()
 
-            if data.get('format_type') == 'ZUGFeRD':
-                xml_string = xml_gen.generate_zugferd_xml(data, profile)
-                pdf_bytes = embed_xml_in_pdf(pdf_bytes, xml_string)
+                # Пробуем генерировать PDF
+                pdf_buf = pdf_gen_v3.generate_invoice_pdf(data,
+                                                          profile,
+                                                          with_xml=False)
+                if not pdf_buf:
+                    logger.error("PDF Buffer is empty!")
+                    await update.message.reply_text(
+                        "❌ Fehler: PDF konnte nicht generiert werden.")
+                    return
+
+                pdf_bytes = pdf_buf.getvalue()
                 filename = f"Rechnung_{data.get('invoice_number')}.pdf"
+
+                if data.get('format_type') == 'ZUGFeRD':
+                    logger.info("Generating ZUGFeRD XML...")
+                    xml_string = xml_gen.generate_zugferd_xml(data, profile)
+                    pdf_bytes = embed_xml_in_pdf(pdf_bytes, xml_string)
+                    caption = "✅ Ваша Rechnung (ZUGFeRD)"
+                else:
+                    caption = "✅ Ваша Rechnung (Standard PDF)"
+
+                # Сама отправка файла в Telegram
                 await update.message.reply_document(
                     document=io.BytesIO(pdf_bytes),
                     filename=filename,
-                    caption="✅ Rechnung (ZUGFeRD)")
-            else:
-                filename = f"Rechnung_{data.get('invoice_number')}.pdf"
-                await update.message.reply_document(
-                    document=io.BytesIO(pdf_bytes),
-                    filename=filename,
-                    caption="✅ Rechnung (PDF)")
+                    caption=caption)
 
-            await update.message.reply_text("✅ Rechnung gespeichert!",
-                                            reply_markup=get_main_keyboard())
+                await update.message.reply_text(
+                    "✅ Rechnung gespeichert und versendet!",
+                    reply_markup=get_main_keyboard())
+
+            except Exception as e:
+                logger.error(f"Error during file generation/sending: {e}")
+                logger.error(traceback.format_exc())
+                await update.message.reply_text(
+                    f"❌ Fehler bei der Datei-Erstellung: {str(e)}")
         else:
-            await update.message.reply_text("❌ Fehler при сохранении в базу!",
-                                            reply_markup=get_main_keyboard())
-        return
+            await update.message.reply_text(
+                "❌ Fehler beim Speichern in der DB!")
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -256,6 +275,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     reply_markup=get_main_keyboard())
 
 
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Nutzen Sie die Buttons.")
+
+
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     profile = db.get_profile(user_id) or {}
@@ -264,12 +287,34 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = f"{SETTINGS_FORM_URL}&data={urllib.parse.quote(encoded)}"
 
     keyboard = ReplyKeyboardMarkup([[
-        KeyboardButton("📝 Kontaktdaten prüfen", web_app=WebAppInfo(url=url))
+        KeyboardButton("📝 Ihre Kontaktdaten eingeben / prüfen",
+                       web_app=WebAppInfo(url=url))
     ], [KeyboardButton("📄 Aus Dokument laden")], [KeyboardButton("🔙 Zurück")]],
                                    resize_keyboard=True)
 
     await update.message.reply_text("⚙️ Einstellungen:", reply_markup=keyboard)
     return SETTINGS_MENU
+
+
+async def ask_for_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Bitte Foto senden.")
+    return WAITING_FOR_DOC
+
+
+async def handle_profile_document(update: Update,
+                                  context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("✅ Dokument erhalten (Dummy)")
+    return SETTINGS_MENU
+
+
+async def settings_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return await settings_command(update, context)
+
+
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Abgebrochen.",
+                                    reply_markup=get_main_keyboard())
+    return ConversationHandler.END
 
 
 async def rechnung_erstellen_start(update: Update,
@@ -286,15 +331,39 @@ async def rechnung_erstellen_start(update: Update,
             resize_keyboard=True))
 
 
+async def angebot_erstellen_start(update: Update,
+                                  context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    profile = db.get_profile(user_id) or {}
+    encoded = base64.urlsafe_b64encode(
+        json.dumps(profile).encode()).decode().strip("=")
+    url = f"{CREATE_OFFER_FORM_URL}?data={encoded}"
+    await update.message.reply_text(
+        "Öffnen Sie das Formular:",
+        reply_markup=ReplyKeyboardMarkup(
+            [[KeyboardButton("📋 Angebot", web_app=WebAppInfo(url=url))]],
+            resize_keyboard=True))
+
+
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     t = update.message.text
     if t == "📝 Rechnung erstellen":
         await rechnung_erstellen_start(update, context)
+    elif t == "📋 Angebot erstellen":
+        await angebot_erstellen_start(update, context)
     elif t == "⚙️ Einstellungen":
         await settings_command(update, context)
     elif t == "🔙 Zurück":
         await update.message.reply_text("Hauptmenü",
                                         reply_markup=get_main_keyboard())
+
+
+async def view_offer_details(update, context):
+    pass
+
+
+async def convert_offer_to_invoice(update, context):
+    pass
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
