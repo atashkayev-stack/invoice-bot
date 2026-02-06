@@ -2,18 +2,50 @@ import os, logging
 from dotenv import load_dotenv
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ConversationHandler, filters
 from telegram import Update
+import sys
+import traceback
 
 load_dotenv()
 from src.config_v1 import CONVERSATION_TIMEOUT
 from src import handlers_v1
+from src.handlers_v1 import error_handler  # <-- именно тот async error_handler
 
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO)
+
+def setup_logging():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+            logging.FileHandler("bot_errors.log", encoding="utf-8"),
+        ],
+    )
+
+    # Supabase / HTTP клиент часто шумит — но при отладке Supabase полезно DEBUG
+    logging.getLogger("supabase").setLevel(logging.DEBUG)
+    logging.getLogger("httpx").setLevel(logging.INFO)
+
+
+def setup_global_excepthook():
+
+    def global_exception_hook(exc_type, exc_value, exc_traceback):
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_traceback)
+            return
+
+        logger = logging.getLogger("global")
+        tb = "".join(
+            traceback.format_exception(exc_type, exc_value, exc_traceback))
+        logger.error("UNCAUGHT EXCEPTION:\n%s", tb)
+
+    sys.excepthook = global_exception_hook
 
 
 def main():
     app = Application.builder().token(os.getenv('TELEGRAM_BOT_TOKEN')).build()
+
+    setup_logging()
+    setup_global_excepthook()
 
     # Команды
     app.add_handler(CommandHandler("start", handlers_v1.start_command))
@@ -55,6 +87,8 @@ def main():
         MessageHandler(filters.TEXT & ~filters.COMMAND,
                        handlers_v1.button_handler))
     app.add_error_handler(handlers_v1.error_handler)
+
+    app.add_error_handler(error_handler)
 
     logging.info("🤖 RechnungAgent v1 gestartet!")
     app.run_polling(allowed_updates=Update.ALL_TYPES)

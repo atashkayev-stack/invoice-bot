@@ -2,6 +2,64 @@ import os, logging
 from supabase import create_client, Client
 from typing import Optional, Dict, List
 from datetime import datetime, timedelta
+from decimal import Decimal, ROUND_HALF_UP
+from typing import Dict, List, Optional, Tuple
+import logging
+import sys
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler("bot_errors.log", encoding="utf-8")
+    ])
+
+# Отдельный логгер для supabase (очень полезно)
+logging.getLogger("supabase").setLevel(logging.DEBUG)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
+MONEY_Q = Decimal("0.01")
+
+
+def get_vat_info(profile, vat_rate, vat_mode="standard"):
+    is_klein = profile.get("is_kleinunternehmer", False)
+
+    if is_klein:
+        vat_mode = "klein"
+
+    rate = float(vat_rate or 0)
+
+    if vat_mode == "klein":
+        return {
+            "category": "E",
+            "reason": "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet."
+        }
+
+    if vat_mode == "reverse":
+        return {
+            "category": "AE",
+            "reason": "Steuerschuldnerschaft des Leistungsempfängers."
+        }
+
+    if vat_mode == "export":
+        return {"category": "G", "reason": "Steuerfreie Ausfuhrlieferung."}
+
+    # standard
+    return {"category": "S" if rate > 0 else "Z", "reason": None}
+
+
+def _d(x) -> Decimal:
+    if x is None:
+        return Decimal("0")
+    if isinstance(x, Decimal):
+        return x
+    return Decimal(str(x))
+
+
+def _money(x: Decimal) -> Decimal:
+    return x.quantize(MONEY_Q, rounding=ROUND_HALF_UP)
+
 
 logger = logging.getLogger(__name__)
 
@@ -109,16 +167,281 @@ class Database:
             return None
 
     # INVOICES
-    def create_invoice(self, invoice_data: Dict) -> Optional[str]:
+    def compute_invoice_financials(
+        self,
+        *,
+        profile: Dict,
+        invoice_payload: Dict,
+        items_payload: List[Dict],
+    ) -> Tuple[Dict, List[Dict], List[Dict]]:
+        """
+        Возвращает:
+          - invoices_update: dict (amount, vat_amount, total, shipping_vat_amount ...)
+          - items_to_insert: list[dict] (vat_rate ВСЕГДА заполнен, vat_amount заполнен, total_price=line_net)
+          - vat_breakdown_rows: list[dict] для invoice_vat_breakdown (без invoice_id)
+        """
 
+        vat_mode = (invoice_payload.get("vat_mode") or "standard")
+        vat_per_item = bool(invoice_payload.get("vat_per_item", False))
+
+        global_vat_rate = _d(
+            invoice_payload.get("global_vat_rate",
+                                profile.get("default_vat_rate", 19)))
+
+        discount_percent = _d(invoice_payload.get("discount_percentage", 0))
+        discount_amount = _d(invoice_payload.get("discount_amount", 0))
+
+        shipping_cost = _d(invoice_payload.get("shipping_cost", 0))
+        shipping_vat_rate = _d(invoice_payload.get("shipping_vat_rate", 0))
+
+        def effective_rate(r: Decimal) -> Decimal:
+            return Decimal("0") if vat_mode != "standard" else r
+
+        def pct(rate: Decimal) -> Decimal:
+            return rate / Decimal("100")
+
+        # items pre-calc
+        items_pre: List[Dict] = []
+        by_rate: Dict[str, Dict[str, Decimal]] = {}  # "19" -> {taxable, vat}
+
+        for idx, it in enumerate(items_payload, 1):
+            qty = _d(it.get("quantity", 0))
+            unit_price = _d(it.get("unit_price", 0))
+            line_net = _money(qty * unit_price)
+
+            r = _d(it.get("vat_rate")) if vat_per_item else global_vat_rate
+            r_eff = effective_rate(r)
+            line_vat = _money(line_net * pct(r_eff))
+
+            info = get_vat_info(profile, float(r_eff), vat_mode=vat_mode)
+
+            item_row = dict(it)
+            item_row["position_number"] = it.get("position_number") or idx
+            item_row["total_price"] = str(line_net)  # line net
+            item_row["vat_rate"] = str(
+                r)  # ВСЕГДА заполнено (даже если vat_mode != standard)
+            item_row["vat_amount"] = str(line_vat)  # ВСЕГДА заполнено
+            item_row["vat_category_code"] = info.get("category") or "S"
+            items_pre.append(item_row)
+
+            k = str(r)
+            bucket = by_rate.setdefault(k, {
+                "taxable": Decimal("0"),
+                "vat": Decimal("0")
+            })
+            bucket["taxable"] += line_net
+            bucket["vat"] += line_vat
+
+        items_net = sum((v["taxable"] for v in by_rate.values()), Decimal("0"))
+
+        # discount: % priority
+        final_discount = Decimal("0")
+        if items_net > 0:
+            if discount_percent > 0:
+                final_discount = items_net * pct(discount_percent)
+            elif discount_amount > 0:
+                final_discount = discount_amount
+
+        final_discount = _money(final_discount)
+        if final_discount > items_net:
+            final_discount = items_net
+
+        if items_net > 0 and final_discount > 0:
+            discount_factor = (items_net - final_discount) / items_net
+
+            # scale breakdown
+            for v in by_rate.values():
+                v["taxable"] = _money(v["taxable"] * discount_factor)
+                v["vat"] = _money(v["vat"] * discount_factor)
+
+            # scale items (so items are the "truth")
+            for it in items_pre:
+                ln = _money(_d(it["total_price"]) * discount_factor)
+                lr = _d(it["vat_rate"])
+                lv = _money(ln * pct(effective_rate(lr)))
+                it["total_price"] = str(ln)
+                it["vat_amount"] = str(lv)
+
+        items_net_after = sum((v["taxable"] for v in by_rate.values()),
+                              Decimal("0"))
+        items_vat_after = sum((v["vat"] for v in by_rate.values()),
+                              Decimal("0"))
+
+        # shipping
+        shipping_cost = _money(shipping_cost)
+        ship_vat = _money(shipping_cost *
+                          pct(effective_rate(shipping_vat_rate)))
+
+        ship_key = str(shipping_vat_rate)
+        ship_bucket = by_rate.setdefault(ship_key, {
+            "taxable": Decimal("0"),
+            "vat": Decimal("0")
+        })
+        ship_bucket["taxable"] += shipping_cost
+        ship_bucket["vat"] += ship_vat
+
+        doc_net = _money(items_net_after + shipping_cost)
+        doc_vat = _money(items_vat_after + ship_vat)
+        doc_total = _money(doc_net + doc_vat)
+
+        invoices_update = {
+            "vat_mode":
+            vat_mode,
+            "vat_per_item":
+            vat_per_item,
+            "global_vat_rate":
+            (str(global_vat_rate) if not vat_per_item else None),
+
+            # суммы в invoices
+            "amount":
+            float(doc_net),  # net
+            "vat_amount":
+            float(doc_vat),  # total VAT
+            "total":
+            float(doc_total),  # gross
+
+            # доставка + НДС доставки (нужно поле shipping_vat_amount в invoices, если хочешь хранить)
+            "shipping_cost":
+            float(shipping_cost),
+            "shipping_vat_rate":
+            float(shipping_vat_rate),
+            "shipping_vat_amount":
+            float(ship_vat),
+
+            # скидки (как на форме)
+            "discount_percentage":
+            float(discount_percent) if discount_percent else 0,
+            "discount_amount":
+            float(discount_amount) if discount_amount else 0,
+        }
+
+        # breakdown rows
+        breakdown_rows: List[Dict] = []
+        for rate_str, v in by_rate.items():
+            taxable = _money(v["taxable"])
+            vat = _money(v["vat"])
+            if taxable == 0 and vat == 0:
+                continue
+
+            r = _d(rate_str)
+            info = get_vat_info(profile,
+                                float(effective_rate(r)),
+                                vat_mode=vat_mode)
+
+            breakdown_rows.append({
+                "vat_rate": str(r),
+                "taxable_amount": str(taxable),
+                "vat_amount": str(vat),
+                "vat_category_code": info.get("category"),
+                "exemption_reason": info.get("reason"),
+            })
+
+        return invoices_update, items_pre, breakdown_rows
+
+    def create_invoice_vat_breakdown(self, invoice_id: str,
+                                     rows: List[Dict]) -> bool:
         try:
-            print(f"🔍 DEBUG invoice_data: {invoice_data}")  # ← ДОБАВЬ
-            r = self.client.table("invoices").insert(invoice_data).execute()
-            return r.data[0]['id'] if r.data else None
+            if not rows:
+                return True
+
+            payload = [{
+                "invoice_id": invoice_id,
+                "vat_rate": r.get("vat_rate"),
+                "taxable_amount": r.get("taxable_amount"),
+                "vat_amount": r.get("vat_amount"),
+                "vat_category_code": r.get("vat_category_code"),
+                "exemption_reason": r.get("exemption_reason"),
+            } for r in rows]
+
+            self.client.table("invoice_vat_breakdown").insert(
+                payload).execute()
+            return True
         except Exception as e:
-            print(f"❌ ERROR create_invoice: {e}")  # ← ДОБАВЬ
-            logger.error(f"Error create_invoice: {e}")
-        return None
+            logger.error(f"Error create_invoice_vat_breakdown: {e}")
+            return False
+
+    def create_invoice_items(self, invoice_id: str, items: List[Dict]) -> bool:
+        """
+        ✅ Перезапись: vat_rate и vat_amount уже рассчитаны сервером.
+        """
+        try:
+            payload = []
+            for it in items:
+                row = {
+                    "invoice_id": invoice_id,
+                    "position_number": it.get("position_number"),
+                    "description": it.get("description"),
+                    "quantity": it.get("quantity"),
+                    "unit": it.get("unit"),
+                    "unit_code": it.get("unit_code") or "C62",
+                    "unit_price": it.get("unit_price"),
+                    "total_price": it.get("total_price"),  # line net
+                    "vat_rate": it.get("vat_rate"),  # всегда есть
+                    "vat_amount": it.get("vat_amount"),  # всегда есть
+                    "vat_category_code": it.get("vat_category_code"),
+                    "article_number": it.get("article_number"),
+                    "ean_code": it.get("ean_code"),
+                }
+                payload.append({k: v for k, v in row.items() if v is not None})
+
+            self.client.table("invoice_items").insert(payload).execute()
+            return True
+        except Exception as e:
+            logger.error(f"Error create_invoice_items: {e}")
+            return False
+
+    def create_invoice(self, invoice_data: Dict) -> Optional[str]:
+        """
+        ✅ Перезапись старого метода (имя то же):
+        - ожидает invoice_data['items'] (не пустой список)
+        - считает totals + vat_amount по строкам + доставке (канон = БД)
+        - пишет invoices + invoice_items + invoice_vat_breakdown
+        """
+        try:
+            user_id = invoice_data.get("user_id")
+            if user_id is None:
+                raise ValueError("invoice_data.user_id is required")
+
+            items = invoice_data.get("items") or []
+            if not isinstance(items, list) or len(items) == 0:
+                raise ValueError(
+                    "invoice_data.items is required and must be a non-empty list"
+                )
+
+            profile = self.get_profile(user_id)
+            if not profile:
+                raise RuntimeError("Profile not found")
+
+            invoices_update, items_to_insert, breakdown_rows = self.compute_invoice_financials(
+                profile=profile,
+                invoice_payload=invoice_data,
+                items_payload=items,
+            )
+
+            # header: items убираем
+            header = dict(invoice_data)
+            header.pop("items", None)
+
+            # ⚠️ если раньше ты писал amount/total/vat_rate с формы — теперь перезаписываем каноном
+            header.update(invoices_update)
+
+            r = self.client.table("invoices").insert(header).execute()
+            invoice_id = r.data[0]["id"] if r.data else None
+            if not invoice_id:
+                return None
+
+            if not self.create_invoice_items(invoice_id, items_to_insert):
+                return None
+
+            if not self.create_invoice_vat_breakdown(invoice_id,
+                                                     breakdown_rows):
+                return None
+
+            return invoice_id
+
+        except Exception as e:
+            logger.error(f"Error create_invoice (new): {e}")
+            return None
 
     def get_invoices(self, user_id: int, limit: int = 10) -> List[Dict]:
         try:
@@ -143,40 +466,6 @@ class Database:
                 "id", invoice_id).execute()
             return True
         except:
-            return False
-
-    def create_invoice_items(self, invoice_id: str, items: List[Dict]) -> bool:
-        """Сохранение позиций счета с правильным маппингом полей"""
-        try:
-            for item in items:
-                # Маппинг полей формы -> БД
-                item_data = {
-                    "invoice_id": invoice_id,
-                    "position_number": item.get('position_number'),
-                    "description": item.get('description'),
-                    "quantity": item.get('quantity'),
-                    "unit": item.get('unit'),
-                    "unit_price": item.get('unit_price'),
-                    "total_price": item.get('total_price'),
-                    "vat_rate": item.get('vat_rate'),  # None если global VAT
-                    # Дополнительные поля если есть:
-                    "article_number": item.get('article_number'),
-                    "ean_code": item.get('ean_code'),
-                    "discount_percentage": item.get('discount_percentage'),
-                    "discount_amount": item.get('discount_amount')
-                }
-
-                # Убираем None значения
-                item_data = {
-                    k: v
-                    for k, v in item_data.items() if v is not None
-                }
-
-                self.client.table("invoice_items").insert(item_data).execute()
-
-            return True
-        except Exception as e:
-            logger.error(f"Error create_invoice_items: {e}")
             return False
 
     def get_invoice_items(self, invoice_id: str) -> List[Dict]:

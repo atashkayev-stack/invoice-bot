@@ -154,7 +154,7 @@ async def web_app_data_handler(update: Update,
         profile = db.get_profile(user_id) or {}
         vat_mode = data.get('vat_mode', 'standard')
 
-        # Создаём/обновляем клиента
+        # 1) Создаём/обновляем клиента
         client_data = {
             'company_name': data.get('client_name'),
             'street': data.get('client_street'),
@@ -166,68 +166,125 @@ async def web_app_data_handler(update: Update,
             'vat_id': data.get('client_vat_id'),
             'legal_form': data.get('client_legal_form'),
             'trade_register_number': data.get('client_trade_register'),
-            'buyer_reference': data.get('buyer_reference')
+            'buyer_reference': data.get('buyer_reference'),
         }
         client_id = db.create_or_update_client(user_id, client_data)
 
-        # Создаём счет - ПРАВКА ПОЛЕЙ ПОД ТВОЮ БД
+        # 2) Нормализация items под канон БД
+        raw_items = data.get('items') or []
+        items = []
+        for idx, it in enumerate(raw_items, 1):
+            items.append({
+                "position_number": it.get("position_number") or idx,
+                "description": it.get("description") or "",
+                "quantity": it.get("quantity") or 0,
+                "unit": it.get("unit") or "Stk",
+                "unit_code": it.get("unit_code") or "C62",
+                "unit_price": it.get("unit_price") or 0,
+                # Канон: ставка всегда в item
+                "vat_rate": it.get("vat_rate", 0),
+                # total_price / vat_amount НЕ берём с формы — сервер посчитает
+            })
+
+        # 3) Header под invoices + items (ВАЖНО: totals не пишем из формы)
         invoice_data = {
-            'user_id':
+            "user_id":
             user_id,
-            'client_id':
+            "client_id":
             client_id,
-            'number':
-            data.get('invoice_number'),
-            'invoice_date':
-            data.get('invoice_date'),
-            'due_date':
-            data.get('due_date'),
-            'delivery_date':
-            data.get('delivery_date') or data.get('invoice_date'),
-            'client_name':
-            data.get('client_name'),
-            'client_address':
+            "number":
+            data.get("invoice_number"),
+            "invoice_date":
+            data.get("invoice_date"),
+            "delivery_date":
+            data.get("delivery_date") or data.get("invoice_date"),
+            "due_date":
+            data.get("due_date"),
+            "client_name":
+            data.get("client_name"),
+            "client_address":
             f"{data.get('client_street', '')}, {data.get('client_postal_code', '')} {data.get('client_city', '')}"
-            .strip(', '),
-            'currency_code':
-            data.get('currency', 'EUR'),
-            'payment_means_code':
-            data.get('payment_means', '58'),
-            'vat_mode':
+            .strip(", "),
+            "customer_id":
+            data.get("customer_id"),
+            "buyer_reference":
+            data.get("buyer_reference"),
+            "purchase_order_number":
+            data.get("purchase_order") or data.get("purchase_order_number"),
+            "currency_code":
+            data.get("currency_code") or profile.get("default_currency")
+            or "EUR",
+            "payment_means_code":
+            data.get("payment_means") or "58",
+            "payment_reference":
+            data.get("payment_reference"),
+            "vat_mode":
             vat_mode,
-            'amount':
-            data.get('total_net'),  # Поле из твоего CSV
-            'vat_amount':
-            data.get('total_vat'),  # Поле из твоего CSV
-            'total':
-            data.get('total_gross'),  # Поле из твоего CSV
-            'discount_amount':
-            data.get('discount_amount', 0),
-            'shipping_cost':
-            data.get('shipping_cost', 0),
-            'notes':
-            data.get('notes'),
-            'status':
-            'draft',
-            'payment_status':
-            'unpaid'
+
+            # Канон: ставки в items
+            "vat_per_item":
+            True,
+            # global_vat_rate можно оставить для совместимости, но при True он не нужен
+            "global_vat_rate":
+            data.get("global_vat_rate"),
+
+            # скидки/сконто/доставка (если форма присылает — ок; если нет, будет 0/None)
+            "discount_percentage":
+            data.get("discount_percentage", 0),
+            "discount_amount":
+            data.get("discount_amount", 0),
+            "skonto_percentage":
+            data.get("skonto_percentage", 0),
+            "skonto_days":
+            data.get("skonto_days", 0),
+            "shipping_cost":
+            data.get("shipping_cost", 0),
+            "shipping_vat_rate":
+            data.get("shipping_vat_rate", 0),
+
+            # формат
+            "format_type":
+            data.get("format_type") or data.get("format") or "ZUGFeRD",
+            "notes":
+            data.get("notes"),
+            "status":
+            "draft",
+            "payment_status":
+            "unpaid",
+
+            # <-- главное:
+            "items":
+            items,
         }
 
+        # 4) Сохраняем: create_invoice сам вставит invoice_items + vat_breakdown (по твоей новой логике)
+
+        invoice_data["items"] = data.get("items", [])
         invoice_data = {k: v for k, v in invoice_data.items() if v is not None}
         invoice_id = db.create_invoice(invoice_data)
 
+        invoice_db = db.get_invoice(invoice_id) or {}
+        items_db = db.get_invoice_items(invoice_id) or []
+
         if invoice_id:
             try:
-                db.create_invoice_items(invoice_id, data.get('items', []))
                 db.increment_invoice_number(user_id)
 
                 logger.info("Starting PDF/XML generation...")
 
-                pdf_gen_v3 = PDFGeneratorV3()
+                pdf_gen_v3 = PDFFromTemplateV2()
+                # pdf_gen_v3 = PDFGeneratorV3()
                 xml_gen = XMLGeneratorV2()
 
-                # Пробуем генерировать PDF
-                pdf_buf = pdf_gen_v3.generate_invoice_pdf(data,
+                # ВАЖНО: PDF/XML генератору лучше давать НЕ data с формы, а нормализованный invoice_data
+                # (хотя бы чтобы совпадали totals/ставки)
+                # Но если твой генератор ожидает старый формат, пока можно оставить data.
+                payload_for_docs = dict(invoice_db)
+                payload_for_docs["invoice_number"] = invoice_db.get(
+                    "number")  # шаблон ждёт invoice_number
+                payload_for_docs["items"] = items_db
+
+                pdf_buf = pdf_gen_v3.generate_invoice_pdf(payload_for_docs,
                                                           profile,
                                                           with_xml=False)
                 if not pdf_buf:
@@ -237,17 +294,17 @@ async def web_app_data_handler(update: Update,
                     return
 
                 pdf_bytes = pdf_buf.getvalue()
-                filename = f"Rechnung_{data.get('invoice_number')}.pdf"
+                filename = f"Rechnung_{invoice_data.get('number')}.pdf"
 
-                if data.get('format_type') == 'ZUGFeRD':
+                if invoice_data.get('format_type') == 'ZUGFeRD':
                     logger.info("Generating ZUGFeRD XML...")
-                    xml_string = xml_gen.generate_zugferd_xml(data, profile)
+                    xml_string = xml_gen.generate_zugferd_xml(
+                        payload_for_docs, profile)
                     pdf_bytes = embed_xml_in_pdf(pdf_bytes, xml_string)
                     caption = "✅ Ваша Rechnung (ZUGFeRD)"
                 else:
                     caption = "✅ Ваша Rechnung (Standard PDF)"
 
-                # Сама отправка файла в Telegram
                 await update.message.reply_document(
                     document=io.BytesIO(pdf_bytes),
                     filename=filename,
@@ -323,7 +380,8 @@ async def rechnung_erstellen_start(update: Update,
     profile = db.get_profile(user_id) or {}
     encoded = base64.urlsafe_b64encode(
         json.dumps(profile).encode()).decode().strip("=")
-    url = f"{CREATE_INVOICE_FORM_URL}?data={encoded}"
+
+    url = f"{CREATE_INVOICE_FORM_URL}&data={encoded}"
     await update.message.reply_text(
         "Öffnen Sie das Formular:",
         reply_markup=ReplyKeyboardMarkup(
@@ -337,7 +395,7 @@ async def angebot_erstellen_start(update: Update,
     profile = db.get_profile(user_id) or {}
     encoded = base64.urlsafe_b64encode(
         json.dumps(profile).encode()).decode().strip("=")
-    url = f"{CREATE_OFFER_FORM_URL}?data={encoded}"
+    url = f"{CREATE_OFFER_FORM_URL}&data={encoded}"
     await update.message.reply_text(
         "Öffnen Sie das Formular:",
         reply_markup=ReplyKeyboardMarkup(
@@ -367,6 +425,17 @@ async def convert_offer_to_invoice(update, context):
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    tb_list = traceback.format_exception(None, context.error,
-                                         context.error.__traceback__)
-    logger.error(f"Full traceback:\n{''.join(tb_list)}")
+    logger.error("====== GLOBAL ERROR HANDLER ======")
+
+    if update:
+        logger.error(f"Update: {update}")
+
+    err = context.error
+
+    logger.error(f"Exception type: {type(err)}")
+    logger.error(f"Exception message: {err}")
+
+    tb = "".join(traceback.format_exception(None, err, err.__traceback__))
+    logger.error(f"Full traceback:\n{tb}")
+
+    logger.error("====== END ERROR ======")

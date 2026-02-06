@@ -269,15 +269,15 @@
         <span>Zwischensumme:</span><span>{{ subtotal }} €</span>
       </div>
 
-      {% if discount_amount > 0 or discount_percentage > 0 %}
+      {% if discount_amount|float > 0 or discount_percentage|float > 0 %}
       <div class="totals-row subtotal">
         <span
-          >{% if discount_percentage > 0 %}Rabatt ({{ discount_percentage
+          >{% if discount_percentage|float > 0 %}Rabatt ({{ discount_percentage
           }}%):{% else %}Rabatt:{% endif %}</span
         >
         <span>-{{ discount_amount }} €</span>
       </div>
-      {% endif %} {% if shipping_cost > 0 %}
+      {% endif %} {% if shipping_cost|float > 0 %}
       <div class="totals-row subtotal">
         <span>Versandkosten ({{ shipping_vat_rate }}% MwSt.):</span>
         <span>{{ shipping_cost }} €</span>
@@ -309,7 +309,8 @@
       <div class="totals-row">
         <span>MwSt:</span><span>{{ total_vat }} €</span>
       </div>
-      {% endif %} {% endif %} {% if skonto_percentage > 0 and skonto_days > 0 %}
+      {% endif %} {% endif %} {% if skonto_percentage|float > 0 and
+      skonto_days|float > 0 %}
       <div
         class="totals-row subtotal"
         style="margin-top: 3mm; padding-top: 3mm; border-top: 1px dashed #ccc"

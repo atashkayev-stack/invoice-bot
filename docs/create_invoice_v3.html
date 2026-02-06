@@ -812,6 +812,8 @@
 
         log(`calcTotals(): vatMode=${vatMode}`, "#09f");
 
+        showVatInfo(vatMode);
+
         const vatPerItem = document.getElementById("vat_per_item").checked;
         const globalVat = parseFloat(
           document.getElementById("global_vat_rate").value,
@@ -1026,6 +1028,21 @@
       }
 
       addItem();
+
+      function showVatInfo(vatMode) {
+        const box = document.getElementById("vat-info");
+        if (!box) return;
+
+        const texts = {
+          standard: "🇩🇪 Deutsche MwSt wird berechnet.",
+          export: "🌍 Steuerfreie Ausfuhrlieferung (§4 Nr. 1a UStG).",
+          reverse: "🔄 Reverse-Charge-Verfahren (§13b UStG).",
+          klein: "⚠️ Kleinunternehmerregelung (§19 UStG).",
+        };
+
+        box.textContent = texts[vatMode] || "";
+        box.style.display = "block";
+      }
 
       // 🔥 DEBUG AUTO-FILL
       if (DEBUG_MODE) {
