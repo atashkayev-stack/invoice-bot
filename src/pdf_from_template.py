@@ -261,19 +261,15 @@ class PDFFromTemplateV2:
             "discount_percentage":
             float(discount_percent) if discount_percent else 0,
             "discount_amount":
-            f"{discount_amount:.2f}",
+            float(discount_amount),
             "shipping_cost":
-            f"{shipping_cost:.2f}",
-            "shipping_vat_rate":
-            float(shipping_vat_rate),
-
-            # Totals (canon from DB)
+            float(shipping_cost),
             "total_net":
-            f"{total_net_db:.2f}",
+            float(total_net_db),
             "total_vat":
-            f"{total_vat_db:.2f}",
+            float(total_vat_db),
             "total_gross":
-            f"{total_gross_db:.2f}",
+            float(total_gross_db),
 
             # Для строки "MwSt (X%)": только если vat_mode == standard и vat_per_item == False
             # (если vat_per_item=True, в шаблоне всё равно печатаем VAT по строкам)

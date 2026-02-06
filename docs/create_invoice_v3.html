@@ -1049,9 +1049,63 @@
         setTimeout(() => {
           document.getElementById("client_name").value = "Test GmbH";
           document.getElementById("client_country").value = "DE";
-          calcTotals();
+          // Tab 1 - Kunde
+          document.getElementById("client_name").value = "Test GmbH";
+          document.getElementById("client_street").value = "Teststraße 123";
+          document.getElementById("client_postal_code").value = "10115";
+          document.getElementById("client_city").value = "Berlin";
+          document.getElementById("client_country").value = "DE";
+          document.getElementById("client_email").value = "test@test.de";
+          document.getElementById("customer_id").value = "KUND-001";
+
+          // B2B поля
+          setClientType("b2b");
+          document.getElementById("client_vat_id").value = "DE123456789";
+          document.getElementById("client_legal_form").value = "GmbH";
+          document.getElementById("client_trade_register").value = "HRB 12345";
+          document.getElementById("buyer_reference").value =
+            "Hr. Schmidt, Einkauf";
+
+          // Tab 2 - Positionen
+          document.getElementById("purchase_order").value = "PO-2024-001";
+
+          // Добавляем тестовые позиции
+          setTimeout(() => {
+            document.querySelector(".item-desc").value =
+              "Webentwicklung Premium Paket";
+            document.querySelector(".item-qty").value = "40";
+            document.querySelector(".item-unit").value = "Std";
+            document.querySelector(".item-price").value = "85";
+
+            addItem();
+            const items = document.querySelectorAll(".item-row");
+            if (items[1]) {
+              items[1].querySelector(".item-desc").value = "SEO Optimierung";
+              items[1].querySelector(".item-qty").value = "10";
+              items[1].querySelector(".item-unit").value = "Std";
+              items[1].querySelector(".item-price").value = "120";
+            }
+
+            calcTotals();
+          }, 100);
+
+          // Tab 3 - Zahlung
+          document.getElementById("payment_days").value = "14";
+          document.getElementById("payment_means").value = "58";
+          document.getElementById("notes").value =
+            "Vielen Dank für Ihren Auftrag!";
+
+          // Tab 4 - Erweitert
+          document.getElementById("contract_number").value = "VERT-2024-001";
+          document.getElementById("project_number").value = "PROJ-2024-042";
+          document.getElementById("discount_percentage").value = "5";
+          document.getElementById("shipping_cost").value = "15.50";
+
+          log("✅ Test data filled!", "#0f0");
         }, 500);
       }
+
+      calcTotals();
     </script>
   </body>
 </html>

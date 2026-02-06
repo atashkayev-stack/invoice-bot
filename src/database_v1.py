@@ -305,8 +305,8 @@ class Database:
             float(shipping_cost),
             "shipping_vat_rate":
             float(shipping_vat_rate),
-            "shipping_vat_amount":
-            float(ship_vat),
+            # "shipping_vat_amount":
+            # float(ship_vat),
 
             # скидки (как на форме)
             "discount_percentage":
