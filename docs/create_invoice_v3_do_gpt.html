@@ -208,10 +208,6 @@
         font-size: 12px;
         border-left: 3px solid #ffc107;
       }
-      /* NEW: compact totals box on advanced tab */
-      .totals.compact {
-        margin-top: 10px;
-      }
     </style>
   </head>
   <body>
@@ -406,14 +402,9 @@
           <div class="totals-row">
             <span>Netto:</span><span id="total_net">0.00 €</span>
           </div>
-
-          <!-- NEW: VAT breakdown instead of a single MwSt row -->
-          <div id="vat_breakdown_rows">
-            <div class="totals-row">
-              <span>MwSt.:</span><span id="total_vat">0.00 €</span>
-            </div>
+          <div class="totals-row">
+            <span>MwSt.:</span><span id="total_vat">0.00 €</span>
           </div>
-
           <div class="totals-row total">
             <span>Gesamt:</span><span id="total_gross">0.00 €</span>
           </div>
@@ -542,19 +533,6 @@
             </div>
           </div>
           <div class="hint">Rabatt % hat Vorrang, falls beide angegeben</div>
-
-          <!-- NEW: show net+gross here (net after discount, before shipping) -->
-          <div class="totals compact">
-            <div class="totals-row">
-              <span>Netto (nach Rabatt):</span
-              ><span id="adv_net_after_discount">0.00 €</span>
-            </div>
-            <div class="totals-row total">
-              <span>Zwischensumme:</span
-              ><span id="adv_subtotal_after_discount">0.00 €</span>
-            </div>
-          </div>
-
           <div class="grid">
             <div>
               <label>Skonto (%)</label
@@ -594,18 +572,6 @@
             <option value="7">7%</option>
             <option value="0">0%</option>
           </select>
-
-          <!-- NEW: final totals box on advanced tab (after discount + shipping) -->
-          <div class="totals">
-            <div class="totals-row">
-              <span>Netto:</span><span id="adv_total_net">0.00 €</span>
-            </div>
-            <div id="adv_vat_breakdown_rows"></div>
-            <div class="totals-row total">
-              <span>Gesamt:</span><span id="adv_total_gross">0.00 €</span>
-            </div>
-          </div>
-
           <label
             style="
               display: flex;
@@ -683,74 +649,6 @@
         }
       }
 
-      // --- VAT BREAKDOWN RENDER ---
-      function round2(x) {
-        return Math.round((Number(x) + Number.EPSILON) * 100) / 100;
-      }
-      function fmtEUR(x) {
-        return (
-          round2(x).toLocaleString("de-DE", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }) + " €"
-        );
-      }
-      function renderVatBreakdown(
-        containerId,
-        vatMode,
-        items,
-        shippingCost,
-        shippingVatRate,
-      ) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        container.innerHTML = "";
-
-        if (vatMode !== "standard") {
-          container.innerHTML = `
-            <div class="totals-row"><span>MwSt.:</span><span>${fmtEUR(0)}</span></div>
-          `;
-          return;
-        }
-
-        const byRate = new Map();
-
-        function add(rate, net) {
-          const r = Number(rate) || 0;
-          const n = round2(net);
-          const v = round2((n * r) / 100);
-          const cur = byRate.get(r) || { net: 0, vat: 0 };
-          cur.net = round2(cur.net + n);
-          cur.vat = round2(cur.vat + v);
-          byRate.set(r, cur);
-        }
-
-        (items || []).forEach((it) =>
-          add(it.vat_rate, it.quantity * it.unit_price),
-        );
-        if ((Number(shippingCost) || 0) > 0)
-          add(Number(shippingVatRate) || 0, Number(shippingCost) || 0);
-
-        const rates = Array.from(byRate.keys()).sort((a, b) => b - a);
-        let vatSum = 0;
-
-        rates.forEach((r) => {
-          const row = byRate.get(r);
-          vatSum = round2(vatSum + row.vat);
-          container.insertAdjacentHTML(
-            "beforeend",
-            `<div class="totals-row"><span>MwSt. ${r}%:</span><span>${fmtEUR(row.vat)}</span></div>`,
-          );
-        });
-
-        if (rates.length > 1) {
-          container.insertAdjacentHTML(
-            "beforeend",
-            `<div class="totals-row" style="font-weight:600;"><span>MwSt. gesamt:</span><span>${fmtEUR(vatSum)}</span></div>`,
-          );
-        }
-      }
-
       // --- НОВАЯ ЛОГИКА ОПРЕДЕЛЕНИЯ VAT MODE ---
       function detectVatMode({
         clientType,
@@ -825,7 +723,7 @@
           b2bSection.style.display = type === "b2b" ? "block" : "none";
 
         log(`Client type: ${type}`, "#0ff");
-        calcTotals();
+        calcTotals(); // Пересчитываем налоги при смене типа клиента
       }
 
       function toggleShippingAddress() {
@@ -870,11 +768,6 @@
         .getElementById("client_vat_id")
         ?.addEventListener("input", calcTotals);
 
-      // NEW: shipping VAT change should recalc
-      document
-        .getElementById("shipping_vat_rate")
-        .addEventListener("change", calcTotals);
-
       function addItem() {
         itemCount++;
         const vatPerItem = document.getElementById("vat_per_item").checked;
@@ -908,6 +801,8 @@
           "#09f",
         );
 
+        // 1. Определяем режим НДС динамически
+
         const vatMode = detectVatMode({
           clientType: clientType,
           buyerCountry: document.getElementById("client_country").value,
@@ -937,19 +832,23 @@
         if (vatMode !== "standard") {
           log("UI: VAT CONTROLS DISABLED", "#f66");
 
+          // чекбокс
           const vatPerItemEl = document.getElementById("vat_per_item");
           vatPerItemEl.checked = false;
           vatPerItemEl.disabled = true;
 
+          // глобальный НДС
           const globalVatEl = document.getElementById("global_vat_rate");
           globalVatEl.value = "0";
           globalVatEl.disabled = true;
 
+          // НДС по позициям
           document.querySelectorAll(".item-vat-rate").forEach((sel) => {
             sel.value = "0";
             sel.disabled = true;
           });
 
+          // НДС доставки
           const shipVat = document.getElementById("shipping_vat_rate");
           shipVat.value = "0";
           shipVat.disabled = true;
@@ -965,12 +864,8 @@
           });
         }
 
-        // --- sum items net/vat (before discount/shipping) ---
-        let itemsNet = 0;
-        let itemsVat = 0;
-
-        // For breakdown render (needs rate per line)
-        const itemsForBreakdown = [];
+        let totalNet = 0,
+          totalVat = 0;
 
         document.querySelectorAll(".item-row").forEach((row) => {
           const qty = parseFloat(row.querySelector(".item-qty").value) || 0;
@@ -984,107 +879,49 @@
               : globalVat;
           }
 
-          itemsNet += itemNet;
-          itemsVat += (itemNet * vatRate) / 100;
-
-          itemsForBreakdown.push({
-            quantity: qty,
-            unit_price: price,
-            vat_rate: vatRate,
-          });
+          totalNet += itemNet;
+          totalVat += (itemNet * vatRate) / 100;
         });
 
-        // --- discount ---
+        // Скидки
         let finalDiscount = 0;
         if (discountPercent > 0) {
-          finalDiscount = (itemsNet * discountPercent) / 100;
+          finalDiscount = (totalNet * discountPercent) / 100;
         } else if (discountAmount > 0) {
           finalDiscount = discountAmount;
         }
 
-        // apply discount proportionally to VAT
-        let netAfterDiscount = itemsNet;
-        let vatAfterDiscount = itemsVat;
-
-        if (finalDiscount > 0 && itemsNet > 0) {
-          const discountFactor = (itemsNet - finalDiscount) / itemsNet;
-          netAfterDiscount = itemsNet - finalDiscount;
-          vatAfterDiscount = itemsVat * discountFactor;
-
-          // scale breakdown items (so breakdown matches what user sees)
-          itemsForBreakdown.forEach((it) => {
-            it.unit_price = it.unit_price * discountFactor;
-          });
+        if (finalDiscount > 0 && totalNet > 0) {
+          const discountFactor = (totalNet - finalDiscount) / totalNet;
+          totalNet = totalNet - finalDiscount;
+          totalVat = totalVat * discountFactor;
         }
 
-        // --- shipping ---
-        let totalNet = netAfterDiscount + shippingCost;
-        let totalVat = vatAfterDiscount;
-
+        // Доставка
+        totalNet += shippingCost;
         if (vatMode === "standard") {
           totalVat += (shippingCost * shippingVat) / 100;
         }
 
-        // UI main totals
+        // Вывод в UI
         document.getElementById("total_net").textContent =
           totalNet.toFixed(2) + " €";
+        document.getElementById("total_vat").textContent =
+          totalVat.toFixed(2) + " €";
         document.getElementById("total_gross").textContent =
           (totalNet + totalVat).toFixed(2) + " €";
-
-        // VAT breakdown (Tab 2 + Tab 4)
-        renderVatBreakdown(
-          "vat_breakdown_rows",
-          vatMode,
-          itemsForBreakdown,
-          shippingCost,
-          vatMode === "standard" ? shippingVat : 0,
-        );
-        renderVatBreakdown(
-          "adv_vat_breakdown_rows",
-          vatMode,
-          itemsForBreakdown,
-          shippingCost,
-          vatMode === "standard" ? shippingVat : 0,
-        );
-
-        // Advanced tab totals
-        const advNetEl = document.getElementById("adv_total_net");
-        const advGrossEl = document.getElementById("adv_total_gross");
-        if (advNetEl) advNetEl.textContent = totalNet.toFixed(2) + " €";
-        if (advGrossEl)
-          advGrossEl.textContent = (totalNet + totalVat).toFixed(2) + " €";
-
-        // Advanced: net after discount / subtotal
-        const advNetAfterDiscount = document.getElementById(
-          "adv_net_after_discount",
-        );
-        const advSubAfterDiscount = document.getElementById(
-          "adv_subtotal_after_discount",
-        );
-        if (advNetAfterDiscount)
-          advNetAfterDiscount.textContent = netAfterDiscount.toFixed(2) + " €";
-        if (advSubAfterDiscount)
-          advSubAfterDiscount.textContent =
-            (netAfterDiscount + vatAfterDiscount).toFixed(2) + " €";
 
         log(`Calc done. Mode: ${vatMode.toUpperCase()}`, "#0f0");
       }
 
       function createInvoice() {
         const vatPerItem = document.getElementById("vat_per_item").checked;
-        const globalVatRate = parseFloat(
-          document.getElementById("global_vat_rate").value,
-        );
 
-        // Собираем items из формы (vat_rate ВСЕГДА проставляем!)
+        // Собираем items из формы
         const items = [];
         document.querySelectorAll(".item-row").forEach((row, idx) => {
           const qty = parseFloat(row.querySelector(".item-qty").value) || 0;
           const price = parseFloat(row.querySelector(".item-price").value) || 0;
-
-          const lineVatRate = vatPerItem
-            ? parseFloat(row.querySelector(".item-vat-rate").value)
-            : globalVatRate;
 
           items.push({
             position_number: idx + 1,
@@ -1092,11 +929,16 @@
             quantity: qty,
             unit: row.querySelector(".item-unit").value || "Stk",
             unit_price: price,
+            // total_price сервер всё равно пересчитает, но можно оставить для удобства
             total_price: qty * price,
-            vat_rate: lineVatRate,
+            // если MwSt по позициям — отправляем ставку, иначе null
+            vat_rate: vatPerItem
+              ? parseFloat(row.querySelector(".item-vat-rate").value)
+              : null,
           });
         });
 
+        // VAT mode
         const vatMode = detectVatMode({
           clientType: clientType,
           buyerCountry: document.getElementById("client_country").value,
@@ -1104,6 +946,7 @@
           isKleinunternehmer: loadedProfile?.is_kleinunternehmer || false,
         });
 
+        // Due date
         const invoiceDate = new Date(
           document.getElementById("invoice_date").value,
         );
@@ -1113,6 +956,12 @@
             parseInt(document.getElementById("payment_days").value || "0", 10),
         );
 
+        // Header VAT: если MwSt НЕ по позициям, то global обязателен
+        const globalVatRate = vatPerItem
+          ? null
+          : parseFloat(document.getElementById("global_vat_rate").value);
+
+        // Скидки / доставка / сконто
         const discountPercentage =
           parseFloat(document.getElementById("discount_percentage").value) || 0;
         const discountAmount =
@@ -1130,24 +979,28 @@
         const shippingVatRate =
           parseFloat(document.getElementById("shipping_vat_rate").value) || 0;
 
+        // Shipping address optional
         const differentShipping =
           document.getElementById("different_shipping").checked;
 
         const data = {
           type: "invoice_creation",
 
+          // Client / mode
           client_type: clientType,
           vat_mode: vatMode,
 
-          // VAT config
+          // VAT config (важно для бекенда)
           vat_per_item: vatPerItem,
           global_vat_rate: globalVatRate,
 
+          // Document
           invoice_number: document.getElementById("invoice_number").value,
           invoice_date: document.getElementById("invoice_date").value,
           delivery_date: document.getElementById("delivery_date").value,
           due_date: dueDate.toISOString().split("T")[0],
 
+          // Customer
           client_name: document.getElementById("client_name").value,
           client_street: document.getElementById("client_street").value,
           client_postal_code:
@@ -1157,6 +1010,7 @@
           client_email: document.getElementById("client_email").value || null,
           customer_id: document.getElementById("customer_id").value || null,
 
+          // B2B
           client_vat_id:
             clientType === "b2b"
               ? document.getElementById("client_vat_id").value || null
@@ -1168,6 +1022,7 @@
           buyer_reference:
             document.getElementById("buyer_reference")?.value || null,
 
+          // References
           purchase_order:
             document.getElementById("purchase_order").value || null,
           contract_number:
@@ -1175,6 +1030,7 @@
           project_number:
             document.getElementById("project_number").value || null,
 
+          // Discounts / Skonto / Shipping
           discount_percentage: discountPercentage,
           discount_amount: discountAmount,
           skonto_percentage: skontoPercentage,
@@ -1182,6 +1038,7 @@
           shipping_cost: shippingCost,
           shipping_vat_rate: shippingVatRate,
 
+          // Shipping address (optional)
           ship_to_name: differentShipping
             ? document.getElementById("ship_to_name").value || null
             : null,
@@ -1198,17 +1055,19 @@
             ? document.getElementById("ship_to_country_code").value || null
             : null,
 
+          // Notes
           notes: document.getElementById("notes").value || null,
 
+          // Items
           items: items,
         };
 
+        // DEBUG: покажи что реально улетает
         log("SEND PAYLOAD: " + JSON.stringify(data), "#0ff");
 
         tg.sendData(JSON.stringify(data));
         tg.close();
       }
-
       // --- Инициализация профиля и автозаполнение ---
       const urlParams = new URLSearchParams(window.location.search);
       const dataParam = urlParams.get("data");
@@ -1242,7 +1101,9 @@
           }
 
           log("Calling calcTotals() after profile load", "#ff0");
-          calcTotals();
+
+          calcTotals(); // 🔥 ОБЯЗАТЕЛЬНО
+
           log("✅ Profile loaded", "#0f0");
         } catch (e) {
           log("❌ ERROR: " + e.message, "#f00");
@@ -1271,6 +1132,7 @@
         setTimeout(() => {
           document.getElementById("client_name").value = "Test GmbH";
           document.getElementById("client_country").value = "DE";
+          // Tab 1 - Kunde
           document.getElementById("client_name").value = "Test GmbH";
           document.getElementById("client_street").value = "Teststraße 123";
           document.getElementById("client_postal_code").value = "10115";
@@ -1279,6 +1141,7 @@
           document.getElementById("client_email").value = "test@test.de";
           document.getElementById("customer_id").value = "KUND-001";
 
+          // B2B поля
           setClientType("b2b");
           document.getElementById("client_vat_id").value = "DE123456789";
           document.getElementById("client_legal_form").value = "GmbH";
@@ -1286,8 +1149,10 @@
           document.getElementById("buyer_reference").value =
             "Hr. Schmidt, Einkauf";
 
+          // Tab 2 - Positionen
           document.getElementById("purchase_order").value = "PO-2024-001";
 
+          // Добавляем тестовые позиции
           setTimeout(() => {
             document.querySelector(".item-desc").value =
               "Webentwicklung Premium Paket";
@@ -1307,11 +1172,13 @@
             calcTotals();
           }, 100);
 
+          // Tab 3 - Zahlung
           document.getElementById("payment_days").value = "14";
           document.getElementById("payment_means").value = "58";
           document.getElementById("notes").value =
             "Vielen Dank für Ihren Auftrag!";
 
+          // Tab 4 - Erweitert
           document.getElementById("contract_number").value = "VERT-2024-001";
           document.getElementById("project_number").value = "PROJ-2024-042";
           document.getElementById("discount_percentage").value = "5";
