@@ -915,23 +915,30 @@
       }
 
       function createInvoice() {
+        const vatPerItem = document.getElementById("vat_per_item").checked;
+
+        // Собираем items из формы
         const items = [];
         document.querySelectorAll(".item-row").forEach((row, idx) => {
-          const qty = parseFloat(row.querySelector(".item-qty").value);
-          const price = parseFloat(row.querySelector(".item-price").value);
+          const qty = parseFloat(row.querySelector(".item-qty").value) || 0;
+          const price = parseFloat(row.querySelector(".item-price").value) || 0;
+
           items.push({
             position_number: idx + 1,
-            description: row.querySelector(".item-desc").value,
+            description: row.querySelector(".item-desc").value || "",
             quantity: qty,
-            unit: row.querySelector(".item-unit").value,
+            unit: row.querySelector(".item-unit").value || "Stk",
             unit_price: price,
+            // total_price сервер всё равно пересчитает, но можно оставить для удобства
             total_price: qty * price,
-            vat_rate: document.getElementById("vat_per_item").checked
+            // если MwSt по позициям — отправляем ставку, иначе null
+            vat_rate: vatPerItem
               ? parseFloat(row.querySelector(".item-vat-rate").value)
               : null,
           });
         });
 
+        // VAT mode
         const vatMode = detectVatMode({
           clientType: clientType,
           buyerCountry: document.getElementById("client_country").value,
@@ -939,52 +946,128 @@
           isKleinunternehmer: loadedProfile?.is_kleinunternehmer || false,
         });
 
+        // Due date
         const invoiceDate = new Date(
           document.getElementById("invoice_date").value,
         );
         const dueDate = new Date(invoiceDate);
         dueDate.setDate(
           dueDate.getDate() +
-            parseInt(document.getElementById("payment_days").value),
+            parseInt(document.getElementById("payment_days").value || "0", 10),
         );
+
+        // Header VAT: если MwSt НЕ по позициям, то global обязателен
+        const globalVatRate = vatPerItem
+          ? null
+          : parseFloat(document.getElementById("global_vat_rate").value);
+
+        // Скидки / доставка / сконто
+        const discountPercentage =
+          parseFloat(document.getElementById("discount_percentage").value) || 0;
+        const discountAmount =
+          parseFloat(document.getElementById("discount_amount").value) || 0;
+
+        const skontoPercentage =
+          parseFloat(document.getElementById("skonto_percentage").value) || 0;
+        const skontoDays = parseInt(
+          document.getElementById("skonto_days").value || "0",
+          10,
+        );
+
+        const shippingCost =
+          parseFloat(document.getElementById("shipping_cost").value) || 0;
+        const shippingVatRate =
+          parseFloat(document.getElementById("shipping_vat_rate").value) || 0;
+
+        // Shipping address optional
+        const differentShipping =
+          document.getElementById("different_shipping").checked;
 
         const data = {
           type: "invoice_creation",
+
+          // Client / mode
           client_type: clientType,
           vat_mode: vatMode,
+
+          // VAT config (важно для бекенда)
+          vat_per_item: vatPerItem,
+          global_vat_rate: globalVatRate,
+
+          // Document
           invoice_number: document.getElementById("invoice_number").value,
           invoice_date: document.getElementById("invoice_date").value,
           delivery_date: document.getElementById("delivery_date").value,
           due_date: dueDate.toISOString().split("T")[0],
+
+          // Customer
           client_name: document.getElementById("client_name").value,
           client_street: document.getElementById("client_street").value,
           client_postal_code:
             document.getElementById("client_postal_code").value,
           client_city: document.getElementById("client_city").value,
           client_country: document.getElementById("client_country").value,
+          client_email: document.getElementById("client_email").value || null,
+          customer_id: document.getElementById("customer_id").value || null,
+
+          // B2B
           client_vat_id:
             clientType === "b2b"
-              ? document.getElementById("client_vat_id").value
+              ? document.getElementById("client_vat_id").value || null
               : null,
+          client_legal_form:
+            document.getElementById("client_legal_form")?.value || null,
+          client_trade_register:
+            document.getElementById("client_trade_register")?.value || null,
+          buyer_reference:
+            document.getElementById("buyer_reference")?.value || null,
+
+          // References
           purchase_order:
             document.getElementById("purchase_order").value || null,
+          contract_number:
+            document.getElementById("contract_number").value || null,
+          project_number:
+            document.getElementById("project_number").value || null,
+
+          // Discounts / Skonto / Shipping
+          discount_percentage: discountPercentage,
+          discount_amount: discountAmount,
+          skonto_percentage: skontoPercentage,
+          skonto_days: skontoDays,
+          shipping_cost: shippingCost,
+          shipping_vat_rate: shippingVatRate,
+
+          // Shipping address (optional)
+          ship_to_name: differentShipping
+            ? document.getElementById("ship_to_name").value || null
+            : null,
+          ship_to_street: differentShipping
+            ? document.getElementById("ship_to_street").value || null
+            : null,
+          ship_to_postal_code: differentShipping
+            ? document.getElementById("ship_to_postal_code").value || null
+            : null,
+          ship_to_city: differentShipping
+            ? document.getElementById("ship_to_city").value || null
+            : null,
+          ship_to_country_code: differentShipping
+            ? document.getElementById("ship_to_country_code").value || null
+            : null,
+
+          // Notes
+          notes: document.getElementById("notes").value || null,
+
+          // Items
           items: items,
-          total_net: parseFloat(
-            document.getElementById("total_net").textContent,
-          ),
-          total_vat: parseFloat(
-            document.getElementById("total_vat").textContent,
-          ),
-          total_gross: parseFloat(
-            document.getElementById("total_gross").textContent,
-          ),
         };
 
-        log("💾 Saving...", "#0ff");
+        // DEBUG: покажи что реально улетает
+        log("SEND PAYLOAD: " + JSON.stringify(data), "#0ff");
+
         tg.sendData(JSON.stringify(data));
         tg.close();
       }
-
       // --- Инициализация профиля и автозаполнение ---
       const urlParams = new URLSearchParams(window.location.search);
       const dataParam = urlParams.get("data");

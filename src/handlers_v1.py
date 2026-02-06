@@ -151,7 +151,14 @@ async def web_app_data_handler(update: Update,
     # ========== СОЗДАНИЕ СЧЕТА ==========
     if data.get('type') == 'invoice_creation':
         user_id = update.effective_user.id
-        profile = db.get_profile(user_id) or {}
+        # profile = db.get_profile(user_id) or {}
+
+        profile = db.get_profile(user_id)
+        if not profile:
+            logger.error("Profile not found for user_id=%s", user_id)
+            # можно либо return, либо хотя бы продолжить, но уже осознанно
+            profile = {}
+
         vat_mode = data.get('vat_mode', 'standard')
 
         # 1) Создаём/обновляем клиента
