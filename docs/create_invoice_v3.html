@@ -903,11 +903,22 @@
       }
 
       function calcTotals() {
-        log(
-          `calcTotals(): profileLoaded=${!!loadedProfile}, klein=${loadedProfile?.is_kleinunternehmer ?? "n/a"}`,
-          "#09f",
-        );
+        // === 1. Контекст ===
+        const vatPerItem = document.getElementById("vat_per_item").checked;
+        const globalVat =
+          parseFloat(document.getElementById("global_vat_rate").value) || 0;
 
+        const discountPercent =
+          parseFloat(document.getElementById("discount_percentage").value) || 0;
+        const discountAmount =
+          parseFloat(document.getElementById("discount_amount").value) || 0;
+
+        const shippingCost =
+          parseFloat(document.getElementById("shipping_cost").value) || 0;
+        const shippingVat =
+          parseFloat(document.getElementById("shipping_vat_rate").value) || 0;
+
+        // VAT mode (preview only!)
         const vatMode = detectVatMode({
           clientType: clientType,
           buyerCountry: document.getElementById("client_country").value,
@@ -915,161 +926,66 @@
           isKleinunternehmer: loadedProfile?.is_kleinunternehmer || false,
         });
 
-        log(`calcTotals(): vatMode=${vatMode}`, "#09f");
-
-        showVatInfo(vatMode);
-
-        const vatPerItem = document.getElementById("vat_per_item").checked;
-        const globalVat = parseFloat(
-          document.getElementById("global_vat_rate").value,
-        );
-        const discountPercent =
-          parseFloat(document.getElementById("discount_percentage").value) || 0;
-        const discountAmount =
-          parseFloat(document.getElementById("discount_amount").value) || 0;
-        const shippingCost =
-          parseFloat(document.getElementById("shipping_cost").value) || 0;
-        const shippingVat = parseFloat(
-          document.getElementById("shipping_vat_rate").value,
-        );
-
-        // Блокировка выбора НДС, если режим не Standard
-        if (vatMode !== "standard") {
-          log("UI: VAT CONTROLS DISABLED", "#f66");
-
-          const vatPerItemEl = document.getElementById("vat_per_item");
-          vatPerItemEl.checked = false;
-          vatPerItemEl.disabled = true;
-
-          const globalVatEl = document.getElementById("global_vat_rate");
-          globalVatEl.value = "0";
-          globalVatEl.disabled = true;
-
-          document.querySelectorAll(".item-vat-rate").forEach((sel) => {
-            sel.value = "0";
-            sel.disabled = true;
-          });
-
-          const shipVat = document.getElementById("shipping_vat_rate");
-          shipVat.value = "0";
-          shipVat.disabled = true;
-        } else {
-          log("UI: VAT CONTROLS ENABLED", "#6f6");
-
-          document.getElementById("vat_per_item").disabled = false;
-          document.getElementById("global_vat_rate").disabled = false;
-          document.getElementById("shipping_vat_rate").disabled = false;
-
-          document.querySelectorAll(".item-vat-rate").forEach((sel) => {
-            sel.disabled = false;
-          });
-        }
-
-        // --- sum items net/vat (before discount/shipping) ---
-        let itemsNet = 0;
-        let itemsVat = 0;
-
-        // For breakdown render (needs rate per line)
-        const itemsForBreakdown = [];
+        // === 2. Netto по позициям ===
+        let netItemsSum = 0;
+        let estimatedVat = 0;
 
         document.querySelectorAll(".item-row").forEach((row) => {
           const qty = parseFloat(row.querySelector(".item-qty").value) || 0;
           const price = parseFloat(row.querySelector(".item-price").value) || 0;
-          const itemNet = qty * price;
+          const lineNet = qty * price;
 
-          let vatRate = 0;
+          netItemsSum += lineNet;
+
+          // VAT только как ОЦЕНКА
           if (vatMode === "standard") {
-            vatRate = vatPerItem
-              ? parseFloat(row.querySelector(".item-vat-rate").value)
+            const rate = vatPerItem
+              ? parseFloat(row.querySelector(".item-vat-rate")?.value || 0)
               : globalVat;
+
+            estimatedVat += (lineNet * rate) / 100;
           }
-
-          itemsNet += itemNet;
-          itemsVat += (itemNet * vatRate) / 100;
-
-          itemsForBreakdown.push({
-            quantity: qty,
-            unit_price: price,
-            vat_rate: vatRate,
-          });
         });
 
-        // --- discount ---
-        let finalDiscount = 0;
+        // === 3. Скидка (ТОЛЬКО визуально) ===
+        let discountPreview = 0;
         if (discountPercent > 0) {
-          finalDiscount = (itemsNet * discountPercent) / 100;
+          discountPreview = (netItemsSum * discountPercent) / 100;
         } else if (discountAmount > 0) {
-          finalDiscount = discountAmount;
+          discountPreview = discountAmount;
         }
 
-        // apply discount proportionally to VAT
-        let netAfterDiscount = itemsNet;
-        let vatAfterDiscount = itemsVat;
+        const netAfterDiscount = netItemsSum - discountPreview;
 
-        if (finalDiscount > 0 && itemsNet > 0) {
-          const discountFactor = (itemsNet - finalDiscount) / itemsNet;
-          netAfterDiscount = itemsNet - finalDiscount;
-          vatAfterDiscount = itemsVat * discountFactor;
-
-          // scale breakdown items (so breakdown matches what user sees)
-          itemsForBreakdown.forEach((it) => {
-            it.unit_price = it.unit_price * discountFactor;
-          });
-        }
-
-        // --- shipping ---
-        let totalNet = netAfterDiscount + shippingCost;
-        let totalVat = vatAfterDiscount;
-
+        // === 4. Доставка (preview) ===
+        let shippingVatPreview = 0;
         if (vatMode === "standard") {
-          totalVat += (shippingCost * shippingVat) / 100;
+          shippingVatPreview = (shippingCost * shippingVat) / 100;
         }
 
-        // UI main totals
+        // === 5. Итоги (НЕ канон, только preview!) ===
+        const previewNet = netAfterDiscount + shippingCost;
+        const previewVat = estimatedVat + shippingVatPreview;
+        const previewGross = previewNet + previewVat;
+
+        // === 6. Вывод в UI (чётко как PREVIEW) ===
         document.getElementById("total_net").textContent =
-          totalNet.toFixed(2) + " €";
+          previewNet.toFixed(2) + " €";
+
+        document.getElementById("total_vat").textContent =
+          previewVat.toFixed(2) + " €";
+
         document.getElementById("total_gross").textContent =
-          (totalNet + totalVat).toFixed(2) + " €";
+          previewGross.toFixed(2) + " €";
 
-        // VAT breakdown (Tab 2 + Tab 4)
-        renderVatBreakdown(
-          "vat_breakdown_rows",
-          vatMode,
-          itemsForBreakdown,
-          shippingCost,
-          vatMode === "standard" ? shippingVat : 0,
-        );
-        renderVatBreakdown(
-          "adv_vat_breakdown_rows",
-          vatMode,
-          itemsForBreakdown,
-          shippingCost,
-          vatMode === "standard" ? shippingVat : 0,
-        );
-
-        // Advanced tab totals
-        const advNetEl = document.getElementById("adv_total_net");
-        const advGrossEl = document.getElementById("adv_total_gross");
-        if (advNetEl) advNetEl.textContent = totalNet.toFixed(2) + " €";
-        if (advGrossEl)
-          advGrossEl.textContent = (totalNet + totalVat).toFixed(2) + " €";
-
-        // Advanced: net after discount / subtotal
-        const advNetAfterDiscount = document.getElementById(
-          "adv_net_after_discount",
-        );
-        const advSubAfterDiscount = document.getElementById(
-          "adv_subtotal_after_discount",
-        );
-        if (advNetAfterDiscount)
-          advNetAfterDiscount.textContent = netAfterDiscount.toFixed(2) + " €";
-        if (advSubAfterDiscount)
-          advSubAfterDiscount.textContent =
-            (netAfterDiscount + vatAfterDiscount).toFixed(2) + " €";
-
-        log(`Calc done. Mode: ${vatMode.toUpperCase()}`, "#0f0");
+        // === 7. DEBUG ===
+        if (typeof log === "function") {
+          log(
+            `PREVIEW | net=${previewNet.toFixed(2)} vat≈${previewVat.toFixed(2)} gross≈${previewGross.toFixed(2)} (${vatMode})`,
+            "#0af",
+          );
+        }
       }
-
       function createInvoice() {
         const vatPerItem = document.getElementById("vat_per_item").checked;
         const globalVatRate = parseFloat(

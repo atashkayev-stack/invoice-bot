@@ -174,14 +174,8 @@ class Database:
         invoice_payload: Dict,
         items_payload: List[Dict],
     ) -> Tuple[Dict, List[Dict], List[Dict]]:
-        """
-        Возвращает:
-          - invoices_update: dict (amount, vat_amount, total, shipping_vat_amount ...)
-          - items_to_insert: list[dict] (vat_rate ВСЕГДА заполнен, vat_amount заполнен, total_price=line_net)
-          - vat_breakdown_rows: list[dict] для invoice_vat_breakdown (без invoice_id)
-        """
 
-        vat_mode = (invoice_payload.get("vat_mode") or "standard")
+        vat_mode = (invoice_payload.get("vat_mode") or "standard").lower()
         vat_per_item = bool(invoice_payload.get("vat_per_item", False))
 
         global_vat_rate = _d(
@@ -189,21 +183,21 @@ class Database:
                                 profile.get("default_vat_rate", 19)))
 
         discount_percent = _d(invoice_payload.get("discount_percentage", 0))
-        discount_amount = _d(invoice_payload.get("discount_amount", 0))
+        discount_amount_form = _d(invoice_payload.get("discount_amount", 0))
 
-        shipping_cost = _d(invoice_payload.get("shipping_cost", 0))
+        shipping_cost = _money(_d(invoice_payload.get("shipping_cost", 0)))
         shipping_vat_rate = _d(invoice_payload.get("shipping_vat_rate", 0))
 
         def effective_rate(r: Decimal) -> Decimal:
             return Decimal("0") if vat_mode != "standard" else r
 
-        def pct(rate: Decimal) -> Decimal:
-            return rate / Decimal("100")
+        def pct(r: Decimal) -> Decimal:
+            return r / Decimal("100")
 
-        # items pre-calc
-        items_pre: List[Dict] = []
-        by_rate: Dict[str, Dict[str, Decimal]] = {}  # "19" -> {taxable, vat}
+        items_out: List[Dict] = []
+        by_rate: Dict[str, Dict[str, Decimal]] = {}
 
+        # ---------- ITEMS ----------
         for idx, it in enumerate(items_payload, 1):
             qty = _d(it.get("quantity", 0))
             unit_price = _d(it.get("unit_price", 0))
@@ -213,130 +207,98 @@ class Database:
             r_eff = effective_rate(r)
             line_vat = _money(line_net * pct(r_eff))
 
-            info = get_vat_info(profile, float(r_eff), vat_mode=vat_mode)
+            info = get_vat_info(profile, float(r_eff), vat_mode)
 
-            item_row = dict(it)
-            item_row["position_number"] = it.get("position_number") or idx
-            item_row["total_price"] = str(line_net)  # line net
-            item_row["vat_rate"] = str(
-                r)  # ВСЕГДА заполнено (даже если vat_mode != standard)
-            item_row["vat_amount"] = str(line_vat)  # ВСЕГДА заполнено
-            item_row["vat_category_code"] = info.get("category") or "S"
-            items_pre.append(item_row)
+            item = dict(it)
+            item.update({
+                "position_number": it.get("position_number") or idx,
+                "total_price": str(line_net),
+                "vat_rate": str(r),
+                "vat_amount": str(line_vat),
+                "vat_category_code": info["category"],
+            })
+            items_out.append(item)
 
-            k = str(r)
-            bucket = by_rate.setdefault(k, {
+            b = by_rate.setdefault(str(r), {
                 "taxable": Decimal("0"),
                 "vat": Decimal("0")
             })
-            bucket["taxable"] += line_net
-            bucket["vat"] += line_vat
+            b["taxable"] += line_net
+            b["vat"] += line_vat
 
         items_net = sum((v["taxable"] for v in by_rate.values()), Decimal("0"))
 
-        # discount: % priority
-        final_discount = Decimal("0")
+        # ---------- DISCOUNT ----------
+        discount_final = Decimal("0")
         if items_net > 0:
             if discount_percent > 0:
-                final_discount = items_net * pct(discount_percent)
-            elif discount_amount > 0:
-                final_discount = discount_amount
+                discount_final = items_net * pct(discount_percent)
+            elif discount_amount_form > 0:
+                discount_final = discount_amount_form
 
-        final_discount = _money(final_discount)
-        if final_discount > items_net:
-            final_discount = items_net
+        discount_final = _money(min(discount_final, items_net))
 
-        if items_net > 0 and final_discount > 0:
-            discount_factor = (items_net - final_discount) / items_net
+        if discount_final > 0 and items_net > 0:
+            factor = (items_net - discount_final) / items_net
 
-            # scale breakdown
             for v in by_rate.values():
-                v["taxable"] = _money(v["taxable"] * discount_factor)
-                v["vat"] = _money(v["vat"] * discount_factor)
+                v["taxable"] = _money(v["taxable"] * factor)
+                v["vat"] = _money(v["vat"] * factor)
 
-            # scale items (so items are the "truth")
-            for it in items_pre:
-                ln = _money(_d(it["total_price"]) * discount_factor)
-                lr = _d(it["vat_rate"])
-                lv = _money(ln * pct(effective_rate(lr)))
+            for it in items_out:
+                ln = _money(_d(it["total_price"]) * factor)
+                r = _d(it["vat_rate"])
                 it["total_price"] = str(ln)
-                it["vat_amount"] = str(lv)
+                it["vat_amount"] = str(_money(ln * pct(effective_rate(r))))
 
-        items_net_after = sum((v["taxable"] for v in by_rate.values()),
-                              Decimal("0"))
-        items_vat_after = sum((v["vat"] for v in by_rate.values()),
-                              Decimal("0"))
-
-        # shipping
-        shipping_cost = _money(shipping_cost)
+        # ---------- SHIPPING ----------
         ship_vat = _money(shipping_cost *
                           pct(effective_rate(shipping_vat_rate)))
 
-        ship_key = str(shipping_vat_rate)
-        ship_bucket = by_rate.setdefault(ship_key, {
+        sb = by_rate.setdefault(str(shipping_vat_rate), {
             "taxable": Decimal("0"),
             "vat": Decimal("0")
         })
-        ship_bucket["taxable"] += shipping_cost
-        ship_bucket["vat"] += ship_vat
+        sb["taxable"] += shipping_cost
+        sb["vat"] += ship_vat
 
-        doc_net = _money(items_net_after + shipping_cost)
-        doc_vat = _money(items_vat_after + ship_vat)
-        doc_total = _money(doc_net + doc_vat)
+        # ---------- TOTALS ----------
+        net = _money(sum(v["taxable"] for v in by_rate.values()))
+        vat = _money(sum(v["vat"] for v in by_rate.values()))
+        gross = _money(net + vat)
 
         invoices_update = {
-            "vat_mode":
-            vat_mode,
-            "vat_per_item":
-            vat_per_item,
+            "amount": float(net),
+            "vat_amount": float(vat),
+            "total": float(gross),
+            "vat_mode": vat_mode,
+            "vat_per_item": vat_per_item,
             "global_vat_rate":
-            (str(global_vat_rate) if not vat_per_item else None),
-
-            # суммы в invoices
-            "amount":
-            float(doc_net),  # net
-            "vat_amount":
-            float(doc_vat),  # total VAT
-            "total":
-            float(doc_total),  # gross
-
-            # доставка + НДС доставки (нужно поле shipping_vat_amount в invoices, если хочешь хранить)
-            "shipping_cost":
-            float(shipping_cost),
-            "shipping_vat_rate":
-            float(shipping_vat_rate),
-            # "shipping_vat_amount":
-            # float(ship_vat),
-
-            # скидки (как на форме)
-            "discount_percentage":
-            float(discount_percent) if discount_percent else 0,
-            "discount_amount":
-            float(discount_amount) if discount_amount else 0,
+            str(global_vat_rate) if not vat_per_item else None,
+            "discount_percentage": float(discount_percent),
+            "discount_amount": float(discount_final),
+            "shipping_cost": float(shipping_cost),
+            "shipping_vat_rate": float(shipping_vat_rate),
         }
 
-        # breakdown rows
+        # ---------- VAT BREAKDOWN ----------
         breakdown_rows: List[Dict] = []
         for rate_str, v in by_rate.items():
-            taxable = _money(v["taxable"])
-            vat = _money(v["vat"])
-            if taxable == 0 and vat == 0:
+            if v["taxable"] == 0 and v["vat"] == 0:
                 continue
 
             r = _d(rate_str)
-            info = get_vat_info(profile,
-                                float(effective_rate(r)),
-                                vat_mode=vat_mode)
+            info = get_vat_info(profile, float(effective_rate(r)), vat_mode)
 
             breakdown_rows.append({
                 "vat_rate": str(r),
-                "taxable_amount": str(taxable),
-                "vat_amount": str(vat),
-                "vat_category_code": info.get("category"),
-                "exemption_reason": info.get("reason"),
+                "taxable_amount": str(_money(v["taxable"])),
+                "vat_amount": str(_money(v["vat"])),
+                "vat_category_code": info["category"],
+                "exemption_reason": info["reason"],
             })
 
-        return invoices_update, items_pre, breakdown_rows
+        return invoices_update, items_out, breakdown_rows
 
     def create_invoice_vat_breakdown(self, invoice_id: str,
                                      rows: List[Dict]) -> bool:
