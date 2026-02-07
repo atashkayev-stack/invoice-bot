@@ -604,3 +604,8 @@ class Database:
             return None
         except:
             return None
+
+    def get_invoice_vat_breakdown(self, invoice_id: str):
+        r = self.client.table("invoice_vat_breakdown").select("*").eq(
+            "invoice_id", invoice_id).order("vat_rate").execute()
+        return r.data or []
