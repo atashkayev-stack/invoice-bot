@@ -159,6 +159,31 @@
         border: 1px dashed #ffc107;
         font-size: 9pt;
       }
+      .vat-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 12px;
+      }
+      .vat-table th,
+      .vat-table td {
+        border: 1px solid #ddd;
+        padding: 6px 8px;
+        text-align: right;
+      }
+      .vat-table th {
+        background: #f3f6f9;
+        font-weight: 700;
+      }
+      .vat-table td.left,
+      .vat-table th.left {
+        text-align: left;
+      }
+      .vat-note {
+        margin-top: 6px;
+        font-size: 11px;
+        color: #666;
+      }
     </style>
   </head>
   <body>
@@ -320,6 +345,43 @@
           Skonto):</span
         >
         <span>{{ skonto_total }} €</span>
+      </div>
+      {% endif %} {% if vat_breakdown and vat_breakdown|length > 0 %}
+      <div style="margin-top: 10px">
+        <div style="font-weight: 700; margin-bottom: 6px">
+          MwSt.-Aufschlüsselung
+        </div>
+
+        <table class="vat-table">
+          <thead>
+            <tr>
+              <th class="left">Kategorie</th>
+              <th>Satz</th>
+              <th>Bemessungsgrundlage</th>
+              <th>MwSt.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in vat_breakdown %}
+            <tr>
+              <td class="left">{{ r.vat_category_code or "" }}</td>
+              <td>{{ r.vat_rate }}%</td>
+              <td>{{ r.taxable_amount }} €</td>
+              <td>{{ r.vat_amount }} €</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        {# если есть причины освобождения — выведем ниже списком #} {% set
+        reasons = [] %} {% for r in vat_breakdown %} {% if r.exemption_reason %}
+        {% set _ = reasons.append(r.exemption_reason) %} {% endif %} {% endfor
+        %} {% if reasons|length > 0 %}
+        <div class="vat-note">
+          {% for txt in reasons|unique %} {{ txt }}{% if not loop.last %}<br />{%
+          endif %} {% endfor %}
+        </div>
+        {% endif %}
       </div>
       {% endif %}
 

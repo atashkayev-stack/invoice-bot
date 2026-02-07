@@ -78,6 +78,31 @@ class PDFFromTemplateV2:
         vat_breakdown = data.get("vat_breakdown", []) or []
         vat_mode = (data.get("vat_mode") or "standard").lower()
 
+        vat_breakdown = data.get("vat_breakdown", []) or []
+
+        prepared_vat_breakdown = []
+        for row in vat_breakdown:
+            rate = _d(row.get("vat_rate", 0))
+            taxable = _m(_d(row.get("taxable_amount", 0)))
+            vat_amt = _m(_d(row.get("vat_amount", 0)))
+
+            # В non-standard режимах показываем ставку как 0 (по твоей логике),
+            # но базу можно показывать (она реально есть).
+            effective_rate = Decimal("0") if vat_mode != "standard" else rate
+            effective_vat_amt = Decimal(
+                "0") if vat_mode != "standard" else vat_amt
+
+            prepared_vat_breakdown.append({
+                "vat_rate":
+                f"{effective_rate:.0f}",  # "19", "7", "0"
+                "taxable_amount":
+                f"{taxable:.2f}",  # база
+                "vat_amount":
+                f"{effective_vat_amt:.2f}",  # НДС
+                "vat_category_code": (row.get("vat_category_code") or ""),
+                "exemption_reason": (row.get("exemption_reason") or ""),
+            })
+
         # -------- Items ----------
         prepared_items = []
         subtotal = Decimal("0")
@@ -220,6 +245,8 @@ class PDFFromTemplateV2:
             vat_rows,
             "has_vat_breakdown":
             has_vat_breakdown,
+            "vat_breakdown":
+            prepared_vat_breakdown,
 
             # Skonto
             "skonto_percentage":
