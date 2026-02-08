@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meine Angeboten</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 15px;
+            padding-bottom: 80px;
+        }
+        .header {
+            background: white;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            font-size: 20px;
+            color: #0088cc;
+            margin-bottom: 10px;
+        }
+        .stats {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .stat-card {
+            flex: 1;
+            min-width: 150px;
+            background: #e3f2fd;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-card .label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1976D2;
+        }
+        
+        .filter-bar {
+            background: white;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .filter-bar input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .offer-card {
+            background: white;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-left: 4px solid #0088cc;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .offer-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .offer-card.locked {
+            border-left-color: #666;
+            background: #f9f9f9;
+        }
+        .offer-card.locked::after {
+            content: "🔒";
+            position: absolute;
+            top: 15px;
+            right: 15px;
+        }
+        
+        .offer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .offer-number {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+        .offer-amount {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0088cc;
+        }
+        .offer-details {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .offer-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #0088cc;
+            color: white;
+        }
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+        .btn-danger {
+            background: #ff3b30;
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.8;
+            transform: scale(1.02);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            background: white;
+            border-radius: 12px;
+        }
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            color: #ccc;
+        }
+        .empty-state h3 {
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .empty-state p {
+            color: #999;
+            font-size: 14px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-draft { background: #fff3cd; color: #856404; }
+        .status-sent { background: #d1ecf1; color: #0c5460; }
+        .status-paid { background: #d4edda; color: #155724; }
+        .status-overdue { background: #f8d7da; color: #721c24; }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .fab {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            background: #0088cc;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 12px rgba(0,136,204,0.4);
+            cursor: pointer;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        .fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(0,136,204,0.6);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Meine Angeboten</h1>
+        <div class="stats">
+            <div class="stat-card">
+                <div class="label">Gesamt</div>
+                <div class="value" id="total-count">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Diesen Monat</div>
+                <div class="value" id="month-count">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Limit</div>
+                <div class="value" id="limit-info">-</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="filter-bar">
+        <input type="text" id="search" placeholder="🔍 Suchen nach Nummer, Kunde..." oninput="filterOffers()">
+    </div>
+    
+    <div id="offers-list"></div>
+    
+    <div class="fab" onclick="createNewOffer()">+</div>
+    
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.MainButton.hide();
+        
+        let offers = [];
+        let userLimits = null;
+        
+        // Загрузка данных
+        async function loadData() {
+            showLoading();
+            
+            // Запрос данных от бота
+            tg.sendData(JSON.stringify({
+                action: 'load_offers_list'
+            }));
+        }
+        
+        // Получение данных от бота
+        window.addEventListener('message', function(event) {
+            const data = event.data;
+            if (data.offers) {
+                offers = data.offers;
+                userLimits = data.limits;
+                renderOffers();
+                updateStats();
+            }
+        });
+        
+        function showLoading() {
+            document.getElementById('offers-list').innerHTML = `
+                <div class="loading">
+                    <div style="font-size: 40px; margin-bottom: 15px;">⏳</div>
+                    <p>Lade Angeboten...</p>
+                </div>
+            `;
+        }
+        
+        function renderOffers() {
+            const container = document.getElementById('offers-list');
+            const filtered = filterOffersList();
+            
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 60px; margin-bottom: 20px;">📄</div>
+                        <h3>Keine Angeboten gefunden</h3>
+                        <p>Erstellen Sie Ihre erste Angebot mit dem + Button</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = filtered.map(inv => `
+                <div class="offer-card ${inv.is_locked ? 'locked' : ''}" onclick="viewOffer('${inv.id}')">
+                    <div class="offer-header">
+                        <div class="offer-number">${inv.number}</div>
+                        <div class="offer-amount">${formatMoney(inv.total)} €</div>
+                    </div>
+                    <div class="offer-details">
+                        <strong>${inv.client_name || 'Unbekannter Kunde'}</strong>
+                    </div>
+                    <div class="offer-details">
+                        📅 ${formatDate(inv.offer_date)} 
+                        <span class="status-badge status-${inv.status}">${getStatusLabel(inv.status)}</span>
+                    </div>
+                    <div class="offer-actions" onclick="event.stopPropagation()">
+                        <button class="btn btn-primary" onclick="downloadPDF('${inv.id}')">📥 PDF</button>
+                        <button class="btn btn-secondary" onclick="copyOffer('${inv.id}')" ${inv.is_locked ? '' : 'disabled'}>📋 Kopieren</button>
+                        ${!inv.is_locked ? `<button class="btn btn-secondary" onclick="editOffer('${inv.id}')">✏️ Bearbeiten</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function filterOffersList() {
+            const search = document.getElementById('search').value.toLowerCase();
+            if (!search) return offers;
+            
+            return offers.filter(inv => 
+                (inv.number || '').toLowerCase().includes(search) ||
+                (inv.client_name || '').toLowerCase().includes(search) ||
+                (inv.customer_id || '').toLowerCase().includes(search)
+            );
+        }
+        
+        function filterOffers() {
+            renderOffers();
+        }
+        
+        function updateStats() {
+            document.getElementById('total-count').textContent = offers.length;
+            
+            const thisMonth = offers.filter(inv => {
+                const invDate = new Date(inv.offer_date);
+                const now = new Date();
+                return invDate.getMonth() === now.getMonth() && 
+                       invDate.getFullYear() === now.getFullYear();
+            }).length;
+            document.getElementById('month-count').textContent = thisMonth;
+            
+            if (userLimits) {
+                const limit = userLimits.plan_type === 'paid' ? '∞' : 
+                    `${userLimits.offers_this_month}/${userLimits.offers_limit}`;
+                document.getElementById('limit-info').textContent = limit;
+            }
+        }
+        
+        function formatMoney(amount) {
+            return Number(amount || 0).toLocaleString('de-DE', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+        
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('de-DE');
+        }
+        
+        function getStatusLabel(status) {
+            const labels = {
+                'draft': 'Entwurf',
+                'sent': 'Versendet',
+                'paid': 'Bezahlt',
+                'overdue': 'Überfällig'
+            };
+            return labels[status] || status;
+        }
+        
+        function viewOffer(id) {
+            tg.sendData(JSON.stringify({
+                action: 'view_offer',
+                offer_id: id
+            }));
+        }
+        
+        function downloadPDF(id) {
+            tg.sendData(JSON.stringify({
+                action: 'download_offer_pdf',
+                offer_id: id
+            }));
+        }
+        
+        function copyOffer(id) {
+            if (confirm('Angebot kopieren?')) {
+                tg.sendData(JSON.stringify({
+                    action: 'copy_offer',
+                    offer_id: id
+                }));
+            }
+        }
+        
+        function editOffer(id) {
+            tg.sendData(JSON.stringify({
+                action: 'edit_offer',
+                offer_id: id
+            }));
+        }
+        
+        function createNewOffer() {
+            tg.sendData(JSON.stringify({
+                action: 'create_new_offer'
+            }));
+        }
+        
+        // Загрузка при старте
+        loadData();
+    </script>
+</body>
+</html>
