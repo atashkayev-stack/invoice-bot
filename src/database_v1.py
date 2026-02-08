@@ -229,12 +229,13 @@ class Database:
         items_net = sum((v["taxable"] for v in by_rate.values()), Decimal("0"))
 
         # ---------- DISCOUNT ----------
+        # ---------- DISCOUNT ----------
         discount_final = Decimal("0")
         if items_net > 0:
-            if discount_percent > 0:
-                discount_final = items_net * pct(discount_percent)
-            elif discount_amount_form > 0:
+            if discount_amount_form > 0:
                 discount_final = discount_amount_form
+            elif discount_percent > 0:
+                discount_final = items_net * pct(discount_percent)
 
         discount_final = _money(min(discount_final, items_net))
 

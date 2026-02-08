@@ -902,90 +902,58 @@
         calcTotals();
       }
 
-      function calcTotals() {
-        // === 1. Контекст ===
-        const vatPerItem = document.getElementById("vat_per_item").checked;
-        const globalVat =
-          parseFloat(document.getElementById("global_vat_rate").value) || 0;
+      function calcTotals(
+        items,
+        {
+          discount_percentage = 0,
+          discount_amount = 0,
+          shipping_cost = 0,
+          vat_mode = "standard",
+          global_vat_rate = 19,
+        },
+      ) {
+        let subtotal = 0;
 
-        const discountPercent =
-          parseFloat(document.getElementById("discount_percentage").value) || 0;
-        const discountAmount =
-          parseFloat(document.getElementById("discount_amount").value) || 0;
-
-        const shippingCost =
-          parseFloat(document.getElementById("shipping_cost").value) || 0;
-        const shippingVat =
-          parseFloat(document.getElementById("shipping_vat_rate").value) || 0;
-
-        // VAT mode (preview only!)
-        const vatMode = detectVatMode({
-          clientType: clientType,
-          buyerCountry: document.getElementById("client_country").value,
-          buyerVatId: document.getElementById("client_vat_id")?.value || "",
-          isKleinunternehmer: loadedProfile?.is_kleinunternehmer || false,
-        });
-
-        // === 2. Netto по позициям ===
-        let netItemsSum = 0;
-        let estimatedVat = 0;
-
-        document.querySelectorAll(".item-row").forEach((row) => {
-          const qty = parseFloat(row.querySelector(".item-qty").value) || 0;
-          const price = parseFloat(row.querySelector(".item-price").value) || 0;
-          const lineNet = qty * price;
-
-          netItemsSum += lineNet;
-
-          // VAT только как ОЦЕНКА
-          if (vatMode === "standard") {
-            const rate = vatPerItem
-              ? parseFloat(row.querySelector(".item-vat-rate")?.value || 0)
-              : globalVat;
-
-            estimatedVat += (lineNet * rate) / 100;
-          }
-        });
-
-        // === 3. Скидка (ТОЛЬКО визуально) ===
-        let discountPreview = 0;
-        if (discountPercent > 0) {
-          discountPreview = (netItemsSum * discountPercent) / 100;
-        } else if (discountAmount > 0) {
-          discountPreview = discountAmount;
+        for (const it of items) {
+          const qty = Number(it.quantity || 0);
+          const price = Number(it.unit_price || 0);
+          subtotal += qty * price;
         }
 
-        const netAfterDiscount = netItemsSum - discountPreview;
+        subtotal = round2(subtotal);
 
-        // === 4. Доставка (preview) ===
-        let shippingVatPreview = 0;
-        if (vatMode === "standard") {
-          shippingVatPreview = (shippingCost * shippingVat) / 100;
+        // СКИДКА: % имеет приоритет над суммой
+        let discount = 0;
+        if (discount_percentage > 0) {
+          discount = subtotal * (discount_percentage / 100);
+        } else if (discount_amount > 0) {
+          discount = discount_amount;
         }
 
-        // === 5. Итоги (НЕ канон, только preview!) ===
-        const previewNet = netAfterDiscount + shippingCost;
-        const previewVat = estimatedVat + shippingVatPreview;
-        const previewGross = previewNet + previewVat;
+        // защита от бреда
+        discount = Math.min(discount, subtotal);
 
-        // === 6. Вывод в UI (чётко как PREVIEW) ===
-        document.getElementById("total_net").textContent =
-          previewNet.toFixed(2) + " €";
+        const net_after_discount = subtotal - discount;
+        const net_total = net_after_discount + Number(shipping_cost || 0);
 
-        document.getElementById("total_vat").textContent =
-          previewVat.toFixed(2) + " €";
+        const vat =
+          vat_mode === "standard"
+            ? round2(net_total * (global_vat_rate / 100))
+            : 0;
 
-        document.getElementById("total_gross").textContent =
-          previewGross.toFixed(2) + " €";
-
-        // === 7. DEBUG ===
-        if (typeof log === "function") {
-          log(
-            `PREVIEW | net=${previewNet.toFixed(2)} vat≈${previewVat.toFixed(2)} gross≈${previewGross.toFixed(2)} (${vatMode})`,
-            "#0af",
-          );
-        }
+        return {
+          subtotal: round2(subtotal),
+          discount: round2(discount),
+          net: round2(net_total),
+          vat: round2(vat),
+          gross: round2(net_total + vat),
+        };
       }
+
+      function round2(x) {
+        return Math.round(x * 100) / 100;
+      }
+
       function createInvoice() {
         const vatPerItem = document.getElementById("vat_per_item").checked;
         const globalVatRate = parseFloat(
