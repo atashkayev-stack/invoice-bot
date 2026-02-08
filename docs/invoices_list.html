@@ -245,26 +245,35 @@
         let invoices = [];
         let userLimits = null;
         
+        // Получаем user_id из URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('user_id');
+        
         // Загрузка данных
         async function loadData() {
             showLoading();
             
-            // Запрос данных от бота
+            // Запрос данных от бота через sendData
             tg.sendData(JSON.stringify({
-                action: 'load_invoices_list'
+                action: 'get_invoices_list',
+                user_id: userId
             }));
         }
         
-        // Получение данных от бота
-        window.addEventListener('message', function(event) {
-            const data = event.data;
-            if (data.invoices) {
-                invoices = data.invoices;
-                userLimits = data.limits;
-                renderInvoices();
-                updateStats();
-            }
+        // Получение данных от бота через событие
+        tg.onEvent('mainButtonClicked', function() {
+            // не используется
         });
+        
+        // ВРЕМЕННОЕ РЕШЕНИЕ: загружаем пустой список
+        // В production нужно реализовать API endpoint или другой способ передачи данных
+        setTimeout(() => {
+            // Пока показываем пустое состояние
+            invoices = [];
+            userLimits = { plan_type: 'free', invoices_limit: 5, invoices_this_month: 0 };
+            renderInvoices();
+            updateStats();
+        }, 500);
         
         function showLoading() {
             document.getElementById('invoices-list').innerHTML = `

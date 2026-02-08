@@ -1,292 +1,436 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <title>Angebot</title>
-    <style>
-        @page {
-            size: A4;
-            margin: 15mm 20mm;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Helvetica', 'Arial', sans-serif;
-            font-size: 11pt;
-            line-height: 1.4;
-            color: #333;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 25mm;
-            padding-bottom: 10mm;
-            border-bottom: 3px solid #28a745;
-        }
-        
-        .header h1 {
-            font-size: 28pt;
-            color: #28a745;
-            margin-bottom: 5mm;
-        }
-        
-        .sender {
-            text-align: right;
-            margin-bottom: 15mm;
-            font-size: 10pt;
-        }
-        
-        .sender-company {
-            font-weight: bold;
-            font-size: 12pt;
-            color: #28a745;
-        }
-        
-        .client-box {
-            border: 1px solid #ddd;
-            padding: 10mm;
-            margin-bottom: 15mm;
-            background: #f9f9f9;
-        }
-        
-        .client-label {
-            font-weight: bold;
-            color: #28a745;
-            margin-bottom: 5mm;
-        }
-        
-        .document-info {
-            display: table;
-            width: 100%;
-            margin-bottom: 15mm;
-            font-size: 10pt;
-        }
-        
-        .document-info-row {
-            display: table-row;
-        }
-        
-        .document-info-label {
-            display: table-cell;
-            width: 30%;
-            font-weight: bold;
-            padding: 3mm 0;
-        }
-        
-        .document-info-value {
-            display: table-cell;
-            padding: 3mm 0;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 15mm;
-        }
-        
-        th {
-            background-color: #28a745;
-            color: white;
-            padding: 8pt;
-            text-align: left;
-            font-weight: bold;
-        }
-        
-        th.center {
-            text-align: center;
-        }
-        
-        th.right {
-            text-align: right;
-        }
-        
-        td {
-            border-bottom: 1px solid #ddd;
-            padding: 8pt;
-            text-align: left;
-        }
-        
-        td.center {
-            text-align: center;
-        }
-        
-        td.right {
-            text-align: right;
-        }
-        
-        tbody tr:last-child td {
-            border-bottom: 2px solid #28a745;
-        }
-        
-        .totals {
-            float: right;
-            width: 50%;
-            margin-top: 10mm;
-        }
-        
-        .totals-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 3mm 0;
-            font-size: 11pt;
-        }
-        
-        .totals-row.grand {
-            font-size: 14pt;
-            font-weight: bold;
-            color: #28a745;
-            border-top: 2px solid #28a745;
-            padding-top: 5mm;
-            margin-top: 3mm;
-        }
-        
-        .validity-notice {
-            clear: both;
-            margin-top: 15mm;
-            padding: 8mm;
-            background: #fffbea;
-            border-left: 4px solid #ffc107;
-            font-size: 10pt;
-        }
-        
-        .notes-section {
-            clear: both;
-            margin-top: 10mm;
-            padding: 8mm;
-            background: #f9f9f9;
-            border-left: 4px solid #28a745;
-            font-size: 10pt;
-        }
-        
-        .notes-section h3 {
-            color: #28a745;
-            margin-bottom: 5mm;
-            font-size: 11pt;
-        }
-        
-        .footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            text-align: center;
-            font-size: 9pt;
-            color: #666;
-            padding: 5mm 0;
-            border-top: 1px solid #ddd;
-        }
-        
-        .kleinunternehmer-note {
-            font-style: italic;
-            color: #666;
-            margin-top: 5mm;
-            font-size: 9pt;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>Angebot {{ offer_number }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10pt;
+      line-height: 1.4;
+      color: #2c3e50;
+    }
+
+    /* HEADER - красивая шапка */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8mm;
+      padding-bottom: 6mm;
+      border-bottom: 2px solid #3498db;
+    }
+    
+    .header-left h1 {
+      font-size: 32pt;
+      color: #3498db;
+      font-weight: 300;
+      margin-bottom: 2mm;
+    }
+    
+    .header-left .offer-number {
+      font-size: 12pt;
+      color: #7f8c8d;
+      font-weight: 600;
+    }
+    
+    .header-right {
+      text-align: right;
+      font-size: 9pt;
+      color: #34495e;
+    }
+    
+    .header-right .company-name {
+      font-weight: 700;
+      font-size: 11pt;
+      color: #2c3e50;
+      margin-bottom: 2mm;
+    }
+    
+    .header-right .company-detail {
+      line-height: 1.3;
+    }
+
+    /* ДВЕ КОЛОНКИ - Продавец и Покупатель */
+    .parties-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8mm;
+      margin-bottom: 8mm;
+    }
+    
+    .party-box {
+      background: #ecf0f1;
+      padding: 6mm;
+      border-radius: 3mm;
+      border-left: 4px solid #3498db;
+    }
+    
+    .party-title {
+      font-weight: 700;
+      font-size: 10pt;
+      color: #2c3e50;
+      margin-bottom: 3mm;
+      text-transform: uppercase;
+      letter-spacing: 0.5pt;
+    }
+    
+    .party-content {
+      font-size: 9.5pt;
+      line-height: 1.5;
+      color: #34495e;
+    }
+    
+    .party-content strong {
+      color: #2c3e50;
+      font-weight: 600;
+    }
+
+    /* МЕТА ИНФОРМАЦИЯ */
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5mm;
+      margin-bottom: 8mm;
+      font-size: 9pt;
+    }
+    
+    .meta-item {
+      background: #fff;
+      padding: 4mm;
+      border: 1px solid #bdc3c7;
+      border-radius: 2mm;
+    }
+    
+    .meta-label {
+      font-weight: 600;
+      color: #7f8c8d;
+      font-size: 8pt;
+      text-transform: uppercase;
+      margin-bottom: 1mm;
+      letter-spacing: 0.3pt;
+    }
+    
+    .meta-value {
+      font-size: 10pt;
+      color: #2c3e50;
+      font-weight: 600;
+    }
+
+    /* ТАБЛИЦА ПОЗИЦИЙ */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 8mm;
+      font-size: 9pt;
+    }
+    
+    thead th {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 8pt;
+      text-align: left;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 8.5pt;
+      letter-spacing: 0.5pt;
+    }
+    
+    thead th.center { text-align: center; }
+    thead th.right { text-align: right; }
+    
+    tbody td {
+      padding: 7pt 8pt;
+      border-bottom: 1px solid #ecf0f1;
+    }
+    
+    tbody tr:nth-child(even) {
+      background: #f8f9fa;
+    }
+    
+    tbody tr:hover {
+      background: #e3f2fd;
+    }
+    
+    td.center { text-align: center; }
+    td.right { text-align: right; font-weight: 600; }
+    
+    .item-description {
+      color: #2c3e50;
+      font-weight: 500;
+    }
+
+    /* ИТОГИ */
+    .totals-section {
+      margin-top: 10mm;
+      display: flex;
+      justify-content: flex-end;
+    }
+    
+    .totals-box {
+      width: 60%;
+      background: #fff;
+      border: 2px solid #3498db;
+      border-radius: 3mm;
+      overflow: hidden;
+    }
+    
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5pt 10pt;
+      font-size: 10pt;
+    }
+    
+    .totals-row:nth-child(even) {
+      background: #f8f9fa;
+    }
+    
+    .totals-row.subtotal {
+      font-weight: 600;
+      background: #ecf0f1;
+      border-top: 1px solid #bdc3c7;
+    }
+    
+    .totals-row.vat {
+      color: #7f8c8d;
+    }
+    
+    .totals-row.total {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-size: 14pt;
+      font-weight: 700;
+      padding: 8pt 10pt;
+    }
+    
+    .totals-label {
+      text-transform: uppercase;
+      letter-spacing: 0.3pt;
+    }
+    
+    .totals-value {
+      font-weight: 700;
+    }
+
+    /* ПРИМЕЧАНИЯ */
+    .notes-section {
+      margin-top: 10mm;
+      padding: 6mm;
+      background: #fef9e7;
+      border-left: 4px solid #f39c12;
+      border-radius: 2mm;
+    }
+    
+    .notes-title {
+      font-weight: 700;
+      color: #d68910;
+      margin-bottom: 3mm;
+      text-transform: uppercase;
+      font-size: 9pt;
+    }
+    
+    .notes-content {
+      font-size: 9pt;
+      line-height: 1.5;
+      color: #7d6608;
+    }
+
+    /* FOOTER */
+    .footer {
+      margin-top: 12mm;
+      padding-top: 6mm;
+      border-top: 1px solid #bdc3c7;
+      font-size: 8pt;
+      color: #95a5a6;
+      text-align: center;
+      line-height: 1.4;
+    }
+    
+    .footer strong {
+      color: #7f8c8d;
+    }
+
+    /* НАЛОГОВОЕ ПРИМЕЧАНИЕ */
+    .tax-note {
+      margin-top: 6mm;
+      padding: 4mm;
+      background: #e8f8f5;
+      border-left: 4px solid #1abc9c;
+      font-size: 8.5pt;
+      color: #117864;
+      font-style: italic;
+    }
+  </style>
 </head>
 <body>
-    <!-- HEADER -->
-    <div class="header">
-        <h1>ANGEBOT</h1>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <h1>ANGEBOT</h1>
+      <div class="offer-number">Nr. {{ offer_number }}</div>
+    </div>
+    <div class="header-right">
+      <div class="company-name">{{ profile.company_name or profile.owner_name }}</div>
+      <div class="company-detail">
+        {{ profile.street }}<br>
+        {{ profile.postal_code }} {{ profile.city }}<br>
+        {% if profile.phone %}Tel: {{ profile.phone }}<br>{% endif %}
+        {% if profile.email %}E-Mail: {{ profile.email }}{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ПРОДАВЕЦ И ПОКУПАТЕЛЬ -->
+  <div class="parties-grid">
+    <div class="party-box">
+      <div class="party-title">Angebotssteller</div>
+      <div class="party-content">
+        <strong>{{ profile.company_name or profile.owner_name }}</strong><br>
+        {{ profile.street }}<br>
+        {{ profile.postal_code }} {{ profile.city }}<br>
+        {{ profile.country_code or 'DE' }}<br>
+        {% if profile.vat_id %}<br>USt-IdNr.: {{ profile.vat_id }}{% endif %}
+        {% if profile.tax_id %}<br>Steuernr.: {{ profile.tax_id }}{% endif %}
+      </div>
     </div>
     
-    <!-- SENDER -->
-    <div class="sender">
-        <div class="sender-company">{{ sender_company }}</div>
-        <div>{{ sender_street }}</div>
-        <div>{{ sender_city }}</div>
+    <div class="party-box">
+      <div class="party-title">Angebotsempfänger</div>
+      <div class="party-content">
+        <strong>{{ client_name }}</strong><br>
+        {% if client_address %}{{ client_address }}<br>{% endif %}
+        {% if client_street %}{{ client_street }}<br>{% endif %}
+        {% if client_postal_code or client_city %}{{ client_postal_code }} {{ client_city }}<br>{% endif %}
+        {% if client_country %}{{ client_country }}{% endif %}
+        {% if customer_id %}<br><br>Kunden-Nr.: {{ customer_id }}{% endif %}
+      </div>
     </div>
-    
-    <!-- CLIENT -->
-    <div class="client-box">
-        <div class="client-label">Empfänger:</div>
-        <div><strong>{{ client_company }}</strong></div>
-        <div>{{ client_address }}</div>
+  </div>
+
+  <!-- МЕТА ИНФОРМАЦИЯ -->
+  <div class="meta-grid">
+    <div class="meta-item">
+      <div class="meta-label">Angebotsdatum</div>
+      <div class="meta-value">{{ offer_date }}</div>
     </div>
-    
-    <!-- DOCUMENT INFO -->
-    <div class="document-info">
-        <div class="document-info-row">
-            <div class="document-info-label">Angebotsnummer:</div>
-            <div class="document-info-value">{{ offer_number }}</div>
-        </div>
-        <div class="document-info-row">
-            <div class="document-info-label">Angebotsdatum:</div>
-            <div class="document-info-value">{{ offer_date }}</div>
-        </div>
-        <div class="document-info-row">
-            <div class="document-info-label">Gültig bis:</div>
-            <div class="document-info-value">{{ valid_until }}</div>
-        </div>
+    <div class="meta-item">
+      <div class="meta-label">Leistungsdatum</div>
+      <div class="meta-value">{{ delivery_date or offer_date }}</div>
     </div>
-    
-    <!-- ITEMS TABLE -->
-    <table>
-        <thead>
-            <tr>
-                <th style="width: 50%">Beschreibung</th>
-                <th class="center" style="width: 15%">Menge</th>
-                <th class="right" style="width: 17.5%">Preis</th>
-                <th class="right" style="width: 17.5%">Gesamt</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in items %}
-            <tr>
-                <td>{{ item.description }}</td>
-                <td class="center">{{ item.quantity }} {{ item.unit }}</td>
-                <td class="right">{{ item.price }} €</td>
-                <td class="right">{{ item.total }} €</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    
-    <!-- TOTALS -->
-    <div class="totals">
-        <div class="totals-row">
-            <span>Netto:</span>
-            <span>{{ total_net }} €</span>
-        </div>
-        {% if vat_rate > 0 %}
-        <div class="totals-row">
-            <span>MwSt ({{ vat_rate }}%):</span>
-            <span>{{ total_vat }} €</span>
-        </div>
-        {% else %}
-        <div class="kleinunternehmer-note">
-            Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.
-        </div>
-        {% endif %}
-        <div class="totals-row grand">
-            <span>Gesamtbetrag:</span>
-            <span>{{ total_gross }} €</span>
-        </div>
+    <div class="meta-item">
+      <div class="meta-label">Fällig am</div>
+      <div class="meta-value">{{ due_date }}</div>
     </div>
-    
-    <!-- VALIDITY NOTICE -->
-    <div class="validity-notice">
-        <strong>⚠️ Wichtig:</strong> Dieses Angebot ist gültig bis zum {{ valid_until }}.
+  </div>
+
+  <!-- ТАБЛИЦА ПОЗИЦИЙ -->
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 8%;">Pos.</th>
+        <th style="width: 42%;">Beschreibung</th>
+        <th class="center" style="width: 10%;">Menge</th>
+        <th class="center" style="width: 8%;">Einheit</th>
+        <th class="right" style="width: 12%;">Einzelpreis</th>
+        <th class="center" style="width: 8%;">MwSt.</th>
+        <th class="right" style="width: 12%;">Gesamt</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td class="center">{{ item.position_number }}</td>
+        <td class="item-description">{{ item.description }}</td>
+        <td class="center">{{ "%.2f"|format(item.quantity|float) }}</td>
+        <td class="center">{{ item.unit }}</td>
+        <td class="right">{{ "%.2f"|format(item.unit_price|float) }} €</td>
+        <td class="center">{{ "%.0f"|format(item.vat_rate|float) }}%</td>
+        <td class="right">{{ "%.2f"|format(item.total_price|float) }} €</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- ИТОГИ -->
+  <div class="totals-section">
+    <div class="totals-box">
+      <div class="totals-row subtotal">
+        <span class="totals-label">Netto</span>
+        <span class="totals-value">{{ "%.2f"|format(amount|float) }} €</span>
+      </div>
+      
+      {% if vat_breakdown %}
+        {% for vat in vat_breakdown %}
+        <div class="totals-row vat">
+          <span class="totals-label">MwSt. {{ "%.0f"|format(vat.vat_rate|float) }}%</span>
+          <span class="totals-value">{{ "%.2f"|format(vat.vat_amount|float) }} €</span>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="totals-row vat">
+          <span class="totals-label">MwSt.</span>
+          <span class="totals-value">{{ "%.2f"|format(vat_amount|float) }} €</span>
+        </div>
+      {% endif %}
+      
+      {% if shipping_cost and shipping_cost|float > 0 %}
+      <div class="totals-row">
+        <span class="totals-label">Versandkosten</span>
+        <span class="totals-value">{{ "%.2f"|format(shipping_cost|float) }} €</span>
+      </div>
+      {% endif %}
+      
+      <div class="totals-row total">
+        <span class="totals-label">Gesamt zu zahlen</span>
+        <span class="totals-value">{{ "%.2f"|format(total|float) }} €</span>
+      </div>
     </div>
-    
-    <!-- NOTES -->
-    {% if notes %}
-    <div class="notes-section">
-        <h3>Zusätzliche Hinweise:</h3>
-        <p>{{ notes }}</p>
-    </div>
+  </div>
+
+  <!-- НАЛОГОВОЕ ПРИМЕЧАНИЕ -->
+  {% if vat_mode == 'klein' or (profile.is_kleinunternehmer and profile.is_kleinunternehmer == true) %}
+  <div class="tax-note">
+    Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.
+  </div>
+  {% elif vat_mode == 'reverse' %}
+  <div class="tax-note">
+    Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge).
+  </div>
+  {% elif vat_mode == 'export' %}
+  <div class="tax-note">
+    Steuerfreie Ausfuhrlieferung.
+  </div>
+  {% endif %}
+
+  <!-- ПРИМЕЧАНИЯ -->
+  {% if notes %}
+  <div class="notes-section">
+    <div class="notes-title">Bemerkungen</div>
+    <div class="notes-content">{{ notes }}</div>
+  </div>
+  {% endif %}
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <strong>Bankverbindung:</strong> 
+    {% if profile.bank_name %}{{ profile.bank_name }} • {% endif %}
+    {% if profile.iban %}IBAN: {{ profile.iban }}{% endif %}
+    {% if profile.bic %} • BIC: {{ profile.bic }}{% endif %}
+    <br>
+    {% if profile.trade_register_number %}
+    <strong>Registergericht:</strong> {{ profile.trade_register_court or '' }} • 
+    <strong>HRB:</strong> {{ profile.trade_register_number }}<br>
     {% endif %}
-    
-    <!-- FOOTER -->
-    <div class="footer">
-        {% if sender_tax_id %}Steuernummer: {{ sender_tax_id }}{% endif %}
-        {% if sender_tax_id and sender_iban %} | {% endif %}
-        {% if sender_iban %}IBAN: {{ sender_iban }}{% endif %}
-    </div>
+    <strong>Geschäftsführer:</strong> {{ profile.managing_director or profile.owner_name }}
+  </div>
+
 </body>
 </html>

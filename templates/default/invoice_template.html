@@ -1,421 +1,436 @@
 <!doctype html>
 <html lang="de">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Rechnung {{ invoice_number }}</title>
-    <style>
-      @page {
-        size: A4;
-        margin: 15mm 20mm;
-      }
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-      body {
-        font-family: "Helvetica", "Arial", sans-serif;
-        font-size: 10pt;
-        line-height: 1.3;
-        color: #333;
-      }
-      .header {
-        text-align: center;
-        margin-bottom: 20mm;
-        padding-bottom: 8mm;
-        border-bottom: 3px solid #0066cc;
-      }
-      .header h1 {
-        font-size: 26pt;
-        color: #0066cc;
-        margin-bottom: 3mm;
-      }
-      .sender {
-        text-align: right;
-        margin-bottom: 12mm;
-        font-size: 9pt;
-      }
-      .sender-company {
-        font-weight: bold;
-        font-size: 11pt;
-        color: #0066cc;
-      }
-      .client-box {
-        border: 1px solid #ddd;
-        padding: 8mm;
-        margin-bottom: 12mm;
-        background: #f9f9f9;
-      }
-      .client-label {
-        font-weight: bold;
-        color: #0066cc;
-        margin-bottom: 3mm;
-        font-size: 9pt;
-      }
-      .info-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10mm;
-        margin-bottom: 12mm;
-        font-size: 9pt;
-      }
-      .info-item {
-        margin-bottom: 2mm;
-      }
-      .info-label {
-        font-weight: bold;
-        display: inline-block;
-        width: 45%;
-      }
-      .info-value {
-        display: inline-block;
-        width: 55%;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 12mm;
-        font-size: 9pt;
-      }
-      th {
-        background-color: #0066cc;
-        color: white;
-        padding: 6pt;
-        text-align: left;
-        font-weight: bold;
-      }
-      th.center {
-        text-align: center;
-      }
-      th.right {
-        text-align: right;
-      }
-      td {
-        border-bottom: 1px solid #ddd;
-        padding: 6pt;
-        text-align: left;
-      }
-      td.center {
-        text-align: center;
-      }
-      td.right {
-        text-align: right;
-      }
-      tbody tr:last-child td {
-        border-bottom: 2px solid #0066cc;
-      }
-      .totals {
-        float: right;
-        width: 55%;
-        margin-top: 8mm;
-      }
-      .totals-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 2mm 0;
-        font-size: 10pt;
-      }
-      .totals-row.subtotal {
-        color: #666;
-        font-size: 9pt;
-      }
-      .totals-row.grand {
-        font-size: 13pt;
-        font-weight: bold;
-        color: #0066cc;
-        border-top: 2px solid #0066cc;
-        padding-top: 4mm;
-        margin-top: 2mm;
-      }
-      .notes-section {
-        clear: both;
-        margin-top: 8mm;
-        padding: 8mm;
-        background: #f9f9f9;
-        border-left: 3px solid #0066cc;
-        font-size: 9pt;
-      }
-      .footer {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        text-align: center;
-        font-size: 8pt;
-        color: #666;
-        padding: 4mm 0;
-        border-top: 1px solid #ddd;
-      }
-      .kleinunternehmer-note {
-        font-style: italic;
-        color: #666;
-        margin-top: 3mm;
-        font-size: 8pt;
-      }
-      .shipping-address {
-        margin-top: 8mm;
-        padding: 8mm;
-        background: #fffbea;
-        border: 1px dashed #ffc107;
-        font-size: 9pt;
-      }
-      .vat-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 10px;
-        font-size: 12px;
-      }
-      .vat-table th,
-      .vat-table td {
-        border: 1px solid #ddd;
-        padding: 6px 8px;
-        text-align: right;
-      }
-      .vat-table th {
-        background: #f3f6f9;
-        font-weight: 700;
-      }
-      .vat-table td.left,
-      .vat-table th.left {
-        text-align: left;
-      }
-      .vat-note {
-        margin-top: 6px;
-        font-size: 11px;
-        color: #666;
-      }
-    </style>
-  </head>
-  <body>
-    <!-- HEADER -->
-    <div class="header"><h1>RECHNUNG</h1></div>
+<head>
+  <meta charset="UTF-8" />
+  <title>Rechnung {{ invoice_number }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10pt;
+      line-height: 1.4;
+      color: #2c3e50;
+    }
 
-    <!-- SENDER -->
-    <div class="sender">
-      <div class="sender-company">{{ sender_company }}</div>
-      <div>{{ sender_street }}</div>
-      <div>{{ sender_city }}</div>
-      {% if sender_email %}
-      <div>{{ sender_email }}</div>
-      {% endif %}
+    /* HEADER - красивая шапка */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8mm;
+      padding-bottom: 6mm;
+      border-bottom: 2px solid #3498db;
+    }
+    
+    .header-left h1 {
+      font-size: 32pt;
+      color: #3498db;
+      font-weight: 300;
+      margin-bottom: 2mm;
+    }
+    
+    .header-left .invoice-number {
+      font-size: 12pt;
+      color: #7f8c8d;
+      font-weight: 600;
+    }
+    
+    .header-right {
+      text-align: right;
+      font-size: 9pt;
+      color: #34495e;
+    }
+    
+    .header-right .company-name {
+      font-weight: 700;
+      font-size: 11pt;
+      color: #2c3e50;
+      margin-bottom: 2mm;
+    }
+    
+    .header-right .company-detail {
+      line-height: 1.3;
+    }
+
+    /* ДВЕ КОЛОНКИ - Продавец и Покупатель */
+    .parties-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8mm;
+      margin-bottom: 8mm;
+    }
+    
+    .party-box {
+      background: #ecf0f1;
+      padding: 6mm;
+      border-radius: 3mm;
+      border-left: 4px solid #3498db;
+    }
+    
+    .party-title {
+      font-weight: 700;
+      font-size: 10pt;
+      color: #2c3e50;
+      margin-bottom: 3mm;
+      text-transform: uppercase;
+      letter-spacing: 0.5pt;
+    }
+    
+    .party-content {
+      font-size: 9.5pt;
+      line-height: 1.5;
+      color: #34495e;
+    }
+    
+    .party-content strong {
+      color: #2c3e50;
+      font-weight: 600;
+    }
+
+    /* МЕТА ИНФОРМАЦИЯ */
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5mm;
+      margin-bottom: 8mm;
+      font-size: 9pt;
+    }
+    
+    .meta-item {
+      background: #fff;
+      padding: 4mm;
+      border: 1px solid #bdc3c7;
+      border-radius: 2mm;
+    }
+    
+    .meta-label {
+      font-weight: 600;
+      color: #7f8c8d;
+      font-size: 8pt;
+      text-transform: uppercase;
+      margin-bottom: 1mm;
+      letter-spacing: 0.3pt;
+    }
+    
+    .meta-value {
+      font-size: 10pt;
+      color: #2c3e50;
+      font-weight: 600;
+    }
+
+    /* ТАБЛИЦА ПОЗИЦИЙ */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 8mm;
+      font-size: 9pt;
+    }
+    
+    thead th {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 8pt;
+      text-align: left;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 8.5pt;
+      letter-spacing: 0.5pt;
+    }
+    
+    thead th.center { text-align: center; }
+    thead th.right { text-align: right; }
+    
+    tbody td {
+      padding: 7pt 8pt;
+      border-bottom: 1px solid #ecf0f1;
+    }
+    
+    tbody tr:nth-child(even) {
+      background: #f8f9fa;
+    }
+    
+    tbody tr:hover {
+      background: #e3f2fd;
+    }
+    
+    td.center { text-align: center; }
+    td.right { text-align: right; font-weight: 600; }
+    
+    .item-description {
+      color: #2c3e50;
+      font-weight: 500;
+    }
+
+    /* ИТОГИ */
+    .totals-section {
+      margin-top: 10mm;
+      display: flex;
+      justify-content: flex-end;
+    }
+    
+    .totals-box {
+      width: 60%;
+      background: #fff;
+      border: 2px solid #3498db;
+      border-radius: 3mm;
+      overflow: hidden;
+    }
+    
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5pt 10pt;
+      font-size: 10pt;
+    }
+    
+    .totals-row:nth-child(even) {
+      background: #f8f9fa;
+    }
+    
+    .totals-row.subtotal {
+      font-weight: 600;
+      background: #ecf0f1;
+      border-top: 1px solid #bdc3c7;
+    }
+    
+    .totals-row.vat {
+      color: #7f8c8d;
+    }
+    
+    .totals-row.total {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-size: 14pt;
+      font-weight: 700;
+      padding: 8pt 10pt;
+    }
+    
+    .totals-label {
+      text-transform: uppercase;
+      letter-spacing: 0.3pt;
+    }
+    
+    .totals-value {
+      font-weight: 700;
+    }
+
+    /* ПРИМЕЧАНИЯ */
+    .notes-section {
+      margin-top: 10mm;
+      padding: 6mm;
+      background: #fef9e7;
+      border-left: 4px solid #f39c12;
+      border-radius: 2mm;
+    }
+    
+    .notes-title {
+      font-weight: 700;
+      color: #d68910;
+      margin-bottom: 3mm;
+      text-transform: uppercase;
+      font-size: 9pt;
+    }
+    
+    .notes-content {
+      font-size: 9pt;
+      line-height: 1.5;
+      color: #7d6608;
+    }
+
+    /* FOOTER */
+    .footer {
+      margin-top: 12mm;
+      padding-top: 6mm;
+      border-top: 1px solid #bdc3c7;
+      font-size: 8pt;
+      color: #95a5a6;
+      text-align: center;
+      line-height: 1.4;
+    }
+    
+    .footer strong {
+      color: #7f8c8d;
+    }
+
+    /* НАЛОГОВОЕ ПРИМЕЧАНИЕ */
+    .tax-note {
+      margin-top: 6mm;
+      padding: 4mm;
+      background: #e8f8f5;
+      border-left: 4px solid #1abc9c;
+      font-size: 8.5pt;
+      color: #117864;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <h1>RECHNUNG</h1>
+      <div class="invoice-number">Nr. {{ invoice_number }}</div>
     </div>
-
-    <!-- CLIENT -->
-    <div class="client-box">
-      <div class="client-label">Empfänger:</div>
-      <div><strong>{{ client_company }}</strong></div>
-      <div>{{ client_address }}</div>
-      {% if client_email %}
-      <div>E-Mail: {{ client_email }}</div>
-      {% endif %} {% if customer_id %}
-      <div style="margin-top: 3mm; font-size: 9pt; color: #666">
-        Kundennummer: {{ customer_id }}
-      </div>
-      {% endif %}
-    </div>
-
-    <!-- DOCUMENT INFO -->
-    <div class="info-grid">
-      <div>
-        <div class="info-item">
-          <span class="info-label">Rechnungsnummer:</span
-          ><span class="info-value">{{ invoice_number }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Rechnungsdatum:</span
-          ><span class="info-value">{{ invoice_date }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Leistungsdatum:</span
-          ><span class="info-value">{{ delivery_date }}</span>
-        </div>
-      </div>
-      <div>
-        {% if due_date %}
-        <div class="info-item">
-          <span class="info-label">Fälligkeitsdatum:</span
-          ><span class="info-value">{{ due_date }}</span>
-        </div>
-        {% endif %} {% if purchase_order %}
-        <div class="info-item">
-          <span class="info-label">Bestellnummer:</span
-          ><span class="info-value">{{ purchase_order }}</span>
-        </div>
-        {% endif %} {% if contract_number %}
-        <div class="info-item">
-          <span class="info-label">Vertragsnummer:</span
-          ><span class="info-value">{{ contract_number }}</span>
-        </div>
-        {% endif %} {% if project_number %}
-        <div class="info-item">
-          <span class="info-label">Projektnummer:</span
-          ><span class="info-value">{{ project_number }}</span>
-        </div>
-        {% endif %}
+    <div class="header-right">
+      <div class="company-name">{{ profile.company_name or profile.owner_name }}</div>
+      <div class="company-detail">
+        {{ profile.street }}<br>
+        {{ profile.postal_code }} {{ profile.city }}<br>
+        {% if profile.phone %}Tel: {{ profile.phone }}<br>{% endif %}
+        {% if profile.email %}E-Mail: {{ profile.email }}{% endif %}
       </div>
     </div>
+  </div>
 
-    <!-- ITEMS TABLE -->
-    <table>
-      <thead>
-        <tr>
-          <th style="width: 40%">Beschreibung</th>
-          <th class="center" style="width: 12%">Menge</th>
-          <th class="right" style="width: 15%">Preis</th>
-          {% if vat_per_item %}
-          <th class="center" style="width: 10%">MwSt.</th>
-          {% endif %}
-          <th
-            class="right"
-            style="width: {% if vat_per_item %}23%{% else %}33%{% endif %}"
-          >
-            Gesamt
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for item in items %}
-        <tr>
-          <td>{{ item.description }}</td>
-          <td class="center">{{ item.quantity }} {{ item.unit }}</td>
-          <td class="right">{{ item.price }} €</td>
-          {% if vat_per_item %}
-          <td class="center">{{ item.vat_rate }}%</td>
-          {% endif %}
-          <td class="right">{{ item.total }} €</td>
-        </tr>
+  <!-- ПРОДАВЕЦ И ПОКУПАТЕЛЬ -->
+  <div class="parties-grid">
+    <div class="party-box">
+      <div class="party-title">Rechnungssteller</div>
+      <div class="party-content">
+        <strong>{{ profile.company_name or profile.owner_name }}</strong><br>
+        {{ profile.street }}<br>
+        {{ profile.postal_code }} {{ profile.city }}<br>
+        {{ profile.country_code or 'DE' }}<br>
+        {% if profile.vat_id %}<br>USt-IdNr.: {{ profile.vat_id }}{% endif %}
+        {% if profile.tax_id %}<br>Steuernr.: {{ profile.tax_id }}{% endif %}
+      </div>
+    </div>
+    
+    <div class="party-box">
+      <div class="party-title">Rechnungsempfänger</div>
+      <div class="party-content">
+        <strong>{{ client_name }}</strong><br>
+        {% if client_address %}{{ client_address }}<br>{% endif %}
+        {% if client_street %}{{ client_street }}<br>{% endif %}
+        {% if client_postal_code or client_city %}{{ client_postal_code }} {{ client_city }}<br>{% endif %}
+        {% if client_country %}{{ client_country }}{% endif %}
+        {% if customer_id %}<br><br>Kunden-Nr.: {{ customer_id }}{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- МЕТА ИНФОРМАЦИЯ -->
+  <div class="meta-grid">
+    <div class="meta-item">
+      <div class="meta-label">Rechnungsdatum</div>
+      <div class="meta-value">{{ invoice_date }}</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Leistungsdatum</div>
+      <div class="meta-value">{{ delivery_date or invoice_date }}</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Fällig am</div>
+      <div class="meta-value">{{ due_date }}</div>
+    </div>
+  </div>
+
+  <!-- ТАБЛИЦА ПОЗИЦИЙ -->
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 8%;">Pos.</th>
+        <th style="width: 42%;">Beschreibung</th>
+        <th class="center" style="width: 10%;">Menge</th>
+        <th class="center" style="width: 8%;">Einheit</th>
+        <th class="right" style="width: 12%;">Einzelpreis</th>
+        <th class="center" style="width: 8%;">MwSt.</th>
+        <th class="right" style="width: 12%;">Gesamt</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td class="center">{{ item.position_number }}</td>
+        <td class="item-description">{{ item.description }}</td>
+        <td class="center">{{ "%.2f"|format(item.quantity|float) }}</td>
+        <td class="center">{{ item.unit }}</td>
+        <td class="right">{{ "%.2f"|format(item.unit_price|float) }} €</td>
+        <td class="center">{{ "%.0f"|format(item.vat_rate|float) }}%</td>
+        <td class="right">{{ "%.2f"|format(item.total_price|float) }} €</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- ИТОГИ -->
+  <div class="totals-section">
+    <div class="totals-box">
+      <div class="totals-row subtotal">
+        <span class="totals-label">Netto</span>
+        <span class="totals-value">{{ "%.2f"|format(amount|float) }} €</span>
+      </div>
+      
+      {% if vat_breakdown %}
+        {% for vat in vat_breakdown %}
+        <div class="totals-row vat">
+          <span class="totals-label">MwSt. {{ "%.0f"|format(vat.vat_rate|float) }}%</span>
+          <span class="totals-value">{{ "%.2f"|format(vat.vat_amount|float) }} €</span>
+        </div>
         {% endfor %}
-      </tbody>
-    </table>
-
-    <!-- TOTALS -->
-    <div class="totals">
+      {% else %}
+        <div class="totals-row vat">
+          <span class="totals-label">MwSt.</span>
+          <span class="totals-value">{{ "%.2f"|format(vat_amount|float) }} €</span>
+        </div>
+      {% endif %}
+      
+      {% if shipping_cost and shipping_cost|float > 0 %}
       <div class="totals-row">
-        <span>Zwischensumme:</span><span>{{ subtotal }} €</span>
-      </div>
-
-      {% if discount_amount|float > 0 or discount_percentage|float > 0 %}
-      <div class="totals-row subtotal">
-        <span
-          >{% if discount_percentage|float > 0 %}Rabatt ({{ discount_percentage
-          }}%):{% else %}Rabatt:{% endif %}</span
-        >
-        <span>-{{ discount_amount }} €</span>
-      </div>
-      {% endif %} {% if shipping_cost|float > 0 %}
-      <div class="totals-row subtotal">
-        <span>Versandkosten ({{ shipping_vat_rate }}% MwSt.):</span>
-        <span>{{ shipping_cost }} €</span>
+        <span class="totals-label">Versandkosten</span>
+        <span class="totals-value">{{ "%.2f"|format(shipping_cost|float) }} €</span>
       </div>
       {% endif %}
-
-      <div class="totals-row">
-        <span>Netto:</span><span>{{ total_net }} €</span>
-      </div>
-
-      {# Логика отображения налогов на основе vat_mode #} {% if vat_mode ==
-      'standard' %}
-      <div class="totals-row">
-        <span>MwSt ({{ vat_rate }}%):</span><span>{{ total_vat }} €</span>
-      </div>
-      {% elif vat_mode == 'klein' %}
-      <div class="kleinunternehmer-note">
-        Gemäß § 19 UStG wird keine Umsatzsteuer berechnet
-        (Kleinunternehmerregelung).
-      </div>
-      {% elif vat_mode == 'reverse' %}
-      <div class="kleinunternehmer-note">
-        Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge).
-      </div>
-      {% elif vat_mode == 'export' %}
-      <div class="kleinunternehmer-note">Steuerfreie Ausfuhrlieferung.</div>
-      {% else %} {# Резервный вариант, если что-то пошло не так #} {% if
-      total_vat|float > 0 %}
-      <div class="totals-row">
-        <span>MwSt:</span><span>{{ total_vat }} €</span>
-      </div>
-      {% endif %} {% endif %} {% if skonto_percentage|float > 0 and
-      skonto_days|float > 0 %}
-      <div
-        class="totals-row subtotal"
-        style="margin-top: 3mm; padding-top: 3mm; border-top: 1px dashed #ccc"
-      >
-        <span
-          >Bei Zahlung bis {{ skonto_date }} ({{ skonto_percentage }}%
-          Skonto):</span
-        >
-        <span>{{ skonto_total }} €</span>
-      </div>
-      {% endif %} {% if vat_breakdown and vat_breakdown|length > 0 %}
-      <div style="margin-top: 10px">
-        <div style="font-weight: 700; margin-bottom: 6px">
-          MwSt.-Aufschlüsselung
-        </div>
-
-        <table class="vat-table">
-          <thead>
-            <tr>
-              <th class="left">Kategorie</th>
-              <th>Satz</th>
-              <th>Bemessungsgrundlage</th>
-              <th>MwSt.</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for r in vat_breakdown %}
-            <tr>
-              <td class="left">{{ r.vat_category_code or "" }}</td>
-              <td>{{ r.vat_rate }}%</td>
-              <td>{{ r.taxable_amount }} €</td>
-              <td>{{ r.vat_amount }} €</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-
-        {# если есть причины освобождения — выведем ниже списком #} {% set
-        reasons = [] %} {% for r in vat_breakdown %} {% if r.exemption_reason %}
-        {% set _ = reasons.append(r.exemption_reason) %} {% endif %} {% endfor
-        %} {% if reasons|length > 0 %}
-        <div class="vat-note">
-          {% for txt in reasons|unique %} {{ txt }}{% if not loop.last %}<br />{%
-          endif %} {% endfor %}
-        </div>
-        {% endif %}
-      </div>
-      {% endif %}
-
-      <div class="totals-row grand">
-        <span>Gesamtbetrag:</span><span>{{ total_gross }} €</span>
+      
+      <div class="totals-row total">
+        <span class="totals-label">Gesamt zu zahlen</span>
+        <span class="totals-value">{{ "%.2f"|format(total|float) }} €</span>
       </div>
     </div>
+  </div>
 
-    <!-- SHIPPING ADDRESS -->
-    {% if ship_to_name %}
-    <div class="shipping-address">
-      <strong>📦 Lieferadresse:</strong><br />
-      {{ ship_to_name }}<br />
-      {{ ship_to_street }}<br />
-      {{ ship_to_postal_code }} {{ ship_to_city }}
-    </div>
+  <!-- НАЛОГОВОЕ ПРИМЕЧАНИЕ -->
+  {% if vat_mode == 'klein' or (profile.is_kleinunternehmer and profile.is_kleinunternehmer == true) %}
+  <div class="tax-note">
+    Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.
+  </div>
+  {% elif vat_mode == 'reverse' %}
+  <div class="tax-note">
+    Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge).
+  </div>
+  {% elif vat_mode == 'export' %}
+  <div class="tax-note">
+    Steuerfreie Ausfuhrlieferung.
+  </div>
+  {% endif %}
+
+  <!-- ПРИМЕЧАНИЯ -->
+  {% if notes %}
+  <div class="notes-section">
+    <div class="notes-title">Bemerkungen</div>
+    <div class="notes-content">{{ notes }}</div>
+  </div>
+  {% endif %}
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <strong>Bankverbindung:</strong> 
+    {% if profile.bank_name %}{{ profile.bank_name }} • {% endif %}
+    {% if profile.iban %}IBAN: {{ profile.iban }}{% endif %}
+    {% if profile.bic %} • BIC: {{ profile.bic }}{% endif %}
+    <br>
+    {% if profile.trade_register_number %}
+    <strong>Registergericht:</strong> {{ profile.trade_register_court or '' }} • 
+    <strong>HRB:</strong> {{ profile.trade_register_number }}<br>
     {% endif %}
+    <strong>Geschäftsführer:</strong> {{ profile.managing_director or profile.owner_name }}
+  </div>
 
-    <!-- NOTES -->
-    {% if notes %}
-    <div class="notes-section">
-      <strong>Hinweise:</strong><br />
-      {{ notes }}
-    </div>
-    {% endif %}
-
-    <!-- FOOTER -->
-    <div class="footer">
-      {% if sender_tax_id %}Steuernummer: {{ sender_tax_id }}{% endif %} {% if
-      sender_vat_id %} | USt-IdNr: {{ sender_vat_id }}{% endif %} {% if
-      sender_tax_id or sender_vat_id %}<br />{% endif %} {% if sender_iban
-      %}IBAN: {{ sender_iban }}{% endif %} {% if sender_bic %} | BIC: {{
-      sender_bic }}{% endif %} {% if bank_name %}<br />{{ bank_name }}{% endif
-      %}
-    </div>
-  </body>
+</body>
 </html>

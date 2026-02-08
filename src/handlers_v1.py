@@ -720,26 +720,54 @@ async def show_invoices_list(update: Update, context: ContextTypes.DEFAULT_TYPE)
     user_id = update.effective_user.id
     
     # Получаем данные
-    invoices = db.get_invoices(user_id, limit=100)
+    invoices = db.get_invoices(user_id, limit=20)  # Ограничим до 20 последних
     limits = db.get_user_limits(user_id)
     
-    # Формируем JSON для передачи в WebApp
-    data = {
-        'invoices': invoices,
-        'limits': limits
-    }
-    data_json = json.dumps(data, default=str)
-    encoded = base64.urlsafe_b64encode(data_json.encode()).decode().strip("=")
+    if not invoices:
+        await update.message.reply_text(
+            "📊 У вас пока нет счетов.\n\n"
+            "Создайте первый счёт с помощью кнопки '➕ Neue Rechnung'",
+            reply_markup=get_invoices_submenu()
+        )
+        return
     
-    url = f"{BASE_URL}/invoices_list.html?data={urllib.parse.quote(encoded)}"
+    # Формируем текстовый список
+    text = "📊 **Ваши последние счета:**\n\n"
     
-    keyboard = ReplyKeyboardMarkup([[
-        KeyboardButton("📊 Meine Rechnungen öffnen", web_app=WebAppInfo(url=url))
-    ], [KeyboardButton("🔙 Zurück")]], resize_keyboard=True)
+    for idx, inv in enumerate(invoices[:10], 1):  # Показываем только 10
+        status_emoji = {
+            'draft': '📝',
+            'sent': '📤', 
+            'paid': '✅',
+            'overdue': '⚠️'
+        }.get(inv.get('status', 'draft'), '📄')
+        
+        date = inv.get('invoice_date', '')[:10] if inv.get('invoice_date') else '-'
+        number = inv.get('number', 'N/A')
+        client = inv.get('client_name', 'Unbekannt')[:20]
+        total = f"{float(inv.get('total', 0)):.2f} €"
+        
+        text += f"{status_emoji} **{number}**\n"
+        text += f"   {client} • {date} • {total}\n\n"
+    
+    if len(invoices) > 10:
+        text += f"... und {len(invoices) - 10} weitere\n\n"
+    
+    # Статистика
+    if limits:
+        if limits.get('plan_type') == 'paid':
+            text += "💎 Pro Plan aktiv\n"
+        else:
+            current = limits.get('invoices_this_month', 0)
+            limit = limits.get('invoices_limit', 5)
+            text += f"📊 {current}/{limit} Rechnungen diesen Monat\n"
+    
+    text += f"\nGesamt: {len(invoices)} Rechnung(en)"
     
     await update.message.reply_text(
-        f"📊 Sie haben {len(invoices)} Rechnung(en).\n\nKlicken Sie auf den Button um die Liste zu öffnen.",
-        reply_markup=keyboard
+        text,
+        parse_mode='Markdown',
+        reply_markup=get_invoices_submenu()
     )
 
 
@@ -748,26 +776,41 @@ async def show_offers_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
     # Получаем данные
-    offers = db.get_offers(user_id, limit=100)
+    offers = db.get_offers(user_id, limit=20)
     limits = db.get_user_limits(user_id)
     
-    # Формируем JSON для передачи в WebApp
-    data = {
-        'offers': offers,
-        'limits': limits
-    }
-    data_json = json.dumps(data, default=str)
-    encoded = base64.urlsafe_b64encode(data_json.encode()).decode().strip("=")
+    if not offers:
+        await update.message.reply_text(
+            "📄 У вас пока нет предложений.\n\n"
+            "Создайте первое предложение с помощью кнопки '➕ Neues Angebot'",
+            reply_markup=get_offers_submenu()
+        )
+        return
     
-    url = f"{BASE_URL}/offers_list.html?data={urllib.parse.quote(encoded)}"
+    # Формируем текстовый список
+    text = "📄 **Ваши последние предложения:**\n\n"
     
-    keyboard = ReplyKeyboardMarkup([[
-        KeyboardButton("📄 Meine Angebote öffnen", web_app=WebAppInfo(url=url))
-    ], [KeyboardButton("🔙 Zurück")]], resize_keyboard=True)
+    for idx, off in enumerate(offers[:10], 1):
+        locked_emoji = "🔒" if off.get('is_locked') else "📝"
+        converted = "➡️📄" if off.get('converted_to_invoice_id') else ""
+        
+        date = off.get('offer_date', '')[:10] if off.get('offer_date') else '-'
+        number = off.get('offer_number', 'N/A')
+        client = off.get('client_name', 'Unbekannt')[:20]
+        total = f"{float(off.get('total', 0)):.2f} €"
+        
+        text += f"{locked_emoji} **{number}** {converted}\n"
+        text += f"   {client} • {date} • {total}\n\n"
+    
+    if len(offers) > 10:
+        text += f"... und {len(offers) - 10} weitere\n\n"
+    
+    text += f"\nGesamt: {len(offers)} Angebot(e)"
     
     await update.message.reply_text(
-        f"📄 Sie haben {len(offers)} Angebot(e).\n\nKlicken Sie auf den Button um die Liste zu öffnen.",
-        reply_markup=keyboard
+        text,
+        parse_mode='Markdown',
+        reply_markup=get_offers_submenu()
     )
 
 
