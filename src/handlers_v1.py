@@ -620,6 +620,40 @@ async def rechnung_erstellen_start(update: Update,
                                    context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     profile = db.get_profile(user_id) or {}
+    
+    # ⚠️ ПРОВЕРКА ПРИНЯТИЯ УСЛОВИЙ
+    if not profile.get('accepted_terms'):
+        keyboard = InlineKeyboardMarkup([[
+            InlineKeyboardButton(
+                "📜 Nutzungsbedingungen lesen", 
+                url=f"{BASE_URL}/terms_of_service.html"
+            )
+        ], [
+            InlineKeyboardButton(
+                "✅ Ich akzeptiere", 
+                callback_data="accept_terms_invoice"
+            )
+        ]])
+        
+        await update.message.reply_text(
+            "⚠️ **Wichtig: Nutzungsbedingungen**\n\n"
+            "Bevor Sie Rechnungen erstellen können, müssen Sie unsere "
+            "Nutzungsbedingungen akzeptieren.\n\n"
+            "**Haftungsausschluss:**\n"
+            "Dieser Bot dient nur zur Unterstützung bei der Rechnungserstellung. "
+            "Der Entwickler übernimmt KEINE Haftung für:\n"
+            "• Richtigkeit der Dokumente\n"
+            "• Steuerrechtliche Konformität\n"
+            "• Finanzielle Schäden\n"
+            "• Datenverlust\n\n"
+            "Sie sind selbst verantwortlich für die Prüfung aller "
+            "Dokumente vor dem Versand und die Einhaltung lokaler Steuergesetze.",
+            parse_mode='Markdown',
+            reply_markup=keyboard
+        )
+        return  # ❌ БЛОКИРУЕМ создание
+    
+    # ✅ Условия приняты - продолжаем
     encoded = base64.urlsafe_b64encode(
         json.dumps(profile).encode()).decode().strip("=")
 
@@ -635,6 +669,40 @@ async def angebot_erstellen_start(update: Update,
                                   context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     profile = db.get_profile(user_id) or {}
+    
+    # ⚠️ ПРОВЕРКА ПРИНЯТИЯ УСЛОВИЙ
+    if not profile.get('accepted_terms'):
+        keyboard = InlineKeyboardMarkup([[
+            InlineKeyboardButton(
+                "📜 Nutzungsbedingungen lesen", 
+                url=f"{BASE_URL}/terms_of_service.html"
+            )
+        ], [
+            InlineKeyboardButton(
+                "✅ Ich akzeptiere", 
+                callback_data="accept_terms_offer"
+            )
+        ]])
+        
+        await update.message.reply_text(
+            "⚠️ **Wichtig: Nutzungsbedingungen**\n\n"
+            "Bevor Sie Angebote erstellen können, müssen Sie unsere "
+            "Nutzungsbedingungen akzeptieren.\n\n"
+            "**Haftungsausschluss:**\n"
+            "Dieser Bot dient nur zur Unterstützung bei der Dokumenterstellung. "
+            "Der Entwickler übernimmt KEINE Haftung für:\n"
+            "• Richtigkeit der Dokumente\n"
+            "• Steuerrechtliche Konformität\n"
+            "• Finanzielle Schäden\n"
+            "• Datenverlust\n\n"
+            "Sie sind selbst verantwortlich für die Prüfung aller "
+            "Dokumente vor dem Versand und die Einhaltung lokaler Steuergesetze.",
+            parse_mode='Markdown',
+            reply_markup=keyboard
+        )
+        return  # ❌ БЛОКИРУЕМ создание
+    
+    # ✅ Условия приняты - продолжаем
     encoded = base64.urlsafe_b64encode(
         json.dumps(profile).encode()).decode().strip("=")
     url = f"{CREATE_OFFER_FORM_URL}&data={encoded}"
@@ -1133,6 +1201,52 @@ async def handle_toggle_terms(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
     else:
         await query.edit_message_text("❌ Fehler beim Aktualisieren.")
+
+
+async def handle_accept_terms_invoice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Принятие условий и продолжение к созданию счёта"""
+    query = update.callback_query
+    await query.answer("Nutzungsbedingungen akzeptiert!")
+    
+    user_id = update.effective_user.id
+    
+    # Сохраняем принятие
+    update_data = {
+        'accepted_terms': True,
+        'accepted_terms_date': datetime.now().isoformat()
+    }
+    
+    if db.update_profile(user_id, update_data):
+        await query.edit_message_text(
+            "✅ Vielen Dank!\n\n"
+            "Sie können jetzt Rechnungen erstellen.\n"
+            "Klicken Sie erneut auf '➕ Neue Rechnung'."
+        )
+    else:
+        await query.edit_message_text("❌ Fehler beim Speichern.")
+
+
+async def handle_accept_terms_offer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Принятие условий и продолжение к созданию оффера"""
+    query = update.callback_query
+    await query.answer("Nutzungsbedingungen akzeptiert!")
+    
+    user_id = update.effective_user.id
+    
+    # Сохраняем принятие
+    update_data = {
+        'accepted_terms': True,
+        'accepted_terms_date': datetime.now().isoformat()
+    }
+    
+    if db.update_profile(user_id, update_data):
+        await query.edit_message_text(
+            "✅ Vielen Dank!\n\n"
+            "Sie können jetzt Angebote erstellen.\n"
+            "Klicken Sie erneut auf '➕ Neues Angebot'."
+        )
+    else:
+        await query.edit_message_text("❌ Fehler beim Speichern.")
 
 
 
