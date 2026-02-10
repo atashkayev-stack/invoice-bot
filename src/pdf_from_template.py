@@ -146,6 +146,9 @@ class PDFFromTemplateV2:
                 f"{data.get('client_city', '')}").strip(", ")
 
         return {
+            # ✅ PROFILE для нового шаблона
+            "profile": profile,
+            
             # Sender
             "sender_company":
             profile.get("company_name", ""),
@@ -168,10 +171,20 @@ class PDFFromTemplateV2:
             profile.get("bank_name"),
 
             # Client
+            "client_name":
+            data.get("client_name", ""),
             "client_company":
             data.get("client_name", ""),
             "client_address":
             addr,
+            "client_street":
+            data.get("client_street", ""),
+            "client_postal_code":
+            data.get("client_postal_code", ""),
+            "client_city":
+            data.get("client_city", ""),
+            "client_country":
+            data.get("client_country", ""),
             "client_email":
             data.get("client_email"),
             "customer_id":
@@ -202,6 +215,12 @@ class PDFFromTemplateV2:
             # Totals
             "subtotal":
             f"{subtotal:.2f}",
+            "amount":
+            float(total_net),
+            "vat_amount":
+            float(total_vat),
+            "total":
+            float(total_gross),
             "discount_percentage":
             float(discount_percentage),
             "discount_amount":
@@ -216,6 +235,8 @@ class PDFFromTemplateV2:
             float(total_gross),
 
             # VAT breakdown (KEY)
+            "vat_breakdown":
+            vat_rows,
             "vat_rows":
             vat_rows,
             "has_vat_breakdown":
