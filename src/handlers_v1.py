@@ -28,38 +28,35 @@ SETTINGS_MENU, WAITING_FOR_DOC = range(2)
 # UI / Keyboard
 # ----------------------------
 def get_main_keyboard():
-    return ReplyKeyboardMarkup([
-        [KeyboardButton("📝 Rechnungen"), KeyboardButton("📋 Angebote")],
-        [KeyboardButton("⚙️ Einstellungen")]
-    ], resize_keyboard=True)
+    return ReplyKeyboardMarkup(
+        [[KeyboardButton("📝 Rechnungen"),
+          KeyboardButton("📋 Angebote")], [KeyboardButton("⚙️ Einstellungen")]],
+        resize_keyboard=True)
 
 
 def get_invoices_submenu():
-    return ReplyKeyboardMarkup([
-        [KeyboardButton("➕ Neue Rechnung")],
-        [KeyboardButton("📊 Rechnungen anzeigen")],
-        [KeyboardButton("🔢 Nummerierung einstellen")],
-        [KeyboardButton("🔙 Zurück")]
-    ], resize_keyboard=True)
+    return ReplyKeyboardMarkup([[KeyboardButton("➕ Neue Rechnung")],
+                                [KeyboardButton("📊 Rechnungen anzeigen")],
+                                [KeyboardButton("🔢 Nummerierung einstellen")],
+                                [KeyboardButton("🔙 Zurück")]],
+                               resize_keyboard=True)
 
 
 def get_offers_submenu():
-    return ReplyKeyboardMarkup([
-        [KeyboardButton("➕ Neues Angebot")],
-        [KeyboardButton("📄 Angebote anzeigen")],
-        [KeyboardButton("🔢 Nummerierung einstellen")],
-        [KeyboardButton("🔙 Zurück")]
-    ], resize_keyboard=True)
+    return ReplyKeyboardMarkup([[KeyboardButton("➕ Neues Angebot")],
+                                [KeyboardButton("📄 Angebote anzeigen")],
+                                [KeyboardButton("🔢 Nummerierung einstellen")],
+                                [KeyboardButton("🔙 Zurück")]],
+                               resize_keyboard=True)
 
 
 def get_settings_submenu():
-    return ReplyKeyboardMarkup([
-        [KeyboardButton("🏢 Firmendaten")],
-        [KeyboardButton("📜 Rechtliche Hinweise")],
-        [KeyboardButton("🗑️ Alle Daten löschen")],
-        [KeyboardButton("💬 Feedback senden")],
-        [KeyboardButton("🔙 Zurück")]
-    ], resize_keyboard=True)
+    return ReplyKeyboardMarkup(
+        [[KeyboardButton("🏢 Firmendaten")],
+         [KeyboardButton("📜 Rechtliche Hinweise")],
+         [KeyboardButton("🗑️ Alle Daten löschen")],
+         [KeyboardButton("💬 Feedback senden")], [KeyboardButton("🔙 Zurück")]],
+        resize_keyboard=True)
 
 
 # ----------------------------
@@ -239,18 +236,21 @@ async def web_app_data_handler(update: Update,
     # ========== НАСТРОЙКИ НУМЕРАЦИИ СЧЕТОВ ==========
     if data.get('type') == 'invoice_numbering_update':
         update_data = {
-            'invoice_number_prefix': data.get('invoice_number_prefix', 'RE-'),
-            'next_invoice_number': _safe_int(data.get('next_invoice_number'), 1),
-            'invoice_number_format': _safe_int(data.get('invoice_number_format'), 4)
+            'invoice_number_prefix':
+            data.get('invoice_number_prefix', 'RE-'),
+            'next_invoice_number':
+            _safe_int(data.get('next_invoice_number'), 1),
+            'invoice_number_format':
+            _safe_int(data.get('invoice_number_format'), 4)
         }
-        
+
         if db.update_profile(user_id, update_data):
             await update.effective_message.reply_text(
                 "✅ Rechnungsnummerierung aktualisiert!",
-                reply_markup=get_invoices_submenu()
-            )
+                reply_markup=get_invoices_submenu())
         else:
-            await update.effective_message.reply_text("❌ Fehler beim Speichern!")
+            await update.effective_message.reply_text(
+                "❌ Fehler beim Speichern!")
         return
 
     # ========== НАСТРОЙКИ НУМЕРАЦИИ ОФФЕРОВ ==========
@@ -258,16 +258,17 @@ async def web_app_data_handler(update: Update,
         update_data = {
             'offer_number_prefix': data.get('offer_number_prefix', 'ANG-'),
             'next_offer_number': _safe_int(data.get('next_offer_number'), 1),
-            'offer_number_format': _safe_int(data.get('offer_number_format'), 4)
+            'offer_number_format': _safe_int(data.get('offer_number_format'),
+                                             4)
         }
-        
+
         if db.update_profile(user_id, update_data):
             await update.effective_message.reply_text(
                 "✅ Angebotsnummerierung aktualisiert!",
-                reply_markup=get_offers_submenu()
-            )
+                reply_markup=get_offers_submenu())
         else:
-            await update.effective_message.reply_text("❌ Fehler beim Speichern!")
+            await update.effective_message.reply_text(
+                "❌ Fehler beim Speichern!")
         return
 
     # ========== СОХРАНЕНИЕ ПРОФИЛЯ ==========
@@ -620,22 +621,20 @@ async def rechnung_erstellen_start(update: Update,
                                    context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     profile = db.get_profile(user_id) or {}
-    
+
     # ⚠️ ПРОВЕРКА: Профиль заполнен и согласие дано?
     if not profile.get('gdpr_consent') or not profile.get('company_name'):
         keyboard = InlineKeyboardMarkup([[
-            InlineKeyboardButton(
-                "⚙️ Firmendaten eingeben", 
-                callback_data="goto_settings"
-            )
+            InlineKeyboardButton("⚙️ Firmendaten eingeben",
+                                 callback_data="goto_settings")
         ]])
-        
+
         missing = []
         if not profile.get('gdpr_consent'):
             missing.append("• Zustimmung zu Datenschutz & Nutzungsbedingungen")
         if not profile.get('company_name'):
             missing.append("• Firmendaten (Name, Adresse, etc.)")
-        
+
         await update.message.reply_text(
             "⚠️ **Profil unvollständig**\n\n"
             "Bevor Sie Rechnungen erstellen können, müssen Sie:\n\n" +
@@ -643,10 +642,9 @@ async def rechnung_erstellen_start(update: Update,
             "Bitte gehen Sie zu den Einstellungen und füllen Sie "
             "Ihr Firmenprofil aus.",
             parse_mode='Markdown',
-            reply_markup=keyboard
-        )
+            reply_markup=keyboard)
         return  # ❌ БЛОКИРУЕМ создание
-    
+
     # ✅ Всё ОК - открываем форму
     encoded = base64.urlsafe_b64encode(
         json.dumps(profile).encode()).decode().strip("=")
@@ -663,22 +661,20 @@ async def angebot_erstellen_start(update: Update,
                                   context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     profile = db.get_profile(user_id) or {}
-    
+
     # ⚠️ ПРОВЕРКА: Профиль заполнен и согласие дано?
     if not profile.get('gdpr_consent') or not profile.get('company_name'):
         keyboard = InlineKeyboardMarkup([[
-            InlineKeyboardButton(
-                "⚙️ Firmendaten eingeben", 
-                callback_data="goto_settings"
-            )
+            InlineKeyboardButton("⚙️ Firmendaten eingeben",
+                                 callback_data="goto_settings")
         ]])
-        
+
         missing = []
         if not profile.get('gdpr_consent'):
             missing.append("• Zustimmung zu Datenschutz & Nutzungsbedingungen")
         if not profile.get('company_name'):
             missing.append("• Firmendaten (Name, Adresse, etc.)")
-        
+
         await update.message.reply_text(
             "⚠️ **Profil unvollständig**\n\n"
             "Bevor Sie Angebote erstellen können, müssen Sie:\n\n" +
@@ -686,10 +682,9 @@ async def angebot_erstellen_start(update: Update,
             "Bitte gehen Sie zu den Einstellungen und füllen Sie "
             "Ihr Firmenprofil aus.",
             parse_mode='Markdown',
-            reply_markup=keyboard
-        )
+            reply_markup=keyboard)
         return  # ❌ БЛОКИРУЕМ создание
-    
+
     # ✅ Всё ОК - открываем форму
     encoded = base64.urlsafe_b64encode(
         json.dumps(profile).encode()).decode().strip("=")
@@ -709,23 +704,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ===== ГЛАВНОЕ МЕНЮ =====
     if txt == "📝 Rechnungen":
         context.user_data['current_menu'] = 'invoices'
-        await update.message.reply_text(
-            "📝 Rechnungen verwalten:",
-            reply_markup=get_invoices_submenu()
-        )
+        await update.message.reply_text("📝 Rechnungen verwalten:",
+                                        reply_markup=get_invoices_submenu())
     elif txt == "📋 Angebote":
         context.user_data['current_menu'] = 'offers'
-        await update.message.reply_text(
-            "📋 Angebote verwalten:",
-            reply_markup=get_offers_submenu()
-        )
+        await update.message.reply_text("📋 Angebote verwalten:",
+                                        reply_markup=get_offers_submenu())
     elif txt == "⚙️ Einstellungen":
         context.user_data['current_menu'] = 'settings'
-        await update.message.reply_text(
-            "⚙️ Einstellungen:",
-            reply_markup=get_settings_submenu()
-        )
-    
+        await update.message.reply_text("⚙️ Einstellungen:",
+                                        reply_markup=get_settings_submenu())
+
     # ===== ПОДМЕНЮ СЧЕТОВ =====
     elif txt == "➕ Neue Rechnung":
         await rechnung_erstellen_start(update, context)
@@ -737,13 +726,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await show_offer_numbering_settings(update, context)
         else:
             await show_invoice_numbering_settings(update, context)
-    
+
     # ===== ПОДМЕНЮ ОФФЕРОВ =====
     elif txt == "➕ Neues Angebot":
         await angebot_erstellen_start(update, context)
     elif txt == "📄 Angebote anzeigen":
         await show_offers_list(update, context)
-    
+
     # ===== ПОДМЕНЮ НАСТРОЕК =====
     elif txt == "🏢 Firmendaten":
         await settings_command(update, context)
@@ -753,62 +742,60 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await delete_all_data_handler(update, context)
     elif txt == "💬 Feedback senden":
         await show_feedback_form(update, context)
-    
+
     # ===== НАЗАД =====
     elif txt == "🔙 Zurück":
-        await update.message.reply_text(
-            "Hauptmenü:",
-            reply_markup=get_main_keyboard()
-        )
-    
+        await update.message.reply_text("Hauptmenü:",
+                                        reply_markup=get_main_keyboard())
+
     else:
         await update.message.reply_text(
             "Unbekannter Befehl. Bitte verwenden Sie die Buttons.",
-            reply_markup=get_main_keyboard()
-        )
+            reply_markup=get_main_keyboard())
 
 
 # ----------------------------
 # Списки документов
 # ----------------------------
-async def show_invoices_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def show_invoices_list(update: Update,
+                             context: ContextTypes.DEFAULT_TYPE):
     """Показать список счетов"""
     user_id = update.effective_user.id
-    
+
     # Получаем данные
     invoices = db.get_invoices(user_id, limit=20)  # Ограничим до 20 последних
     limits = db.get_user_limits(user_id)
-    
+
     if not invoices:
         await update.message.reply_text(
             "📊 У вас пока нет счетов.\n\n"
             "Создайте первый счёт с помощью кнопки '➕ Neue Rechnung'",
-            reply_markup=get_invoices_submenu()
-        )
+            reply_markup=get_invoices_submenu())
         return
-    
+
     # Формируем текстовый список
     text = "📊 **Ваши последние счета:**\n\n"
-    
+
     for idx, inv in enumerate(invoices[:10], 1):  # Показываем только 10
         status_emoji = {
             'draft': '📝',
-            'sent': '📤', 
+            'sent': '📤',
             'paid': '✅',
             'overdue': '⚠️'
         }.get(inv.get('status', 'draft'), '📄')
-        
-        date = inv.get('invoice_date', '')[:10] if inv.get('invoice_date') else '-'
+
+        date = inv.get('invoice_date',
+                       '')[:10] if inv.get('invoice_date') else '-'
         number = inv.get('number', 'N/A')
         client = inv.get('client_name', 'Unbekannt')[:20]
         total = f"{float(inv.get('total', 0)):.2f} €"
-        
+
         text += f"{status_emoji} **{number}**\n"
         text += f"   {client} • {date} • {total}\n\n"
-    
+
     if len(invoices) > 10:
         text += f"... und {len(invoices) - 10} weitere\n\n"
-    
+
     # Статистика
     if limits:
         if limits.get('plan_type') == 'paid':
@@ -817,66 +804,63 @@ async def show_invoices_list(update: Update, context: ContextTypes.DEFAULT_TYPE)
             current = limits.get('invoices_this_month', 0)
             limit = limits.get('invoices_limit', 5)
             text += f"📊 {current}/{limit} Rechnungen diesen Monat\n"
-    
+
     text += f"\nGesamt: {len(invoices)} Rechnung(en)"
-    
-    await update.message.reply_text(
-        text,
-        parse_mode='Markdown',
-        reply_markup=get_invoices_submenu()
-    )
+
+    await update.message.reply_text(text,
+                                    parse_mode='Markdown',
+                                    reply_markup=get_invoices_submenu())
 
 
 async def show_offers_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показать список офферов"""
     user_id = update.effective_user.id
-    
+
     # Получаем данные
     offers = db.get_offers(user_id, limit=20)
     limits = db.get_user_limits(user_id)
-    
+
     if not offers:
         await update.message.reply_text(
             "📄 У вас пока нет предложений.\n\n"
             "Создайте первое предложение с помощью кнопки '➕ Neues Angebot'",
-            reply_markup=get_offers_submenu()
-        )
+            reply_markup=get_offers_submenu())
         return
-    
+
     # Формируем текстовый список
     text = "📄 **Ваши последние предложения:**\n\n"
-    
+
     for idx, off in enumerate(offers[:10], 1):
         locked_emoji = "🔒" if off.get('is_locked') else "📝"
         converted = "➡️📄" if off.get('converted_to_invoice_id') else ""
-        
+
         date = off.get('offer_date', '')[:10] if off.get('offer_date') else '-'
         number = off.get('offer_number', 'N/A')
         client = off.get('client_name', 'Unbekannt')[:20]
         total = f"{float(off.get('total', 0)):.2f} €"
-        
+
         text += f"{locked_emoji} **{number}** {converted}\n"
         text += f"   {client} • {date} • {total}\n\n"
-    
+
     if len(offers) > 10:
         text += f"... und {len(offers) - 10} weitere\n\n"
-    
+
     text += f"\nGesamt: {len(offers)} Angebot(e)"
-    
-    await update.message.reply_text(
-        text,
-        parse_mode='Markdown',
-        reply_markup=get_offers_submenu()
-    )
+
+    await update.message.reply_text(text,
+                                    parse_mode='Markdown',
+                                    reply_markup=get_offers_submenu())
 
 
 # ----------------------------
 # Копирование документов
 # ----------------------------
-async def handle_copy_invoice(update: Update, context: ContextTypes.DEFAULT_TYPE, invoice_id: str):
+async def handle_copy_invoice(update: Update,
+                              context: ContextTypes.DEFAULT_TYPE,
+                              invoice_id: str):
     """Обработка копирования счёта"""
     user_id = update.effective_user.id
-    
+
     new_id = db.copy_invoice(invoice_id, user_id)
     if new_id:
         await update.effective_message.reply_text(
@@ -884,35 +868,39 @@ async def handle_copy_invoice(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         # Можно открыть форму редактирования
     else:
-        await update.effective_message.reply_text("❌ Fehler beim Kopieren der Rechnung.")
+        await update.effective_message.reply_text(
+            "❌ Fehler beim Kopieren der Rechnung.")
 
 
-async def handle_copy_offer(update: Update, context: ContextTypes.DEFAULT_TYPE, offer_id: str):
+async def handle_copy_offer(update: Update, context: ContextTypes.DEFAULT_TYPE,
+                            offer_id: str):
     """Обработка копирования оффера"""
     user_id = update.effective_user.id
-    
+
     new_id = db.copy_offer(offer_id, user_id)
     if new_id:
         await update.effective_message.reply_text(
             "✅ Angebot wurde kopiert!\n\nSie können es jetzt bearbeiten und speichern."
         )
     else:
-        await update.effective_message.reply_text("❌ Fehler beim Kopieren des Angebots.")
+        await update.effective_message.reply_text(
+            "❌ Fehler beim Kopieren des Angebots.")
 
 
 # ----------------------------
 # Удаление всех данных
 # ----------------------------
-async def delete_all_data_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def delete_all_data_handler(update: Update,
+                                  context: ContextTypes.DEFAULT_TYPE):
     """Обработка удаления всех данных пользователя"""
     user_id = update.effective_user.id
-    
+
     # Подтверждение
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("❌ ALLE DATEN LÖSCHEN", callback_data=f"confirm_delete_{user_id}")],
-        [InlineKeyboardButton("🔙 Abbrechen", callback_data="cancel_delete")]
-    ])
-    
+    keyboard = InlineKeyboardMarkup([[
+        InlineKeyboardButton("❌ ALLE DATEN LÖSCHEN",
+                             callback_data=f"confirm_delete_{user_id}")
+    ], [InlineKeyboardButton("🔙 Abbrechen", callback_data="cancel_delete")]])
+
     await update.message.reply_text(
         "⚠️ ACHTUNG!\n\n"
         "Sie sind dabei, ALLE Ihre Daten zu löschen:\n"
@@ -922,56 +910,54 @@ async def delete_all_data_handler(update: Update, context: ContextTypes.DEFAULT_
         "• Alle gespeicherten Dateien\n\n"
         "Diese Aktion kann nicht rückgängig gemacht werden!\n\n"
         "Sind Sie sicher?",
-        reply_markup=keyboard
-    )
+        reply_markup=keyboard)
 
 
-async def handle_confirm_delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_confirm_delete(update: Update,
+                                context: ContextTypes.DEFAULT_TYPE):
     """Подтверждение удаления"""
     query = update.callback_query
     await query.answer()
-    
+
     user_id = update.effective_user.id
-    
+
     await query.edit_message_text("⏳ Lösche Daten...")
-    
+
     stats = db.delete_all_user_data(user_id)
-    
-    await query.edit_message_text(
-        "✅ Alle Daten wurden gelöscht!\n\n"
-        f"Gelöscht:\n"
-        f"• Rechnungen: {stats.get('invoices', 0)}\n"
-        f"• Angebote: {stats.get('offers', 0)}\n"
-        f"• Kunden: {stats.get('clients', 0)}\n"
-        f"• Dateien: {stats.get('files', 0)}"
-    )
+
+    await query.edit_message_text("✅ Alle Daten wurden gelöscht!\n\n"
+                                  f"Gelöscht:\n"
+                                  f"• Rechnungen: {stats.get('invoices', 0)}\n"
+                                  f"• Angebote: {stats.get('offers', 0)}\n"
+                                  f"• Kunden: {stats.get('clients', 0)}\n"
+                                  f"• Dateien: {stats.get('files', 0)}")
 
 
 # ----------------------------
 # Архив документов
 # ----------------------------
-async def request_documents_archive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def request_documents_archive(update: Update,
+                                    context: ContextTypes.DEFAULT_TYPE):
     """Запрос архива всех документов"""
     user_id = update.effective_user.id
     profile = db.get_profile(user_id)
-    
+
     if not profile or not profile.get('user_email'):
         await update.message.reply_text(
             "📧 Bitte geben Sie zuerst Ihre E-Mail-Adresse in den Einstellungen an."
         )
         return
-    
+
     email = profile['user_email']
-    
+
     # Создаём запрос
     archive_id = db.create_archive_request(user_id, email)
-    
+
     if archive_id:
         await update.message.reply_text(
             f"✅ Ihr Archiv wird erstellt und an {email} gesendet.\n\n"
-            "Dies kann einige Minuten dauern."
-        )
-        
+            "Dies kann einige Minuten dauern.")
+
         # TODO: Запустить фоновую задачу создания архива
         # Пока заглушка
     else:
@@ -981,76 +967,89 @@ async def request_documents_archive(update: Update, context: ContextTypes.DEFAUL
 # ----------------------------
 # Обратная связь
 # ----------------------------
-async def show_feedback_form(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def show_feedback_form(update: Update,
+                             context: ContextTypes.DEFAULT_TYPE):
     """Показать форму обратной связи"""
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("💡 Vorschlag", callback_data="feedback_feature")],
+        [
+            InlineKeyboardButton("💡 Vorschlag",
+                                 callback_data="feedback_feature")
+        ],
         [InlineKeyboardButton("🐛 Bug melden", callback_data="feedback_bug")],
-        [InlineKeyboardButton("🤝 Zusammenarbeit", callback_data="feedback_cooperation")],
-        [InlineKeyboardButton("💬 Allgemein", callback_data="feedback_general")],
+        [
+            InlineKeyboardButton("🤝 Zusammenarbeit",
+                                 callback_data="feedback_cooperation")
+        ],
+        [
+            InlineKeyboardButton("💬 Allgemein",
+                                 callback_data="feedback_general")
+        ],
     ])
-    
+
     await update.message.reply_text(
         "📧 Kontakt zum Entwickler\n\n"
         "Wählen Sie eine Kategorie:",
-        reply_markup=keyboard
-    )
+        reply_markup=keyboard)
 
 
-async def handle_feedback_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_feedback_callback(update: Update,
+                                   context: ContextTypes.DEFAULT_TYPE):
     """Обработка выбора типа обратной связи"""
     query = update.callback_query
     await query.answer()
-    
+
     feedback_type = query.data.replace('feedback_', '')
-    
+
     types_map = {
         'feature': 'Vorschlag',
         'bug': 'Bug',
         'cooperation': 'Zusammenarbeit',
         'general': 'Allgemeine Anfrage'
     }
-    
+
     context.user_data['feedback_type'] = feedback_type
-    
+
     await query.edit_message_text(
         f"📝 {types_map.get(feedback_type, 'Nachricht')}\n\n"
-        "Bitte schreiben Sie Ihre Nachricht:"
-    )
+        "Bitte schreiben Sie Ihre Nachricht:")
 
 
 # ----------------------------
 # PayPal "Спасибо"
 # ----------------------------
-async def show_donation_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def show_donation_message(update: Update,
+                                context: ContextTypes.DEFAULT_TYPE):
     """Показать сообщение с благодарностью и ссылкой на PayPal"""
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("☕ Sag Danke mit PayPal", url="https://paypal.me/YOURPAYPAL")],
+        [
+            InlineKeyboardButton("☕ Sag Danke mit PayPal",
+                                 url="https://paypal.me/YOURPAYPAL")
+        ],
     ])
-    
+
     await update.effective_message.reply_text(
         "🎉 Rechnung erfolgreich erstellt!\n\n"
         "💚 Wenn Ihnen dieser Service geholfen hat, können Sie dem Entwickler ein Dankeschön senden:",
-        reply_markup=keyboard
-    )
+        reply_markup=keyboard)
 
 
 # ----------------------------
 # Upgrade на платную версию
 # ----------------------------
-async def show_upgrade_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def show_upgrade_info(update: Update,
+                            context: ContextTypes.DEFAULT_TYPE):
     """Информация о платной версии"""
     user_id = update.effective_user.id
     limits = db.get_user_limits(user_id)
-    
+
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("💎 Pro Plan kaufen", callback_data="buy_pro")],
         [InlineKeyboardButton("ℹ️ Mehr Info", callback_data="upgrade_info")],
     ])
-    
+
     current = limits.get('invoices_this_month', 0) if limits else 0
     limit = limits.get('invoices_limit', 5) if limits else 5
-    
+
     await update.message.reply_text(
         "💎 RechnungAgent Pro\n\n"
         f"Aktuell: {current}/{limit} Rechnungen diesen Monat\n\n"
@@ -1062,31 +1061,32 @@ async def show_upgrade_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "✅ Erweiterte Vorlagen\n\n"
         "**Preis:** 9,99 € / Monat",
         reply_markup=keyboard,
-        parse_mode='Markdown'
-    )
+        parse_mode='Markdown')
 
 
 # ----------------------------
 # Настройки нумерации
 # ----------------------------
-async def show_invoice_numbering_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def show_invoice_numbering_settings(update: Update,
+                                          context: ContextTypes.DEFAULT_TYPE):
     """Показать форму настройки нумерации счетов"""
     user_id = update.effective_user.id
     profile = db.get_profile(user_id) or {}
-    
+
     data_json = json.dumps(profile, default=str)
     encoded = base64.urlsafe_b64encode(data_json.encode()).decode().strip("=")
-    
+
     url = f"{BASE_URL}/invoice_numbering.html?data={urllib.parse.quote(encoded)}"
-    
+
     keyboard = ReplyKeyboardMarkup([[
         KeyboardButton("🔢 Nummerierung öffnen", web_app=WebAppInfo(url=url))
-    ], [KeyboardButton("🔙 Zurück")]], resize_keyboard=True)
-    
+    ], [KeyboardButton("🔙 Zurück")]],
+                                   resize_keyboard=True)
+
     current_prefix = profile.get('invoice_number_prefix', 'RE-')
     current_next = profile.get('next_invoice_number', 1)
     current_format = profile.get('invoice_number_format', 4)
-    
+
     await update.message.reply_text(
         f"🔢 Rechnungsnummerierung\n\n"
         f"Aktuell:\n"
@@ -1094,28 +1094,29 @@ async def show_invoice_numbering_settings(update: Update, context: ContextTypes.
         f"Nächste Nummer: {current_next}\n"
         f"Format: {current_format} Stellen\n\n"
         f"Beispiel: {current_prefix}{str(current_next).zfill(current_format)}",
-        reply_markup=keyboard
-    )
+        reply_markup=keyboard)
 
 
-async def show_offer_numbering_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def show_offer_numbering_settings(update: Update,
+                                        context: ContextTypes.DEFAULT_TYPE):
     """Показать форму настройки нумерации офферов"""
     user_id = update.effective_user.id
     profile = db.get_profile(user_id) or {}
-    
+
     data_json = json.dumps(profile, default=str)
     encoded = base64.urlsafe_b64encode(data_json.encode()).decode().strip("=")
-    
+
     url = f"{BASE_URL}/offer_numbering.html?data={urllib.parse.quote(encoded)}"
-    
+
     keyboard = ReplyKeyboardMarkup([[
         KeyboardButton("🔢 Nummerierung öffnen", web_app=WebAppInfo(url=url))
-    ], [KeyboardButton("🔙 Zurück")]], resize_keyboard=True)
-    
+    ], [KeyboardButton("🔙 Zurück")]],
+                                   resize_keyboard=True)
+
     current_prefix = profile.get('offer_number_prefix', 'ANG-')
     current_next = profile.get('next_offer_number', 1)
     current_format = profile.get('offer_number_format', 4)
-    
+
     await update.message.reply_text(
         f"🔢 Angebotsnummerierung\n\n"
         f"Aktuell:\n"
@@ -1123,8 +1124,7 @@ async def show_offer_numbering_settings(update: Update, context: ContextTypes.DE
         f"Nächste Nummer: {current_next}\n"
         f"Format: {current_format} Stellen\n\n"
         f"Beispiel: {current_prefix}{str(current_next).zfill(current_format)}",
-        reply_markup=keyboard
-    )
+        reply_markup=keyboard)
 
 
 # ----------------------------
@@ -1134,18 +1134,22 @@ async def show_legal_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показать правовую информацию и защиту"""
     user_id = update.effective_user.id
     profile = db.get_profile(user_id) or {}
-    
+
     # URL на Terms of Service
     terms_url = f"{BASE_URL}/terms_of_service.html"
-    
+
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("📜 Nutzungsbedingungen", url=terms_url)],
-        [InlineKeyboardButton("✅ Akzeptiert" if profile.get('accepted_terms') else "❌ Nicht akzeptiert", 
-                            callback_data="toggle_terms")],
+        [
+            InlineKeyboardButton(
+                "✅ Akzeptiert"
+                if profile.get('accepted_terms') else "❌ Nicht akzeptiert",
+                callback_data="toggle_terms")
+        ],
     ])
-    
+
     terms_date = profile.get('accepted_terms_date', 'Nie')
-    
+
     await update.message.reply_text(
         "📜 Rechtliche Hinweise\n\n"
         "⚠️ WICHTIG: Haftungsausschluss\n\n"
@@ -1161,45 +1165,44 @@ async def show_legal_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "✅ Korrekte Angaben\n\n"
         f"Status: {'✅ Akzeptiert am ' + str(terms_date) if profile.get('accepted_terms') else '❌ Nicht akzeptiert'}\n\n"
         "Bitte lesen Sie die vollständigen Nutzungsbedingungen.",
-        reply_markup=keyboard
-    )
+        reply_markup=keyboard)
 
 
-async def handle_toggle_terms(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_toggle_terms(update: Update,
+                              context: ContextTypes.DEFAULT_TYPE):
     """Обработка принятия/отклонения условий"""
     query = update.callback_query
     await query.answer()
-    
+
     user_id = update.effective_user.id
     profile = db.get_profile(user_id) or {}
-    
+
     current_status = profile.get('accepted_terms', False)
     new_status = not current_status
-    
+
     update_data = {
         'accepted_terms': new_status,
-        'accepted_terms_date': datetime.now().isoformat() if new_status else None
+        'accepted_terms_date':
+        datetime.now().isoformat() if new_status else None
     }
-    
+
     if db.update_profile(user_id, update_data):
         status_text = "✅ akzeptiert" if new_status else "❌ zurückgezogen"
         await query.edit_message_text(
             f"Status: Nutzungsbedingungen {status_text}.\n\n"
-            "Sie können diese Einstellung jederzeit ändern."
-        )
+            "Sie können diese Einstellung jederzeit ändern.")
     else:
         await query.edit_message_text("❌ Fehler beim Aktualisieren.")
 
 
-async def handle_goto_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_goto_settings(update: Update,
+                               context: ContextTypes.DEFAULT_TYPE):
     """Переход в настройки при нажатии кнопки"""
     query = update.callback_query
     await query.answer()
-    
+
     # Просто вызываем settings_command
     await settings_command(query, context)
-
-
 
 
 async def view_offer_details(update, context):

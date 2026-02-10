@@ -1017,7 +1017,23 @@
         totalVat = round2(totalVat);
         const totalGross = round2(totalNet + totalVat);
 
-        // ОБНОВЛЯЕМ ИНТЕРФЕЙС
+        // ОБНОВЛЯЕМ ВСЕ ИНТЕРФЕЙСЫ
+        // 1. TAB 1 - Под товарами
+        const tab1Net = document.getElementById("total_net");
+        const tab1Gross = document.getElementById("total_gross");
+        if (tab1Net) tab1Net.textContent = fmtEUR(totalNet);
+        if (tab1Gross) tab1Gross.textContent = fmtEUR(totalGross);
+
+        // 2. TAB 2 - После скидки
+        const netAfterDiscount = itemsNet - discount;
+        const tab2NetAfter = document.getElementById("adv_net_after_discount");
+        const tab2Subtotal = document.getElementById(
+          "adv_subtotal_after_discount",
+        );
+        if (tab2NetAfter) tab2NetAfter.textContent = fmtEUR(netAfterDiscount);
+        if (tab2Subtotal) tab2Subtotal.textContent = fmtEUR(netAfterDiscount);
+
+        // 3. TAB 3 - Итоговый (с доставкой)
         const netEl = document.getElementById("adv_total_net");
         const grossEl = document.getElementById("adv_total_gross");
         const breakdownEl = document.getElementById("adv_vat_breakdown_rows");
