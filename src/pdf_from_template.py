@@ -89,12 +89,20 @@ class PDFFromTemplateV2:
             subtotal += line_total
 
             prepared_items.append({
-                "description": item.get("description", ""),
-                "quantity": f"{_m(qty):.2f}",
-                "unit": item.get("unit", "Stk"),
-                "price": f"{_m(unit_price):.2f}",
-                "vat_rate": f"{_d(item.get('vat_rate', 0)):.0f}",
-                "total": f"{_m(line_total):.2f}",
+                "position_number":
+                item.get("position_number", 1),  # ← ДОБАВЛЕНО
+                "description":
+                item.get("description", ""),
+                "quantity":
+                f"{_m(qty):.2f}",
+                "unit":
+                item.get("unit", "Stk"),
+                "unit_price":
+                f"{_m(unit_price):.2f}",  # ← ИСПРАВЛЕНО (было "price")
+                "vat_rate":
+                f"{_d(item.get('vat_rate', 0)):.0f}",
+                "total_price":
+                f"{_m(line_total):.2f}",  # ← ИСПРАВЛЕНО (было "total")
             })
 
         subtotal = _m(subtotal)
@@ -108,7 +116,7 @@ class PDFFromTemplateV2:
         vat_rows = []
         for row in vat_breakdown:
             vat_rows.append({
-                "rate": f"{_d(row.get('vat_rate')):.0f}",
+                "vat_rate": f"{_d(row.get('vat_rate')):.0f}",
                 "taxable_amount": f"{_m(_d(row.get('taxable_amount'))):.2f}",
                 "vat_amount": f"{_m(_d(row.get('vat_amount'))):.2f}",
                 "category": row.get("vat_category_code") or "",
@@ -147,8 +155,9 @@ class PDFFromTemplateV2:
 
         return {
             # ✅ PROFILE для нового шаблона
-            "profile": profile,
-            
+            "profile":
+            profile,
+
             # Sender
             "sender_company":
             profile.get("company_name", ""),

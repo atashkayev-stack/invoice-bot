@@ -622,6 +622,17 @@ async def rechnung_erstellen_start(update: Update,
     user_id = update.effective_user.id
     profile = db.get_profile(user_id) or {}
 
+    # ⚠️ ПРОВЕРКА: Профиль заполнен?
+    if not profile or not profile.get('company_name'):
+        keyboard = InlineKeyboardMarkup([[
+            InlineKeyboardButton("⚙️ Firmendaten eingeben",
+                                 callback_data="goto_settings")
+        ]])
+        await update.message.reply_text(
+            "⚠️ Bitte füllen Sie zuerst Ihr Firmenprofil aus!",
+            reply_markup=keyboard)
+        return
+
     # ⚠️ ПРОВЕРКА: Профиль заполнен и согласие дано?
     if not profile.get('gdpr_consent') or not profile.get('company_name'):
         keyboard = InlineKeyboardMarkup([[
