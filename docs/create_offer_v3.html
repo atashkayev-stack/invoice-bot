@@ -17,6 +17,7 @@
         padding: 15px;
         background: #f5f5f5;
       }
+
       .container {
         max-width: 600px;
         margin: 0 auto;
@@ -988,9 +989,7 @@
           isKleinunternehmer: loadedProfile?.is_kleinunternehmer || false,
         });
 
-        const offerDate = new Date(
-          document.getElementById("offer_date").value,
-        );
+        const offerDate = new Date(document.getElementById("offer_date").value);
         const dueDate = new Date(offerDate);
         dueDate.setDate(
           dueDate.getDate() +
