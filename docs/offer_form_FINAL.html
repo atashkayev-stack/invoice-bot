@@ -1,0 +1,1277 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Angebot erstellen</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        padding: 15px;
+        background: #f5f5f5;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding-bottom: 80px;
+      }
+      .debug-panel {
+        background: #000;
+        color: #0f0;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        font-family: monospace;
+        font-size: 11px;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+      .debug-panel.hidden {
+        display: none;
+      }
+      .tabs {
+        display: flex;
+        gap: 3px;
+        margin-bottom: 20px;
+        overflow-x: auto;
+      }
+      .tab {
+        flex: 1;
+        padding: 10px;
+        background: #ddd;
+        border: none;
+        border-radius: 8px 8px 0 0;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .tab.active {
+        background: #0088cc;
+        color: white;
+      }
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+      .section {
+        background: white;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+      .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #0088cc;
+        margin-bottom: 12px;
+      }
+      label {
+        display: block;
+        font-weight: 500;
+        margin-bottom: 5px;
+        color: #555;
+        font-size: 13px;
+      }
+      label.required::after {
+        content: " *";
+        color: #e74c3c;
+      }
+      input,
+      select,
+      textarea {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 12px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .grid3 {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 10px;
+      }
+      .grid4 {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr;
+        gap: 10px;
+      }
+      .btn {
+        background: #0088cc;
+        color: white;
+        border: none;
+        padding: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        border-radius: 8px;
+        width: 100%;
+      }
+      .btn-secondary {
+        background: #27ae60;
+      }
+      .btn-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+      }
+      .toggle-group {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+      .toggle-btn {
+        flex: 1;
+        padding: 10px;
+        border: 2px solid #ddd;
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .toggle-btn.active {
+        background: #0088cc;
+        color: white;
+        border-color: #0088cc;
+      }
+      .b2b-fields,
+      .item-vat {
+        display: none;
+      }
+      .item-row {
+        background: #f9f9f9;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+      }
+      .item-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+      .remove-item {
+        background: #e74c3c;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      .totals {
+        background: #e3f2fd;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 15px;
+      }
+      .totals-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+      .totals-row.total {
+        font-weight: 700;
+        font-size: 18px;
+        color: #0088cc;
+        padding-top: 8px;
+        border-top: 2px solid #0088cc;
+      }
+      .hint {
+        font-size: 11px;
+        color: #999;
+        margin-top: -8px;
+        margin-bottom: 12px;
+      }
+      .info-box {
+        background: #fffbea;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 12px;
+        font-size: 12px;
+        border-left: 3px solid #ffc107;
+      }
+      /* NEW: compact totals box on advanced tab */
+      .totals.compact {
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="debug-panel hidden" id="debug-panel">
+        <h3>🐛 DEBUG 1</h3>
+        <div id="debug-log"></div>
+      </div>
+
+      <h1 style="margin-bottom: 20px">📄 Angebot erstellen</h1>
+
+      <div class="tabs">
+        <button class="tab active" onclick="showTab(0)">👤 Kunde</button>
+        <button class="tab" onclick="showTab(1)">📦 Positionen</button>
+        <button class="tab" onclick="showTab(2)">💰 Zahlung</button>
+        <button class="tab" onclick="showTab(3)">⚙️ Erweitert</button>
+      </div>
+
+      <!-- TAB 1: KUNDE -->
+      <div class="tab-content active" id="tab0">
+        <div class="section">
+          <div class="section-title">Kundentyp</div>
+          <div class="toggle-group">
+            <button
+              class="toggle-btn active"
+              id="b2c-btn"
+              onclick="setClientType('b2c')"
+            >
+              👤 Privatkunde
+            </button>
+            <button
+              class="toggle-btn"
+              id="b2b-btn"
+              onclick="setClientType('b2b')"
+            >
+              🏢 Geschäftskunde
+            </button>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Basisdaten</div>
+          <label class="required">Name / Firma</label>
+          <input
+            type="text"
+            id="client_name"
+            placeholder="Max Mustermann / Firma GmbH"
+            required
+          />
+          <label class="required">Straße</label>
+          <input
+            type="text"
+            id="client_street"
+            placeholder="Musterstraße 1"
+            required
+          />
+          <div class="grid">
+            <div>
+              <label class="required">PLZ</label
+              ><input
+                type="text"
+                id="client_postal_code"
+                placeholder="12345"
+                required
+              />
+            </div>
+            <div>
+              <label class="required">Stadt</label
+              ><input
+                type="text"
+                id="client_city"
+                placeholder="Berlin"
+                required
+              />
+            </div>
+          </div>
+          <label class="required">Land</label>
+          <select id="client_country" required>
+            <option value="DE" selected>Deutschland</option>
+            <option value="AT">Österreich</option>
+            <option value="CH">Schweiz</option>
+            <option value="FR">Frankreich</option>
+            <option value="NL">Niederlande</option>
+          </select>
+          <label>E-Mail</label>
+          <input
+            type="email"
+            id="client_email"
+            placeholder="kunde@example.com"
+          />
+          <label>Kundennummer</label>
+          <input type="text" id="customer_id" placeholder="KUND-001" />
+        </div>
+
+        <div class="section b2b-fields" id="b2b-section">
+          <div class="section-title">Geschäftskunde (B2B)</div>
+          <label>USt-IdNr.</label>
+          <input type="text" id="client_vat_id" placeholder="DE123456789" />
+          <div class="hint">Für EU B2B erforderlich</div>
+          <label>Rechtsform</label>
+          <select id="client_legal_form">
+            <option value="">Bitte wählen...</option>
+            <option value="GmbH">GmbH</option>
+            <option value="UG">UG (haftungsbeschränkt)</option>
+            <option value="AG">AG</option>
+            <option value="KG">KG</option>
+            <option value="OHG">OHG</option>
+            <option value="GbR">GbR</option>
+          </select>
+          <label>Handelsregister</label>
+          <input
+            type="text"
+            id="client_trade_register"
+            placeholder="HRB 12345 B"
+          />
+          <label>Ansprechpartner</label>
+          <input
+            type="text"
+            id="buyer_reference"
+            placeholder="Name, Abteilung"
+          />
+        </div>
+
+        <div class="btn-group">
+          <button class="btn" onclick="showTab(1)">Weiter →</button>
+        </div>
+      </div>
+
+      <!-- TAB 2: POSITIONEN -->
+      <div class="tab-content" id="tab1">
+        <div class="section">
+          <div class="section-title">Angebotsdetails</div>
+          <div class="grid">
+            <div>
+              <label class="required">Nummer</label
+              ><input type="text" id="offer_number" required />
+            </div>
+            <div>
+              <label class="required">Angebotsdatum</label
+              ><input type="date" id="offer_date" required />
+            </div>
+          </div>
+          <div class="grid">
+            <div>
+              <label class="required">Leistungsdatum</label
+              ><input type="date" id="delivery_date" required />
+            </div>
+            <div>
+              <label>Bestellnummer</label
+              ><input type="text" id="purchase_order" placeholder="PO-12345" />
+            </div>
+          </div>
+          <div class="info-box">
+            ℹ️ <strong>Leistungsdatum:</strong> Datum der Lieferung/Leistung
+            (Pflichtfeld für ZUGFeRD 2.4)
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Positionen</div>
+          <label
+            style="
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              cursor: pointer;
+              margin-bottom: 15px;
+            "
+          >
+            <input
+              type="checkbox"
+              id="vat_per_item"
+              style="width: auto; margin: 0"
+            />
+            <span><strong>Unterschiedliche MwSt. pro Position</strong></span>
+          </label>
+          <div id="global_vat_section">
+            <label>MwSt. (gesamt)</label>
+            <select id="global_vat_rate">
+              <option value="19">19% (Standard)</option>
+              <option value="7">7% (Ermäßigt)</option>
+              <option value="0">0% (Befreit/Kleinunternehmer)</option>
+            </select>
+          </div>
+          <div id="items" style="margin-top: 15px"></div>
+          <button class="btn btn-secondary" onclick="addItem()">
+            + Position hinzufügen
+          </button>
+        </div>
+
+        <div class="totals">
+          <div class="totals-row">
+            <span>Netto:</span><span id="total_net">0.00 €</span>
+          </div>
+
+          <!-- NEW: VAT breakdown instead of a single MwSt row -->
+          <div id="vat_breakdown_rows">
+            <div class="totals-row">
+              <span>MwSt.:</span><span id="total_vat">0.00 €</span>
+            </div>
+          </div>
+
+          <div class="totals-row total">
+            <span>Gesamt:</span><span id="total_gross">0.00 €</span>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn" style="background: #999" onclick="showTab(0)">
+            ← Zurück
+          </button>
+          <button class="btn" onclick="showTab(2)">Weiter →</button>
+        </div>
+      </div>
+
+      <!-- TAB 3: ZAHLUNG -->
+      <div class="tab-content" id="tab2">
+        <div class="section">
+          <div class="section-title">Zahlungsbedingungen</div>
+          <label>Zahlungsziel (Tage)</label>
+          <input type="number" id="payment_days" value="14" min="0" />
+          <label>Zahlungsart</label>
+          <select id="payment_means">
+            <option value="58">SEPA Überweisung</option>
+            <option value="48">Kreditkarte</option>
+            <option value="10">Bar</option>
+            <option value="49">PayPal</option>
+          </select>
+          <div id="sepa_section">
+            <label>IBAN (Empfänger)</label>
+            <input type="text" id="payment_iban" readonly />
+            <label>BIC</label>
+            <input type="text" id="payment_bic" readonly />
+          </div>
+          <label>Verwendungszweck (optional)</label>
+          <input
+            type="text"
+            id="payment_reference"
+            placeholder="Angebotsnummer wird automatisch verwendet"
+          />
+        </div>
+
+        <div class="section">
+          <div class="section-title">Format</div>
+          <label
+            style="
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              margin-bottom: 10px;
+            "
+          >
+            <input
+              type="radio"
+              name="format"
+              value="ZUGFeRD"
+              checked
+              style="width: auto; margin: 0"
+            />
+            <span><strong>ZUGFeRD 2.4</strong> (PDF + XML eingebettet)</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px">
+            <input
+              type="radio"
+              name="format"
+              value="XAngebot"
+              style="width: auto; margin: 0"
+            />
+            <span><strong>XAngebot</strong> (nur XML Datei)</span>
+          </label>
+          <div class="hint">
+            ZUGFeRD empfohlen für PDF-Ansicht + E-Angebot Konformität
+          </div>
+        </div>
+
+        <div class="section">
+          <label>Notizen / Hinweise</label>
+          <textarea
+            id="notes"
+            rows="3"
+            placeholder="Zusätzliche Hinweise auf der Angebot..."
+          ></textarea>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn" style="background: #999" onclick="showTab(1)">
+            ← Zurück
+          </button>
+          <button class="btn" onclick="showTab(3)">Weiter →</button>
+        </div>
+      </div>
+
+      <!-- TAB 4: ERWEITERT -->
+      <div class="tab-content" id="tab3">
+        <div class="section">
+          <div class="section-title">Referenzen</div>
+          <label>Vertragsnummer</label>
+          <input type="text" id="contract_number" placeholder="VERT-2024-001" />
+          <label>Projektnummer</label>
+          <input type="text" id="project_number" placeholder="PROJ-2024-001" />
+        </div>
+
+        <div class="section">
+          <div class="section-title">Rabatte & Skonto</div>
+          <div class="grid">
+            <div>
+              <label>Rabatt (%)</label
+              ><input
+                type="number"
+                id="discount_percentage"
+                value="0"
+                min="0"
+                max="100"
+                step="0.1"
+                onchange="calcTotals()"
+              />
+            </div>
+            <div>
+              <label>Rabatt (€)</label
+              ><input
+                type="number"
+                id="discount_amount"
+                value="0"
+                min="0"
+                step="0.01"
+                onchange="calcTotals()"
+              />
+            </div>
+          </div>
+          <div class="hint">Rabatt % hat Vorrang, falls beide angegeben</div>
+
+          <!-- NEW: show net+gross here (net after discount, before shipping) -->
+          <div class="totals compact">
+            <div class="totals-row">
+              <span>Netto (nach Rabatt):</span
+              ><span id="adv_net_after_discount">0.00 €</span>
+            </div>
+            <div class="totals-row total">
+              <span>Zwischensumme:</span
+              ><span id="adv_subtotal_after_discount">0.00 €</span>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div>
+              <label>Skonto (%)</label
+              ><input
+                type="number"
+                id="skonto_percentage"
+                value="0"
+                min="0"
+                max="100"
+                step="0.1"
+              />
+            </div>
+            <div>
+              <label>Skonto Tage</label
+              ><input type="number" id="skonto_days" value="0" min="0" />
+            </div>
+          </div>
+          <div class="hint">
+            Frühzahlerrabatt: z.B. 2% bei Zahlung innerhalb 10 Tagen
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Lieferung & Versand</div>
+          <label>Versandkosten (€)</label>
+          <input
+            type="number"
+            id="shipping_cost"
+            value="0"
+            min="0"
+            step="0.01"
+            onchange="calcTotals()"
+          />
+          <label>Versand MwSt. (%)</label>
+          <select id="shipping_vat_rate">
+            <option value="19">19%</option>
+            <option value="7">7%</option>
+            <option value="0">0%</option>
+          </select>
+
+          <!-- NEW: final totals box on advanced tab (after discount + shipping) -->
+          <div class="totals">
+            <div class="totals-row">
+              <span>Netto:</span><span id="adv_total_net">0.00 €</span>
+            </div>
+            <div id="adv_vat_breakdown_rows"></div>
+            <div class="totals-row total">
+              <span>Gesamt:</span><span id="adv_total_gross">0.00 €</span>
+            </div>
+          </div>
+
+          <label
+            style="
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              margin: 15px 0 10px 0;
+            "
+          >
+            <input
+              type="checkbox"
+              id="different_shipping"
+              style="width: auto; margin: 0"
+              onchange="toggleShippingAddress()"
+            />
+            <span>Abweichende Lieferadresse</span>
+          </label>
+          <div id="shipping_address" style="display: none">
+            <label>Lieferung an</label>
+            <input type="text" id="ship_to_name" placeholder="Firma / Name" />
+            <label>Straße</label>
+            <input
+              type="text"
+              id="ship_to_street"
+              placeholder="Lieferstraße 1"
+            />
+            <div class="grid">
+              <div>
+                <label>PLZ</label
+                ><input
+                  type="text"
+                  id="ship_to_postal_code"
+                  placeholder="12345"
+                />
+              </div>
+              <div>
+                <label>Stadt</label
+                ><input type="text" id="ship_to_city" placeholder="Berlin" />
+              </div>
+            </div>
+            <label>Land</label>
+            <select id="ship_to_country_code">
+              <option value="DE" selected>Deutschland</option>
+              <option value="AT">Österreich</option>
+              <option value="CH">Schweiz</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn" style="background: #999" onclick="showTab(2)">
+            ← Zurück
+          </button>
+          <button class="btn" onclick="createOffer()">
+            💾 Angebot erstellen
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const DEBUG_MODE = true;
+      const tg = window.Telegram.WebApp;
+      tg.expand();
+
+      let loadedProfile = null;
+      let itemCount = 0;
+      let clientType = "b2c";
+
+      function log(msg, color = "#0f0") {
+        if (!DEBUG_MODE) return;
+        const time = new Date().toLocaleTimeString();
+        const debugLog = document.getElementById("debug-log");
+        if (debugLog) {
+          debugLog.innerHTML += `<div style="color: ${color}">[${time}] ${msg}</div>`;
+        }
+      }
+
+      // --- VAT BREAKDOWN RENDER ---
+      function round2(x) {
+        return Math.round((Number(x) + Number.EPSILON) * 100) / 100;
+      }
+      function fmtEUR(x) {
+        return (
+          round2(x).toLocaleString("de-DE", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }) + " €"
+        );
+      }
+      function renderVatBreakdown(
+        containerId,
+        vatMode,
+        items,
+        shippingCost,
+        shippingVatRate,
+      ) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = "";
+
+        if (vatMode !== "standard") {
+          container.innerHTML = `
+            <div class="totals-row"><span>MwSt.:</span><span>${fmtEUR(0)}</span></div>
+          `;
+          return;
+        }
+
+        const byRate = new Map();
+
+        function add(rate, net) {
+          const r = Number(rate) || 0;
+          const n = round2(net);
+          const v = round2((n * r) / 100);
+          const cur = byRate.get(r) || { net: 0, vat: 0 };
+          cur.net = round2(cur.net + n);
+          cur.vat = round2(cur.vat + v);
+          byRate.set(r, cur);
+        }
+
+        (items || []).forEach((it) =>
+          add(it.vat_rate, it.quantity * it.unit_price),
+        );
+        if ((Number(shippingCost) || 0) > 0)
+          add(Number(shippingVatRate) || 0, Number(shippingCost) || 0);
+
+        const rates = Array.from(byRate.keys()).sort((a, b) => b - a);
+        let vatSum = 0;
+
+        rates.forEach((r) => {
+          const row = byRate.get(r);
+          vatSum = round2(vatSum + row.vat);
+          container.insertAdjacentHTML(
+            "beforeend",
+            `<div class="totals-row"><span>MwSt. ${r}%:</span><span>${fmtEUR(row.vat)}</span></div>`,
+          );
+        });
+
+        if (rates.length > 1) {
+          container.insertAdjacentHTML(
+            "beforeend",
+            `<div class="totals-row" style="font-weight:600;"><span>MwSt. gesamt:</span><span>${fmtEUR(vatSum)}</span></div>`,
+          );
+        }
+      }
+
+      // --- НОВАЯ ЛОГИКА ОПРЕДЕЛЕНИЯ VAT MODE ---
+      function detectVatMode({
+        clientType,
+        buyerCountry,
+        buyerVatId,
+        isKleinunternehmer,
+      }) {
+        log(
+          `detectVatMode(): clientType=${clientType}, country=${buyerCountry}, vatId=${buyerVatId || "-"}, klein=${isKleinunternehmer}`,
+          "#888",
+        );
+
+        const EU_COUNTRIES = ["DE", "AT", "FR", "NL", "BE", "IT", "ES", "PL"];
+
+        if (isKleinunternehmer) {
+          log("→ VAT MODE = KLEIN", "#ff0");
+          return "klein";
+        }
+
+        if (!EU_COUNTRIES.includes(buyerCountry)) {
+          log("→ VAT MODE = EXPORT", "#ff0");
+          return "export";
+        }
+
+        if (clientType === "b2c") {
+          log("→ VAT MODE = STANDARD (B2C)", "#0f0");
+          return "standard";
+        }
+
+        if (buyerCountry === "DE") {
+          log("→ VAT MODE = STANDARD (DE B2B)", "#0f0");
+          return "standard";
+        }
+
+        if (clientType === "b2b" && buyerVatId && buyerVatId.trim() !== "") {
+          log("→ VAT MODE = REVERSE", "#ff0");
+          return "reverse";
+        }
+
+        log("→ VAT MODE = STANDARD (fallback)", "#0f0");
+        return "standard";
+      }
+
+      if (DEBUG_MODE) {
+        const panel = document.getElementById("debug-panel");
+        if (panel) panel.classList.remove("hidden");
+      }
+      log("🚀 Started", "#0ff");
+
+      function showTab(n) {
+        document
+          .querySelectorAll(".tab")
+          .forEach((t, i) => t.classList.toggle("active", i === n));
+        document
+          .querySelectorAll(".tab-content")
+          .forEach((c, i) => c.classList.toggle("active", i === n));
+        window.scrollTo(0, 0);
+        log(`Tab ${n} shown`, "#ff0");
+      }
+
+      function setClientType(type) {
+        clientType = type;
+        document
+          .getElementById("b2c-btn")
+          .classList.toggle("active", type === "b2c");
+        document
+          .getElementById("b2b-btn")
+          .classList.toggle("active", type === "b2b");
+
+        const b2bSection = document.getElementById("b2b-section");
+        if (b2bSection)
+          b2bSection.style.display = type === "b2b" ? "block" : "none";
+
+        log(`Client type: ${type}`, "#0ff");
+        calcTotals();
+      }
+
+      function toggleShippingAddress() {
+        const checked = document.getElementById("different_shipping").checked;
+        document.getElementById("shipping_address").style.display = checked
+          ? "block"
+          : "none";
+      }
+
+      // Слушатели для динамического пересчета
+      document
+        .getElementById("vat_per_item")
+        .addEventListener("change", function () {
+          if (this.disabled) return;
+
+          document.getElementById("global_vat_section").style.display = this
+            .checked
+            ? "none"
+            : "block";
+
+          document
+            .querySelectorAll(".item-vat")
+            .forEach(
+              (el) => (el.style.display = this.checked ? "block" : "none"),
+            );
+
+          calcTotals();
+        });
+
+      document
+        .getElementById("payment_means")
+        .addEventListener("change", function () {
+          document.getElementById("sepa_section").style.display =
+            this.value === "58" ? "block" : "none";
+        });
+
+      // Привязываем пересчет к смене страны и вводу VAT ID
+      document
+        .getElementById("client_country")
+        .addEventListener("change", calcTotals);
+      document
+        .getElementById("client_vat_id")
+        ?.addEventListener("input", calcTotals);
+
+      // NEW: shipping VAT change should recalc
+      document
+        .getElementById("shipping_vat_rate")
+        .addEventListener("change", calcTotals);
+
+      function addItem() {
+        itemCount++;
+        const vatPerItem = document.getElementById("vat_per_item").checked;
+        document.getElementById("items").insertAdjacentHTML(
+          "beforeend",
+          `
+      <div class="item-row" id="item_${itemCount}">
+        <div class="item-header"><strong>Position ${itemCount}</strong><button class="remove-item" onclick="removeItem(${itemCount})">×</button></div>
+        <label>Beschreibung</label><input type="text" class="item-desc" placeholder="Produktname / Dienstleistung" required>
+        <div class="grid4">
+          <div><label>Menge</label><input type="number" class="item-qty" value="1" min="0.01" step="0.01" onchange="calcTotals()"></div>
+          <div><label>Einheit</label><select class="item-unit"><option>Stk</option><option>Std</option><option>Tag</option><option>kg</option><option>m</option></select></div>
+          <div><label>Preis (€)</label><input type="number" class="item-price" value="0" min="0" step="0.01" onchange="calcTotals()"></div>
+          <div class="item-vat" style="display: ${vatPerItem ? "block" : "none"}"><label>MwSt.</label><select class="item-vat-rate" onchange="calcTotals()"><option value="19">19%</option><option value="7">7%</option><option value="0">0%</option></select></div>
+        </div>
+      </div>`,
+        );
+        log(`Item ${itemCount} added`, "#0f0");
+        calcTotals();
+      }
+
+      function removeItem(id) {
+        const el = document.getElementById(`item_${id}`);
+        if (el) el.remove();
+        calcTotals();
+      }
+
+      function calcTotals() {
+        // Читаем все параметры из формы
+        const vatPerItem = document.getElementById("vat_per_item")?.checked || false;
+        const globalVatRate = parseFloat(document.getElementById("global_vat_rate")?.value || 19);
+        const discountPercentage = parseFloat(document.getElementById("discount_percentage")?.value || 0);
+        const discountAmount = parseFloat(document.getElementById("discount_amount")?.value || 0);
+        const shippingCost = parseFloat(document.getElementById("shipping_cost")?.value || 0);
+        const shippingVatRate = parseFloat(document.getElementById("shipping_vat_rate")?.value || globalVatRate);
+        
+        const buyerCountry = document.getElementById("client_country")?.value || "DE";
+        const buyerVatId = document.getElementById("client_vat_id")?.value || "";
+        const isKlein = loadedProfile?.is_kleinunternehmer || false;
+        
+        const vatMode = detectVatMode({
+          clientType: clientType,
+          buyerCountry: buyerCountry,
+          buyerVatId: buyerVatId,
+          isKleinunternehmer: isKlein
+        });
+
+        // Собираем позиции
+        const items = [];
+        document.querySelectorAll(".item-row").forEach((row) => {
+          const qty = parseFloat(row.querySelector(".item-qty")?.value || 0);
+          const price = parseFloat(row.querySelector(".item-price")?.value || 0);
+          const vatRate = vatPerItem 
+            ? parseFloat(row.querySelector(".item-vat-rate")?.value || 0)
+            : globalVatRate;
+          
+          items.push({ quantity: qty, unit_price: price, vat_rate: vatRate });
+        });
+
+        // ЛОГИКА РАСЧЁТА
+        let itemsNet = 0;
+        const byRate = {};
+
+        items.forEach(it => {
+          const lineNet = round2(it.quantity * it.unit_price);
+          itemsNet += lineNet;
+          
+          const rate = it.vat_rate;
+          if (!byRate[rate]) byRate[rate] = { net: 0, vat: 0 };
+          byRate[rate].net += lineNet;
+        });
+
+        itemsNet = round2(itemsNet);
+
+        // Скидка
+        let discount = 0;
+        if (itemsNet > 0) {
+          if (discountAmount > 0) {
+            discount = discountAmount;
+          } else if (discountPercentage > 0) {
+            discount = itemsNet * (discountPercentage / 100);
+          }
+        }
+        discount = round2(Math.min(discount, itemsNet));
+
+        // Применяем скидку пропорционально
+        if (discount > 0 && itemsNet > 0) {
+          const factor = (itemsNet - discount) / itemsNet;
+          Object.keys(byRate).forEach(rate => {
+            byRate[rate].net = round2(byRate[rate].net * factor);
+          });
+        }
+
+        // НДС на позиции
+        Object.keys(byRate).forEach(rate => {
+          const r = parseFloat(rate);
+          const effectiveRate = vatMode === "standard" ? r : 0;
+          byRate[rate].vat = round2(byRate[rate].net * effectiveRate / 100);
+        });
+
+        // Доставка
+        const shippingEffectiveRate = vatMode === "standard" ? shippingVatRate : 0;
+        const shippingVat = round2(shippingCost * shippingEffectiveRate / 100);
+        
+        if (shippingCost > 0) {
+          if (!byRate[shippingVatRate]) byRate[shippingVatRate] = { net: 0, vat: 0 };
+          byRate[shippingVatRate].net += shippingCost;
+          byRate[shippingVatRate].vat += shippingVat;
+        }
+
+        // ИТОГИ
+        let totalNet = 0, totalVat = 0;
+        Object.values(byRate).forEach(v => {
+          totalNet += v.net;
+          totalVat += v.vat;
+        });
+
+        totalNet = round2(totalNet);
+        totalVat = round2(totalVat);
+        const totalGross = round2(totalNet + totalVat);
+
+        // ОБНОВЛЯЕМ ИНТЕРФЕЙС
+        const netEl = document.getElementById("adv_total_net");
+        const grossEl = document.getElementById("adv_total_gross");
+        const breakdownEl = document.getElementById("adv_vat_breakdown_rows");
+
+        if (netEl) netEl.textContent = fmtEUR(totalNet);
+        if (grossEl) grossEl.textContent = fmtEUR(totalGross);
+        
+        if (breakdownEl) {
+          breakdownEl.innerHTML = "";
+          const rates = Object.keys(byRate).map(r => parseFloat(r)).sort((a,b) => b-a);
+          rates.forEach(rate => {
+            const data = byRate[rate];
+            breakdownEl.insertAdjacentHTML("beforeend",
+              `<div class="totals-row"><span>MwSt. ${rate}%:</span><span>${fmtEUR(data.vat)}</span></div>`
+            );
+          });
+        }
+      }
+
+      function round2(x) {
+        return Math.round(x * 100) / 100;
+      }
+
+      function createOffer() {
+        const vatPerItem = document.getElementById("vat_per_item").checked;
+        const globalVatRate = parseFloat(
+          document.getElementById("global_vat_rate").value,
+        );
+
+        // Собираем items из формы (vat_rate ВСЕГДА проставляем!)
+        const items = [];
+        document.querySelectorAll(".item-row").forEach((row, idx) => {
+          const qty = parseFloat(row.querySelector(".item-qty").value) || 0;
+          const price = parseFloat(row.querySelector(".item-price").value) || 0;
+
+          const lineVatRate = vatPerItem
+            ? parseFloat(row.querySelector(".item-vat-rate").value)
+            : globalVatRate;
+
+          items.push({
+            position_number: idx + 1,
+            description: row.querySelector(".item-desc").value || "",
+            quantity: qty,
+            unit: row.querySelector(".item-unit").value || "Stk",
+            unit_price: price,
+            total_price: qty * price,
+            vat_rate: lineVatRate,
+          });
+        });
+
+        const vatMode = detectVatMode({
+          clientType: clientType,
+          buyerCountry: document.getElementById("client_country").value,
+          buyerVatId: document.getElementById("client_vat_id")?.value || "",
+          isKleinunternehmer: loadedProfile?.is_kleinunternehmer || false,
+        });
+
+        const offerDate = new Date(
+          document.getElementById("offer_date").value,
+        );
+        const dueDate = new Date(offerDate);
+        dueDate.setDate(
+          dueDate.getDate() +
+            parseInt(document.getElementById("payment_days").value || "0", 10),
+        );
+
+        const discountPercentage =
+          parseFloat(document.getElementById("discount_percentage").value) || 0;
+        const discountAmount =
+          parseFloat(document.getElementById("discount_amount").value) || 0;
+
+        const skontoPercentage =
+          parseFloat(document.getElementById("skonto_percentage").value) || 0;
+        const skontoDays = parseInt(
+          document.getElementById("skonto_days").value || "0",
+          10,
+        );
+
+        const shippingCost =
+          parseFloat(document.getElementById("shipping_cost").value) || 0;
+        const shippingVatRate =
+          parseFloat(document.getElementById("shipping_vat_rate").value) || 0;
+
+        const differentShipping =
+          document.getElementById("different_shipping").checked;
+
+        const data = {
+          type: "offer_creation",
+
+          client_type: clientType,
+          vat_mode: vatMode,
+
+          // VAT config
+          vat_per_item: vatPerItem,
+          global_vat_rate: globalVatRate,
+
+          offer_number: document.getElementById("offer_number").value,
+          offer_date: document.getElementById("offer_date").value,
+          delivery_date: document.getElementById("delivery_date").value,
+          due_date: dueDate.toISOString().split("T")[0],
+
+          client_name: document.getElementById("client_name").value,
+          client_street: document.getElementById("client_street").value,
+          client_postal_code:
+            document.getElementById("client_postal_code").value,
+          client_city: document.getElementById("client_city").value,
+          client_country: document.getElementById("client_country").value,
+          client_email: document.getElementById("client_email").value || null,
+          customer_id: document.getElementById("customer_id").value || null,
+
+          client_vat_id:
+            clientType === "b2b"
+              ? document.getElementById("client_vat_id").value || null
+              : null,
+          client_legal_form:
+            document.getElementById("client_legal_form")?.value || null,
+          client_trade_register:
+            document.getElementById("client_trade_register")?.value || null,
+          buyer_reference:
+            document.getElementById("buyer_reference")?.value || null,
+
+          purchase_order:
+            document.getElementById("purchase_order").value || null,
+          contract_number:
+            document.getElementById("contract_number").value || null,
+          project_number:
+            document.getElementById("project_number").value || null,
+
+          discount_percentage: discountPercentage,
+          discount_amount: discountAmount,
+          skonto_percentage: skontoPercentage,
+          skonto_days: skontoDays,
+          shipping_cost: shippingCost,
+          shipping_vat_rate: shippingVatRate,
+
+          ship_to_name: differentShipping
+            ? document.getElementById("ship_to_name").value || null
+            : null,
+          ship_to_street: differentShipping
+            ? document.getElementById("ship_to_street").value || null
+            : null,
+          ship_to_postal_code: differentShipping
+            ? document.getElementById("ship_to_postal_code").value || null
+            : null,
+          ship_to_city: differentShipping
+            ? document.getElementById("ship_to_city").value || null
+            : null,
+          ship_to_country_code: differentShipping
+            ? document.getElementById("ship_to_country_code").value || null
+            : null,
+
+          notes: document.getElementById("notes").value || null,
+
+          items: items,
+        };
+
+        log("SEND PAYLOAD: " + JSON.stringify(data), "#0ff");
+
+        tg.sendData(JSON.stringify(data));
+        tg.close();
+      }
+
+      // --- Инициализация профиля и автозаполнение ---
+      const urlParams = new URLSearchParams(window.location.search);
+      const dataParam = urlParams.get("data");
+      if (dataParam) {
+        try {
+          const profile = JSON.parse(atob(dataParam));
+          loadedProfile = profile;
+
+          log(
+            `Profile parsed: klein=${profile.is_kleinunternehmer}, defaultVat=${profile.default_vat_rate}`,
+            "#0ff",
+          );
+
+          document.getElementById("offer_number").value =
+            `${profile.offer_number_prefix || "RE-"}${String(profile.next_offer_number || 1).padStart(profile.offer_number_format || 4, "0")}`;
+          document.getElementById("offer_date").value = new Date()
+            .toISOString()
+            .split("T")[0];
+          document.getElementById("delivery_date").value = new Date()
+            .toISOString()
+            .split("T")[0];
+          document.getElementById("payment_days").value =
+            profile.payment_terms_days || 14;
+          document.getElementById("global_vat_rate").value = String(
+            profile.default_vat_rate || 19,
+          );
+
+          if (profile.is_kleinunternehmer) {
+            log("⚠️ Kleinunternehmer mode", "#ff0");
+            document.getElementById("global_vat_rate").disabled = true;
+          }
+
+          log("Calling calcTotals() after profile load", "#ff0");
+          calcTotals();
+          log("✅ Profile loaded", "#0f0");
+        } catch (e) {
+          log("❌ ERROR: " + e.message, "#f00");
+        }
+      }
+
+      addItem();
+
+      function showVatInfo(vatMode) {
+        const box = document.getElementById("vat-info");
+        if (!box) return;
+
+        const texts = {
+          standard: "🇩🇪 Deutsche MwSt wird berechnet.",
+          export: "🌍 Steuerfreie Ausfuhrlieferung (§4 Nr. 1a UStG).",
+          reverse: "🔄 Reverse-Charge-Verfahren (§13b UStG).",
+          klein: "⚠️ Kleinunternehmerregelung (§19 UStG).",
+        };
+
+        box.textContent = texts[vatMode] || "";
+        box.style.display = "block";
+      }
+
+      // 🔥 DEBUG AUTO-FILL
+      if (DEBUG_MODE) {
+        setTimeout(() => {
+          document.getElementById("client_name").value = "Test GmbH";
+          document.getElementById("client_country").value = "DE";
+          document.getElementById("client_name").value = "Test GmbH";
+          document.getElementById("client_street").value = "Teststraße 123";
+          document.getElementById("client_postal_code").value = "10115";
+          document.getElementById("client_city").value = "Berlin";
+          document.getElementById("client_country").value = "DE";
+          document.getElementById("client_email").value = "test@test.de";
+          document.getElementById("customer_id").value = "KUND-001";
+
+          setClientType("b2b");
+          document.getElementById("client_vat_id").value = "DE123456789";
+          document.getElementById("client_legal_form").value = "GmbH";
+          document.getElementById("client_trade_register").value = "HRB 12345";
+          document.getElementById("buyer_reference").value =
+            "Hr. Schmidt, Einkauf";
+
+          document.getElementById("purchase_order").value = "PO-2024-001";
+
+          setTimeout(() => {
+            document.querySelector(".item-desc").value =
+              "Webentwicklung Premium Paket";
+            document.querySelector(".item-qty").value = "40";
+            document.querySelector(".item-unit").value = "Std";
+            document.querySelector(".item-price").value = "85";
+
+            addItem();
+            const items = document.querySelectorAll(".item-row");
+            if (items[1]) {
+              items[1].querySelector(".item-desc").value = "SEO Optimierung";
+              items[1].querySelector(".item-qty").value = "10";
+              items[1].querySelector(".item-unit").value = "Std";
+              items[1].querySelector(".item-price").value = "120";
+            }
+
+            calcTotals();
+          }, 100);
+
+          document.getElementById("payment_days").value = "14";
+          document.getElementById("payment_means").value = "58";
+          document.getElementById("notes").value =
+            "Vielen Dank für Ihren Auftrag!";
+
+          document.getElementById("contract_number").value = "VERT-2024-001";
+          document.getElementById("project_number").value = "PROJ-2024-042";
+          document.getElementById("discount_percentage").value = "5";
+          document.getElementById("shipping_cost").value = "15.50";
+
+          log("✅ Test data filled!", "#0f0");
+        }, 500);
+      }
+
+      calcTotals();
+    </script>
+  </body>
+</html>
