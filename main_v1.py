@@ -90,6 +90,10 @@ def main():
 
     app.add_error_handler(error_handler)
 
+    app.add_handler(
+        CallbackQueryHandler(handlers_v1.handle_goto_settings,
+                             pattern="^goto_settings$"))
+
     logging.info("🤖 RechnungAgent v1 gestartet!")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
