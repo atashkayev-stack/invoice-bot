@@ -290,7 +290,7 @@
             </div>
           </div>
           <label class="required">Land</label>
-          <select id="client_country" required>
+          <select id="client_country" required onchange="calcTotals()">
             <option value="DE" selected>Deutschland</option>
             <option value="AT">Österreich</option>
             <option value="CH">Schweiz</option>
@@ -310,7 +310,12 @@
         <div class="section b2b-fields" id="b2b-section">
           <div class="section-title">Geschäftskunde (B2B)</div>
           <label>USt-IdNr.</label>
-          <input type="text" id="client_vat_id" placeholder="DE123456789" />
+          <input
+            type="text"
+            id="client_vat_id"
+            placeholder="DE123456789"
+            oninput="calcTotals()"
+          />
           <div class="hint">Für EU B2B erforderlich</div>
           <label>Rechtsform</label>
           <select id="client_legal_form">
@@ -587,7 +592,7 @@
             value="0"
             min="0"
             step="0.01"
-            onchange="calcTotals()"
+            oninput="calcTotals()"
           />
           <label>Versand MwSt. (%)</label>
           <select id="shipping_vat_rate">
@@ -886,9 +891,9 @@
         <div class="item-header"><strong>Position ${itemCount}</strong><button class="remove-item" onclick="removeItem(${itemCount})">×</button></div>
         <label>Beschreibung</label><input type="text" class="item-desc" placeholder="Produktname / Dienstleistung" required>
         <div class="grid4">
-          <div><label>Menge</label><input type="number" class="item-qty" value="1" min="0.01" step="0.01" onchange="calcTotals()"></div>
+          <div><label>Menge</label><input type="number" class="item-qty" value="1" min="0.01" step="0.01" oninput="calcTotals()"></div>
           <div><label>Einheit</label><select class="item-unit"><option>Stk</option><option>Std</option><option>Tag</option><option>kg</option><option>m</option></select></div>
-          <div><label>Preis (€)</label><input type="number" class="item-price" value="0" min="0" step="0.01" onchange="calcTotals()"></div>
+          <div><label>Preis (€)</label><input type="number" class="item-price" value="0" min="0" step="0.01" oninput="calcTotals()"></div>
           <div class="item-vat" style="display: ${vatPerItem ? "block" : "none"}"><label>MwSt.</label><select class="item-vat-rate" onchange="calcTotals()"><option value="19">19%</option><option value="7">7%</option><option value="0">0%</option></select></div>
         </div>
       </div>`,
@@ -935,6 +940,28 @@
           buyerVatId: buyerVatId,
           isKleinunternehmer: isKlein,
         });
+
+        // 🔒 БЛОКИРОВКА ПОЛЕЙ НДС
+        const globalVatField = document.getElementById("global_vat_rate");
+        const shouldDisableVat =
+          vatMode === "klein" || vatMode === "export" || vatMode === "reverse";
+
+        if (globalVatField) {
+          globalVatField.disabled = shouldDisableVat;
+        }
+
+        // Блокировка НДС на позициях (если используется per-item VAT)
+        if (shouldDisableVat) {
+          document.querySelectorAll(".item-vat-rate").forEach((field) => {
+            field.disabled = true;
+          });
+        } else {
+          document.querySelectorAll(".item-vat-rate").forEach((field) => {
+            field.disabled = false;
+          });
+        }
+
+        showVatInfo(vatMode);
 
         // Собираем позиции
         const items = [];
@@ -1229,6 +1256,10 @@
           if (profile.is_kleinunternehmer) {
             log("⚠️ Kleinunternehmer mode", "#ff0");
             document.getElementById("global_vat_rate").disabled = true;
+            // Блокировка НДС на позициях
+            document.querySelectorAll(".item-vat-rate").forEach((field) => {
+              field.disabled = true;
+            });
           }
 
           log("Calling calcTotals() after profile load", "#ff0");
