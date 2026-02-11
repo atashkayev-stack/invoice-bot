@@ -1,454 +1,490 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
-<head>
-  <meta charset="UTF-8">
-  <title>Rechnung {{ invoice_number }}</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-    
-    @page {
-      size: A4;
-      margin: 8mm 10mm;
-    }
-    
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 9pt;
-      line-height: 1.4;
-      color: #1a1a1a;
-    }
-    
-    /* ========== HEADER ========== */
-    .header {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 15mm;
-      margin-bottom: 6mm;
-      padding-bottom: 4mm;
-      border-bottom: 2px solid #2563eb;
-    }
-    
-    .header-left h1 {
-      font-size: 24pt;
-      font-weight: 700;
-      color: #2563eb;
-      margin-bottom: 2mm;
-      letter-spacing: -0.5pt;
-    }
-    
-    .invoice-number {
-      font-size: 11pt;
-      color: #64748b;
-      font-weight: 600;
-    }
-    
-    .header-right {
-      text-align: right;
-      font-size: 9pt;
-    }
-    
-    .company-name {
-      font-size: 12pt;
-      font-weight: 700;
-      color: #1a1a1a;
-      margin-bottom: 2mm;
-    }
-    
-    .company-detail {
-      color: #475569;
-      line-height: 1.6;
-    }
-    
-    /* ========== PARTIES GRID ========== */
-    .parties-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6mm;
-      margin-bottom: 5mm;
-    }
-    
-    .party-box {
-      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-      padding: 4mm;
-      border-radius: 2mm;
-      border-left: 3px solid #2563eb;
-    }
-    
-    .party-title {
-      font-weight: 700;
-      font-size: 8pt;
-      color: #2563eb;
-      text-transform: uppercase;
-      letter-spacing: 0.5pt;
-      margin-bottom: 2mm;
-    }
-    
-    .party-content {
-      font-size: 9pt;
-      line-height: 1.5;
-      color: #1e293b;
-    }
-    
-    .party-content strong {
-      font-weight: 700;
-      font-size: 10pt;
-      color: #0f172a;
-      display: block;
-      margin-bottom: 1mm;
-    }
-    
-    /* ========== META INFO ========== */
-    .meta-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 3mm;
-      margin-bottom: 5mm;
-      font-size: 8pt;
-    }
-    
-    .meta-item {
-      background: #fff;
-      padding: 2.5mm;
-      border: 1px solid #e2e8f0;
-      border-radius: 1.5mm;
-    }
-    
-    .meta-label {
-      font-weight: 600;
-      color: #64748b;
-      font-size: 7pt;
-      text-transform: uppercase;
-      margin-bottom: 1mm;
-      letter-spacing: 0.3pt;
-    }
-    
-    .meta-value {
-      font-weight: 600;
-      color: #0f172a;
-      font-size: 9pt;
-    }
-    
-    /* ========== ITEMS TABLE ========== */
-    .items-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 4mm;
-      font-size: 8.5pt;
-    }
-    
-    .items-table thead {
-      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-      color: white;
-    }
-    
-    .items-table th {
-      padding: 2.5mm 2mm;
-      text-align: left;
-      font-weight: 600;
-      font-size: 7.5pt;
-      text-transform: uppercase;
-      letter-spacing: 0.3pt;
-    }
-    
-    .items-table th.center { text-align: center; }
-    .items-table th.right { text-align: right; }
-    
-    .items-table tbody tr {
-      border-bottom: 1px solid #e2e8f0;
-    }
-    
-    .items-table tbody tr:nth-child(even) {
-      background: #f8fafc;
-    }
-    
-    .items-table td {
-      padding: 2mm;
-      color: #1e293b;
-      vertical-align: top;
-    }
-    
-    .items-table td.center { text-align: center; }
-    .items-table td.right { 
-      text-align: right;
-      font-weight: 600;
-    }
-    
-    .item-description {
-      font-weight: 500;
-      color: #0f172a;
-    }
-    
-    /* ========== TOTALS ========== */
-    .totals-section {
-      margin-top: 3mm;
-      display: flex;
-      justify-content: flex-end;
-    }
-    
-    .totals-box {
-      width: 75mm;
-      font-size: 9pt;
-    }
-    
-    .totals-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 2mm 3mm;
-      border-bottom: 1px solid #e2e8f0;
-    }
-    
-    .totals-row.subtotal {
-      background: #f8fafc;
-      font-weight: 600;
-    }
-    
-    .totals-row.discount {
-      color: #dc2626;
-      font-weight: 600;
-    }
-    
-    .totals-row.vat {
-      background: #fef3c7;
-      font-weight: 600;
-      color: #92400e;
-    }
-    
-    .totals-row.grand {
-      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-      color: white;
-      font-weight: 700;
-      font-size: 11pt;
-      padding: 3mm;
-      border-radius: 2mm;
-      margin-top: 2mm;
-    }
-    
-    .totals-label {
-      font-weight: 600;
-    }
-    
-    .totals-value {
-      font-weight: 700;
-    }
-    
-    /* ========== FOOTER ========== */
-    .footer-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6mm;
-      margin-top: 5mm;
-      padding-top: 4mm;
-      border-top: 2px solid #e2e8f0;
-      font-size: 8pt;
-    }
-    
-    .footer-box {
-      background: #f8fafc;
-      padding: 3mm;
-      border-radius: 2mm;
-    }
-    
-    .footer-title {
-      font-weight: 700;
-      color: #2563eb;
-      font-size: 8pt;
-      text-transform: uppercase;
-      margin-bottom: 2mm;
-      letter-spacing: 0.3pt;
-    }
-    
-    .footer-content {
-      line-height: 1.6;
-      color: #475569;
-    }
-    
-    .footer-content strong {
-      color: #1e293b;
-      font-weight: 600;
-    }
-    
-    /* ========== NOTES ========== */
-    .notes {
-      margin-top: 4mm;
-      padding: 3mm;
-      background: #fef3c7;
-      border-left: 3px solid #f59e0b;
-      border-radius: 2mm;
-      font-size: 8pt;
-      color: #92400e;
-      line-height: 1.5;
-    }
-  </style>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Rechnung {{ invoice_number }}</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 12mm 15mm;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-  <!-- HEADER -->
-  <div class="header">
-    <div class="header-left">
-      <h1>RECHNUNG</h1>
-      <div class="invoice-number">Nr. {{ invoice_number }}</div>
-    </div>
-    <div class="header-right">
-      <div class="company-name">{{ profile.company_name or profile.owner_name }}</div>
-      <div class="company-detail">
-        {{ profile.street }}<br>
-        {{ profile.postal_code }} {{ profile.city }}<br>
-        {% if profile.phone %}Tel: {{ profile.phone }}<br>{% endif %}
-        {% if profile.email %}{{ profile.email }}{% endif %}
-      </div>
-    </div>
-  </div>
+      body {
+        font-family: "Helvetica", "Arial", sans-serif;
+        font-size: 9.5pt;
+        line-height: 1.35;
+        color: #1a1a1a;
+      }
 
-  <!-- PARTIES -->
-  <div class="parties-grid">
-    <div class="party-box">
-      <div class="party-title">Rechnungssteller</div>
-      <div class="party-content">
-        <strong>{{ profile.company_name or profile.owner_name }}</strong>
-        {{ profile.street }}<br>
-        {{ profile.postal_code }} {{ profile.city }}<br>
-        {{ profile.country_code or 'DE' }}<br>
-        {% if profile.vat_id %}<br>USt-IdNr.: {{ profile.vat_id }}{% endif %}
-        {% if profile.tax_id %}<br>Steuernr.: {{ profile.tax_id }}{% endif %}
-      </div>
-    </div>
-    
-    <div class="party-box">
-      <div class="party-title">Rechnungsempfänger</div>
-      <div class="party-content">
-        <strong>{{ client_name }}</strong>
-        {% if client_street %}{{ client_street }}<br>{% endif %}
-        {% if client_postal_code and client_city %}{{ client_postal_code }} {{ client_city }}<br>{% endif %}
-        {% if client_country %}{{ client_country }}<br>{% endif %}
-        {% if customer_id %}<br>Kunden-Nr.: {{ customer_id }}{% endif %}
-      </div>
-    </div>
-  </div>
+      /* ========== HEADER ========== */
+      .header-table {
+        width: 100%;
+        margin-bottom: 8mm;
+        border-bottom: 3px solid #2563eb;
+        padding-bottom: 4mm;
+      }
+      .header-table td {
+        vertical-align: top;
+        padding: 0;
+        border: none;
+      }
+      .header-left {
+        width: 50%;
+      }
+      .header-right {
+        width: 50%;
+        text-align: right;
+      }
+      .header-title {
+        font-size: 24pt;
+        font-weight: bold;
+        color: #2563eb;
+        margin-bottom: 2mm;
+      }
+      .header-number {
+        font-size: 11pt;
+        color: #64748b;
+        font-weight: 600;
+      }
+      .company-name {
+        font-size: 11pt;
+        font-weight: bold;
+        color: #0f172a;
+        margin-bottom: 2mm;
+      }
+      .company-details {
+        font-size: 8.5pt;
+        color: #475569;
+        line-height: 1.5;
+      }
 
-  <!-- META INFO -->
-  <div class="meta-grid">
-    <div class="meta-item">
-      <div class="meta-label">Rechnungsdatum</div>
-      <div class="meta-value">{{ invoice_date }}</div>
+      /* ========== PARTIES (Продавец/Покупатель) ========== */
+      .parties-table {
+        width: 100%;
+        margin-bottom: 6mm;
+        border-collapse: separate;
+        border-spacing: 5mm 0;
+      }
+      .parties-table td {
+        width: 50%;
+        vertical-align: top;
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        border-left: 4px solid #2563eb;
+        padding: 4mm;
+      }
+      .party-title {
+        font-weight: bold;
+        font-size: 8pt;
+        color: #2563eb;
+        text-transform: uppercase;
+        letter-spacing: 0.5pt;
+        margin-bottom: 3mm;
+        display: block;
+      }
+      .party-company {
+        font-weight: bold;
+        font-size: 10pt;
+        color: #0f172a;
+        display: block;
+        margin-bottom: 2mm;
+      }
+      .party-details {
+        font-size: 9pt;
+        color: #334155;
+        line-height: 1.5;
+      }
+
+      /* ========== META INFO ========== */
+      .meta-table {
+        width: 100%;
+        margin-bottom: 6mm;
+        border-collapse: collapse;
+      }
+      .meta-table td {
+        width: 25%;
+        padding: 3mm;
+        border: 1px solid #e2e8f0;
+        background: white;
+        vertical-align: top;
+      }
+      .meta-label {
+        font-weight: 600;
+        font-size: 7.5pt;
+        color: #64748b;
+        text-transform: uppercase;
+        display: block;
+        margin-bottom: 1.5mm;
+      }
+      .meta-value {
+        font-weight: 600;
+        font-size: 9pt;
+        color: #0f172a;
+      }
+
+      /* ========== ITEMS TABLE ========== */
+      .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 5mm;
+        font-size: 8.5pt;
+      }
+      .items-table thead th {
+        background-color: #2563eb;
+        color: white;
+        padding: 3mm 2mm;
+        text-align: left;
+        font-weight: 600;
+        font-size: 7.5pt;
+        text-transform: uppercase;
+        letter-spacing: 0.3pt;
+        border: none;
+      }
+      .items-table thead th.center {
+        text-align: center;
+      }
+      .items-table thead th.right {
+        text-align: right;
+      }
+      .items-table tbody tr {
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .items-table tbody tr:nth-child(even) {
+        background-color: #f8fafc;
+      }
+      .items-table tbody td {
+        padding: 2.5mm 2mm;
+        vertical-align: top;
+        border: none;
+        color: #1e293b;
+      }
+      .items-table tbody td.center {
+        text-align: center;
+      }
+      .items-table tbody td.right {
+        text-align: right;
+        font-weight: 600;
+      }
+      .item-description {
+        font-weight: 500;
+        color: #0f172a;
+        word-wrap: break-word;
+        white-space: normal;
+      }
+
+      /* ========== TOTALS ========== */
+      .totals-table {
+        width: 70mm;
+        float: right;
+        border-collapse: collapse;
+        margin-top: 3mm;
+        font-size: 9pt;
+      }
+      .totals-table td {
+        padding: 2mm 3mm;
+        border: none;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .totals-table td.label {
+        text-align: left;
+        font-weight: 600;
+      }
+      .totals-table td.value {
+        text-align: right;
+        font-weight: 700;
+        width: 35mm;
+      }
+      .totals-row-subtotal td {
+        background-color: #f8fafc;
+      }
+      .totals-row-discount td {
+        color: #dc2626;
+      }
+      .totals-row-vat td {
+        background-color: #fef3c7;
+        color: #92400e;
+      }
+      .totals-row-grand td {
+        background-color: #2563eb;
+        color: white;
+        font-size: 11pt;
+        font-weight: bold;
+        padding: 3.5mm 3mm;
+        border: none;
+      }
+      .totals-separator td {
+        border-top: 2px solid #cbd5e1;
+        padding: 1mm 0;
+        background: none;
+      }
+
+      /* ========== FOOTER ========== */
+      .footer-table {
+        width: 100%;
+        margin-top: 8mm;
+        border-top: 2px solid #e2e8f0;
+        padding-top: 4mm;
+        border-collapse: separate;
+        border-spacing: 5mm 0;
+      }
+      .footer-table td {
+        width: 50%;
+        vertical-align: top;
+        background: #f8fafc;
+        padding: 3mm;
+        border: none;
+      }
+      .footer-title {
+        font-weight: bold;
+        font-size: 8pt;
+        color: #2563eb;
+        text-transform: uppercase;
+        margin-bottom: 2mm;
+        display: block;
+      }
+      .footer-content {
+        font-size: 8.5pt;
+        color: #475569;
+        line-height: 1.6;
+      }
+      .footer-content strong {
+        color: #1e293b;
+        font-weight: 600;
+      }
+
+      /* ========== NOTES ========== */
+      .notes-box {
+        margin-top: 5mm;
+        padding: 3mm;
+        background-color: #fef3c7;
+        border-left: 4px solid #f59e0b;
+        font-size: 8pt;
+        color: #92400e;
+        line-height: 1.5;
+      }
+
+      .kleinunternehmer-note {
+        margin-top: 3mm;
+        padding: 3mm;
+        background-color: #fef3c7;
+        border-left: 4px solid #f59e0b;
+        font-size: 8.5pt;
+        color: #92400e;
+        font-style: italic;
+      }
+
+      .clearfix {
+        clear: both;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- HEADER -->
+    <table class="header-table" cellspacing="0" cellpadding="0">
+      <tr>
+        <td class="header-left">
+          <div class="header-title">RECHNUNG</div>
+          <div class="header-number">Nr. {{ invoice_number }}</div>
+        </td>
+        <td class="header-right">
+          <div class="company-name">
+            {{ profile.company_name or profile.owner_name }}
+          </div>
+          <div class="company-details">
+            {{ profile.street }}<br />
+            {{ profile.postal_code }} {{ profile.city }}<br />
+            {% if profile.phone %}Tel: {{ profile.phone }}<br />{% endif %} {%
+            if profile.email %}{{ profile.email }}{% endif %}
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- PARTIES (Продавец и Покупатель) -->
+    <table class="parties-table" cellspacing="0" cellpadding="0">
+      <tr>
+        <td>
+          <span class="party-title">Rechnungssteller</span>
+          <span class="party-company"
+            >{{ profile.company_name or profile.owner_name }}</span
+          >
+          <div class="party-details">
+            {{ profile.street }}<br />
+            {{ profile.postal_code }} {{ profile.city }}<br />
+            {{ profile.country_code or 'DE' }}<br />
+            {% if profile.vat_id %}<br />USt-IdNr.: {{ profile.vat_id }}{% endif
+            %} {% if profile.tax_id %}<br />Steuernr.: {{ profile.tax_id }}{%
+            endif %}
+          </div>
+        </td>
+        <td>
+          <span class="party-title">Rechnungsempfänger</span>
+          <span class="party-company">{{ client_name }}</span>
+          <div class="party-details">
+            {% if client_street %}{{ client_street }}<br />{% endif %} {% if
+            client_postal_code and client_city %}{{ client_postal_code }} {{
+            client_city }}<br />{% endif %} {% if client_country %}{{
+            client_country }}<br />{% endif %} {% if customer_id %}<br />Kunden-Nr.:
+            {{ customer_id }}{% endif %}
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- META INFO -->
+    <table class="meta-table" cellspacing="0" cellpadding="0">
+      <tr>
+        <td>
+          <span class="meta-label">Rechnungsdatum</span>
+          <span class="meta-value">{{ invoice_date }}</span>
+        </td>
+        <td>
+          <span class="meta-label">Leistungsdatum</span>
+          <span class="meta-value">{{ delivery_date or invoice_date }}</span>
+        </td>
+        <td>
+          <span class="meta-label">Fällig am</span>
+          <span class="meta-value">{{ due_date }}</span>
+        </td>
+        <td>
+          {% if purchase_order %}
+          <span class="meta-label">Bestellnummer</span>
+          <span class="meta-value">{{ purchase_order }}</span>
+          {% else %}
+          <span class="meta-label">Zahlungsziel</span>
+          <span class="meta-value">{{ payment_terms_days or 14 }} Tage</span>
+          {% endif %}
+        </td>
+      </tr>
+    </table>
+
+    <!-- ITEMS TABLE -->
+    <table class="items-table" cellspacing="0" cellpadding="0">
+      <thead>
+        <tr>
+          <th style="width: 8%">Pos.</th>
+          <th style="width: 38%">Beschreibung</th>
+          <th class="center" style="width: 10%">Menge</th>
+          <th class="center" style="width: 8%">Einheit</th>
+          <th class="right" style="width: 12%">Einzelpreis</th>
+          <th class="center" style="width: 8%">MwSt.</th>
+          <th class="right" style="width: 14%">Gesamt</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td class="center">{{ item.position_number }}</td>
+          <td class="item-description">{{ item.description }}</td>
+          <td class="center">{{ item.quantity }}</td>
+          <td class="center">{{ item.unit }}</td>
+          <td class="right">{{ item.unit_price }} €</td>
+          <td class="center">{{ item.vat_rate }}%</td>
+          <td class="right">{{ item.total_price }} €</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- TOTALS -->
+    <table class="totals-table" cellspacing="0" cellpadding="0">
+      {% if subtotal %}
+      <tr class="totals-row-subtotal">
+        <td class="label">Zwischensumme:</td>
+        <td class="value">{{ subtotal }} €</td>
+      </tr>
+      {% endif %} {% if discount_amount|float > 0 %}
+      <tr class="totals-row-discount">
+        <td class="label">
+          {% if discount_percentage|float > 0 %}Rabatt ({{
+          "%.0f"|format(discount_percentage) }}%):{% else %}Rabatt:{% endif %}
+        </td>
+        <td class="value">-{{ "%.2f"|format(discount_amount) }} €</td>
+      </tr>
+      {% endif %}
+
+      <tr class="totals-separator">
+        <td colspan="2"></td>
+      </tr>
+
+      <tr>
+        <td class="label">Netto:</td>
+        <td class="value">{{ "%.2f"|format(amount) }} €</td>
+      </tr>
+
+      {% for vat in vat_breakdown %}
+      <tr class="totals-row-vat">
+        <td class="label">MwSt. {{ vat.vat_rate }}%:</td>
+        <td class="value">{{ vat.vat_amount }} €</td>
+      </tr>
+      {% endfor %} {% if shipping_cost|float > 0 %}
+      <tr>
+        <td class="label">Versandkosten:</td>
+        <td class="value">{{ "%.2f"|format(shipping_cost) }} €</td>
+      </tr>
+      {% endif %}
+
+      <tr class="totals-row-grand">
+        <td class="label">GESAMT:</td>
+        <td class="value">{{ "%.2f"|format(total) }} €</td>
+      </tr>
+    </table>
+
+    <div class="clearfix"></div>
+
+    <!-- KLEINUNTERNEHMER NOTE -->
+    {% if vat_mode == 'klein' %}
+    <div class="kleinunternehmer-note">
+      Gemäß § 19 UStG wird keine Umsatzsteuer berechnet
+      (Kleinunternehmerregelung).
     </div>
-    <div class="meta-item">
-      <div class="meta-label">Leistungsdatum</div>
-      <div class="meta-value">{{ delivery_date or invoice_date }}</div>
+    {% elif vat_mode == 'reverse' %}
+    <div class="kleinunternehmer-note">
+      Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge).
     </div>
-    <div class="meta-item">
-      <div class="meta-label">Fällig am</div>
-      <div class="meta-value">{{ due_date }}</div>
-    </div>
-    {% if purchase_order %}
-    <div class="meta-item">
-      <div class="meta-label">Bestellnummer</div>
-      <div class="meta-value">{{ purchase_order }}</div>
+    {% elif vat_mode == 'export' %}
+    <div class="kleinunternehmer-note">
+      Steuerfreie Ausfuhrlieferung (§4 Nr. 1a UStG).
     </div>
     {% endif %}
-  </div>
 
-  <!-- ITEMS TABLE -->
-  <table class="items-table">
-    <thead>
+    <!-- FOOTER (Банк + Контакты) -->
+    <table class="footer-table" cellspacing="0" cellpadding="0">
       <tr>
-        <th style="width: 8%;">Pos.</th>
-        <th style="width: 40%;">Beschreibung</th>
-        <th class="center" style="width: 10%;">Menge</th>
-        <th class="center" style="width: 8%;">Einheit</th>
-        <th class="right" style="width: 12%;">Einzelpreis</th>
-        <th class="center" style="width: 8%;">MwSt.</th>
-        <th class="right" style="width: 14%;">Gesamt</th>
+        <td>
+          <span class="footer-title">Bankverbindung</span>
+          <div class="footer-content">
+            {% if profile.iban %}<strong>IBAN:</strong> {{ profile.iban }}<br />{%
+            endif %} {% if profile.bic %}<strong>BIC:</strong> {{ profile.bic
+            }}<br />{% endif %} {% if profile.bank_name %}<strong>Bank:</strong>
+            {{ profile.bank_name }}{% endif %}
+          </div>
+        </td>
+        <td>
+          <span class="footer-title">Kontakt</span>
+          <div class="footer-content">
+            {% if profile.phone %}<strong>Tel:</strong> {{ profile.phone }}<br />{%
+            endif %} {% if profile.email %}<strong>E-Mail:</strong> {{
+            profile.email }}<br />{% endif %} {% if profile.website %}<strong
+              >Web:</strong
+            >
+            {{ profile.website }}{% endif %}
+          </div>
+        </td>
       </tr>
-    </thead>
-    <tbody>
-      {% for item in items %}
-      <tr>
-        <td class="center">{{ item.position_number }}</td>
-        <td class="item-description">{{ item.description }}</td>
-        <td class="center">{{ item.quantity }}</td>
-        <td class="center">{{ item.unit }}</td>
-        <td class="right">{{ item.unit_price }} €</td>
-        <td class="center">{{ item.vat_rate }}%</td>
-        <td class="right">{{ item.total_price }} €</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    </table>
 
-  <!-- TOTALS -->
-  <div class="totals-section">
-    <div class="totals-box">
-      <div class="totals-row subtotal">
-        <span class="totals-label">Zwischensumme:</span>
-        <span class="totals-value">{{ subtotal }} €</span>
-      </div>
-      
-      {% if discount_amount > 0 %}
-      <div class="totals-row discount">
-        <span class="totals-label">Rabatt {% if discount_percentage > 0 %}({{ "%.0f"|format(discount_percentage) }}%){% endif %}:</span>
-        <span class="totals-value">-{{ "%.2f"|format(discount_amount) }} €</span>
-      </div>
-      {% endif %}
-      
-      <div class="totals-row">
-        <span class="totals-label">Netto:</span>
-        <span class="totals-value">{{ "%.2f"|format(amount) }} €</span>
-      </div>
-      
-      {% for vat in vat_breakdown %}
-      <div class="totals-row vat">
-        <span class="totals-label">MwSt. {{ vat.vat_rate }}%:</span>
-        <span class="totals-value">{{ vat.vat_amount }} €</span>
-      </div>
-      {% endfor %}
-      
-      {% if shipping_cost > 0 %}
-      <div class="totals-row">
-        <span class="totals-label">Versandkosten:</span>
-        <span class="totals-value">{{ "%.2f"|format(shipping_cost) }} €</span>
-      </div>
-      {% endif %}
-      
-      <div class="totals-row grand">
-        <span class="totals-label">GESAMT ZU ZAHLEN:</span>
-        <span class="totals-value">{{ "%.2f"|format(total) }} €</span>
-      </div>
+    <!-- NOTES -->
+    {% if notes %}
+    <div class="notes-box">
+      <strong>Bemerkungen:</strong><br />
+      {{ notes }}
     </div>
-  </div>
-
-  <!-- FOOTER -->
-  <div class="footer-grid">
-    <div class="footer-box">
-      <div class="footer-title">Bankverbindung</div>
-      <div class="footer-content">
-        {% if profile.iban %}<strong>IBAN:</strong> {{ profile.iban }}<br>{% endif %}
-        {% if profile.bic %}<strong>BIC:</strong> {{ profile.bic }}<br>{% endif %}
-        {% if profile.bank_name %}<strong>Bank:</strong> {{ profile.bank_name }}{% endif %}
-      </div>
-    </div>
-    
-    <div class="footer-box">
-      <div class="footer-title">Kontakt</div>
-      <div class="footer-content">
-        {% if profile.phone %}<strong>Tel:</strong> {{ profile.phone }}<br>{% endif %}
-        {% if profile.email %}<strong>E-Mail:</strong> {{ profile.email }}<br>{% endif %}
-        {% if profile.website %}<strong>Web:</strong> {{ profile.website }}{% endif %}
-      </div>
-    </div>
-  </div>
-
-  {% if notes %}
-  <div class="notes">
-    <strong>Bemerkungen:</strong><br>
-    {{ notes }}
-  </div>
-  {% endif %}
-
-</body>
+    {% endif %}
+  </body>
 </html>
