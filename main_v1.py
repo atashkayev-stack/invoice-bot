@@ -74,18 +74,54 @@ def main():
         allow_reentry=True)
 
     app.add_handler(settings_conv)
+
+    # Callback handlers для просмотра и конвертации офферов
     app.add_handler(
         CallbackQueryHandler(handlers_v1.view_offer_details,
                              pattern="^view_offer_"))
     app.add_handler(
         CallbackQueryHandler(handlers_v1.convert_offer_to_invoice,
                              pattern="^convert_offer_"))
+
+    # Callback handlers для удаления данных
+    app.add_handler(
+        CallbackQueryHandler(handlers_v1.handle_delete_invoices,
+                             pattern="^delete_invoices$"))
+    app.add_handler(
+        CallbackQueryHandler(handlers_v1.handle_delete_offers,
+                             pattern="^delete_offers$"))
+    app.add_handler(
+        CallbackQueryHandler(handlers_v1.handle_confirm_delete_invoices,
+                             pattern="^confirm_delete_invoices_"))
+    app.add_handler(
+        CallbackQueryHandler(handlers_v1.handle_confirm_delete_offers,
+                             pattern="^confirm_delete_offers_"))
+    app.add_handler(
+        CallbackQueryHandler(handlers_v1.handle_confirm_delete,
+                             pattern="^confirm_delete_"))
+    app.add_handler(
+        CallbackQueryHandler(handlers_v1.handle_cancel_delete,
+                             pattern="^cancel_delete$"))
+
+    # Callback handlers для privacy и terms
+    app.add_handler(
+        CallbackQueryHandler(handlers_v1.show_privacy_policy_callback,
+                             pattern="^show_privacy_policy$"))
+    app.add_handler(
+        CallbackQueryHandler(handlers_v1.show_terms_callback,
+                             pattern="^show_terms$"))
+
+    # WebApp data handler
     app.add_handler(
         MessageHandler(filters.StatusUpdate.WEB_APP_DATA,
                        handlers_v1.web_app_data_handler))
+
+    # Обработчик кнопок
     app.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND,
                        handlers_v1.button_handler))
+
+    # Error handlers
     app.add_error_handler(handlers_v1.error_handler)
 
     app.add_error_handler(error_handler)

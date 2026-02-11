@@ -731,24 +731,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚙️ Einstellungen:",
                                         reply_markup=get_settings_submenu())
 
-    # ===== ПОДМЕНЮ СЧЕТОВ (старое, удалить позже) =====
-    elif txt == "➕ Neue Rechnung":
-        await rechnung_erstellen_start(update, context)
-    elif txt == "📊 Rechnungen anzeigen":
-        await show_invoices_list(update, context)
-    elif txt == "🔢 Nummerierung einstellen":
-        # Определяем из какого меню
-        if context.user_data.get('current_menu') == 'offers':
-            await show_offer_numbering_settings(update, context)
-        else:
-            await show_invoice_numbering_settings(update, context)
-
-    # ===== ПОДМЕНЮ ОФФЕРОВ (старое, удалить позже) =====
-    elif txt == "➕ Neues Angebot":
-        await angebot_erstellen_start(update, context)
-    elif txt == "📄 Angebote anzeigen":
-        await show_offers_list(update, context)
-
     # ===== ПОДМЕНЮ НАСТРОЕК =====
     elif txt == "🏢 Firmendaten":
         await settings_command(update, context)
@@ -756,10 +738,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_numbering_settings(update, context)
     elif txt == "🔒 Datenschutz & Daten löschen":
         await show_privacy_and_deletion(update, context)
-    elif txt == "📜 Rechtliche Hinweise":
-        await show_legal_info(update, context)
-    elif txt == "🗑️ Alle Daten löschen":
-        await delete_all_data_handler(update, context)
     elif txt == "💬 Feedback senden":
         await show_feedback_form(update, context)
 
@@ -1033,6 +1011,44 @@ async def handle_delete_offers(update: Update,
         reply_markup=keyboard)
 
 
+async def handle_confirm_delete_invoices(update: Update,
+                                         context: ContextTypes.DEFAULT_TYPE):
+    """Подтверждение удаления счетов"""
+    query = update.callback_query
+    await query.answer()
+    user_id = update.effective_user.id
+
+    await query.edit_message_text("⏳ Lösche Rechnungen...")
+
+    # Удаляем только счета
+    count = db.delete_user_invoices(user_id)
+
+    await query.edit_message_text(f"✅ Gelöscht: {count} Rechnungen")
+
+
+async def handle_confirm_delete_offers(update: Update,
+                                       context: ContextTypes.DEFAULT_TYPE):
+    """Подтверждение удаления офферов"""
+    query = update.callback_query
+    await query.answer()
+    user_id = update.effective_user.id
+
+    await query.edit_message_text("⏳ Lösche Angebote...")
+
+    # Удаляем только офферы
+    count = db.delete_user_offers(user_id)
+
+    await query.edit_message_text(f"✅ Gelöscht: {count} Angebote")
+
+
+async def handle_cancel_delete(update: Update,
+                               context: ContextTypes.DEFAULT_TYPE):
+    """Отмена удаления"""
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_text("❌ Abgebrochen")
+
+
 # ----------------------------
 # Архив документов
 # ----------------------------
@@ -1269,41 +1285,43 @@ async def show_offer_numbering_settings(update: Update,
 # Правовая информация / защита
 # ----------------------------
 async def show_legal_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Показать правовую информацию и защиту"""
-    user_id = update.effective_user.id
-    profile = db.get_profile(user_id) or {}
+    """Impressum + rechtliche Hinweise"""
+    text = """⚖️ **IMPRESSUM**
 
-    # URL на Terms of Service
-    terms_url = f"{BASE_URL}/terms_of_service.html"
+**Anbieter:**
+[Dein Name/Firma]
+[Straße Hausnummer]
+[PLZ Stadt]
+[Land]
 
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("📜 Nutzungsbedingungen", url=terms_url)],
-        [
-            InlineKeyboardButton(
-                "✅ Akzeptiert"
-                if profile.get('accepted_terms') else "❌ Nicht akzeptiert",
-                callback_data="toggle_terms")
-        ],
-    ])
+**Kontakt:**
+E-Mail: [Deine E-Mail]
+Telefon: [Deine Telefonnummer]
 
-    terms_date = profile.get('accepted_terms_date', 'Nie')
+**Registereintrag:** (falls GmbH/UG)
+Handelsregister: [Amtsgericht]
+Registernummer: [HRB...]
 
-    await update.message.reply_text(
-        "📜 Rechtliche Hinweise\n\n"
-        "⚠️ WICHTIG: Haftungsausschluss\n\n"
-        "Dieser Bot dient nur zur Unterstützung bei der Rechnungserstellung. "
-        "Der Entwickler übernimmt KEINE Haftung für:\n\n"
-        "• Richtigkeit der Dokumente\n"
-        "• Steuerrechtliche Konformität\n"
-        "• Finanzielle Schäden\n"
-        "• Datenverlust\n\n"
-        "Sie sind selbst verantwortlich für:\n"
-        "✅ Prüfung aller Dokumente vor Versand\n"
-        "✅ Einhaltung lokaler Steuergesetze\n"
-        "✅ Korrekte Angaben\n\n"
-        f"Status: {'✅ Akzeptiert am ' + str(terms_date) if profile.get('accepted_terms') else '❌ Nicht akzeptiert'}\n\n"
-        "Bitte lesen Sie die vollständigen Nutzungsbedingungen.",
-        reply_markup=keyboard)
+**Umsatzsteuer-ID:**
+[Deine USt-IdNr]
+
+**Verantwortlich für Inhalte:**
+[Dein Name]
+
+**Streitschlichtung:**
+Wir sind nicht verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.
+
+**Haftungsausschluss:**
+Trotz sorgfältiger Prüfung übernehmen wir keine Haftung für:
+- Richtigkeit der Dokumente
+- Steuerrechtliche Konformität
+- Vollständigkeit der Rechnungen
+- Schäden durch fehlerhafte Nutzung
+
+Sie sind selbst verantwortlich für die Überprüfung aller Dokumente vor Versand an Kunden.
+"""
+
+    await update.message.reply_text(text, parse_mode='Markdown')
 
 
 async def handle_toggle_terms(update: Update,
@@ -1364,3 +1382,96 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     tb = "".join(traceback.format_exception(None, err, err.__traceback__))
     logger.error("Full traceback:\n%s", tb)
     logger.error("====== END ERROR ======")
+
+
+# ----------------------------
+# GDPR & Legal
+# ----------------------------
+async def show_privacy_policy_callback(update: Update,
+                                       context: ContextTypes.DEFAULT_TYPE):
+    """Показать политику конфиденциальности (GDPR compliant)"""
+    query = update.callback_query
+    await query.answer()
+
+    text = """📜 **DATENSCHUTZERKLÄRUNG (DSGVO)**
+
+**1. Verantwortlicher**
+[Dein Name/Firma]
+[Deine Adresse]
+E-Mail: [Deine E-Mail]
+
+**2. Erhobene Daten**
+Wir verarbeiten folgende Daten:
+• Firmendaten (Name, Adresse, Steuernummern)
+• Kundendaten (Name, Adresse)
+• Rechnungsdaten (Positionen, Beträge)
+• Telegram User-ID (technisch erforderlich)
+
+**3. Rechtsgrundlage (Art. 6 Abs. 1 DSGVO)**
+• Einwilligung (Art. 6 Abs. 1 lit. a)
+• Vertragserfüllung (Art. 6 Abs. 1 lit. b)
+
+**4. Speicherdauer**
+• Rechnungsdaten: 10 Jahre (§147 AO)
+• Sonstige Daten: bis zur Löschung durch Sie
+
+**5. Ihre Rechte**
+• Auskunft (Art. 15 DSGVO)
+• Berichtigung (Art. 16 DSGVO)
+• Löschung (Art. 17 DSGVO)
+• Datenübertragbarkeit (Art. 20 DSGVO)
+• Widerruf der Einwilligung (Art. 7 Abs. 3 DSGVO)
+• Beschwerde bei Aufsichtsbehörde (Art. 77 DSGVO)
+
+**6. Datenweitergabe**
+• Keine Weitergabe an Dritte
+• Speicherung auf Supabase (EU-Server)
+
+**7. Kontakt Datenschutz**
+E-Mail: [Deine E-Mail]
+"""
+
+    await query.edit_message_text(text, parse_mode='Markdown')
+
+
+async def show_terms_callback(update: Update,
+                              context: ContextTypes.DEFAULT_TYPE):
+    """Показать условия использования (AGB)"""
+    query = update.callback_query
+    await query.answer()
+
+    text = """📋 **ALLGEMEINE GESCHÄFTSBEDINGUNGEN (AGB)**
+
+**§1 Geltungsbereich**
+Diese AGB gelten für die Nutzung des RechnungAgent Telegram-Bots.
+
+**§2 Leistungsumfang**
+(1) Der Bot dient zur Erstellung von Rechnungen und Angeboten
+(2) Erstellung von ZUGFeRD-konformen XML-Dateien
+(3) Speicherung Ihrer Daten
+
+**§3 Pflichten des Nutzers**
+(1) Sie sind für die Richtigkeit Ihrer Daten verantwortlich
+(2) Sie müssen die gesetzlichen Anforderungen beachten (UStG, AO)
+(3) Missbrauch ist untersagt
+
+**§4 Haftung**
+(1) Wir haften nicht für fehlerhafte Rechnungen
+(2) Sie sind selbst verantwortlich für steuerliche Korrektheit
+(3) Bei grober Fahrlässigkeit haften wir nach gesetzlichen Bestimmungen
+
+**§5 Kündigung**
+(1) Sie können den Service jederzeit beenden
+(2) Löschung aller Daten über die Bot-Funktion möglich
+(3) Rechnungsdaten müssen ggf. 10 Jahre aufbewahrt werden (§147 AO)
+
+**§6 Änderungen**
+Änderungen dieser AGB werden Ihnen mitgeteilt.
+
+**§7 Gerichtsstand**
+Es gilt deutsches Recht.
+
+**Stand:** Februar 2026
+"""
+
+    await query.edit_message_text(text, parse_mode='Markdown')
