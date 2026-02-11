@@ -443,6 +443,18 @@ async def web_app_data_handler(update: Update,
             data.get("due_date"),
             "client_name":
             data.get("client_name"),
+            "client_street":
+            data.get("client_street"),
+            "client_postal_code":
+            data.get("client_postal_code"),
+            "client_city":
+            data.get("client_city"),
+            "client_country":
+            data.get("client_country"),
+            "client_email":
+            data.get("client_email"),
+            "client_vat_id":
+            data.get("client_vat_id"),
             "client_address":
             f"{data.get('client_street','')}, {data.get('client_postal_code','')} {data.get('client_city','')}"
             .strip(", "),
@@ -621,17 +633,6 @@ async def rechnung_erstellen_start(update: Update,
                                    context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     profile = db.get_profile(user_id) or {}
-
-    # ⚠️ ПРОВЕРКА: Профиль заполнен?
-    if not profile or not profile.get('company_name'):
-        keyboard = InlineKeyboardMarkup([[
-            InlineKeyboardButton("⚙️ Firmendaten eingeben",
-                                 callback_data="goto_settings")
-        ]])
-        await update.message.reply_text(
-            "⚠️ Bitte füllen Sie zuerst Ihr Firmenprofil aus!",
-            reply_markup=keyboard)
-        return
 
     # ⚠️ ПРОВЕРКА: Профиль заполнен и согласие дано?
     if not profile.get('gdpr_consent') or not profile.get('company_name'):

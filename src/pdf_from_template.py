@@ -108,11 +108,16 @@ class PDFFromTemplateV2:
         vat_rows = []
         for row in vat_breakdown:
             vat_rows.append({
-                "rate": f"{_d(row.get('vat_rate')):.0f}",
-                "taxable_amount": f"{_m(_d(row.get('taxable_amount'))):.2f}",
-                "vat_amount": f"{_m(_d(row.get('vat_amount'))):.2f}",
-                "category": row.get("vat_category_code") or "",
-                "reason": row.get("exemption_reason") or "",
+                "vat_rate":
+                f"{_d(row.get('vat_rate')):.0f}",
+                "taxable_amount":
+                f"{_m(_d(row.get('taxable_amount'))):.2f}",
+                "vat_amount":
+                f"{_m(_d(row.get('vat_amount'))):.2f}",
+                "vat_category_code":
+                row.get("vat_category_code") or "",
+                "exemption_reason":
+                row.get("exemption_reason") or "",
             })
 
         has_vat_breakdown = len(vat_rows) > 0
@@ -205,6 +210,10 @@ class PDFFromTemplateV2:
             "vat_mode":
             vat_mode,
 
+            # Profile (ADDED!)
+            "profile":
+            profile,
+
             # Items
             "items":
             prepared_items,
@@ -218,14 +227,20 @@ class PDFFromTemplateV2:
             float(discount_amount),
             "shipping_cost":
             float(shipping_cost),
+            "amount":
+            float(total_net),
             "total_net":
             float(total_net),
             "total_vat":
             float(total_vat),
+            "total":
+            float(total_gross),
             "total_gross":
             float(total_gross),
 
             # VAT breakdown (KEY)
+            "vat_breakdown":
+            vat_rows,
             "vat_rows":
             vat_rows,
             "has_vat_breakdown":
