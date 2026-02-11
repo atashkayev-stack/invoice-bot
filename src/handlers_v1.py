@@ -29,36 +29,32 @@ SETTINGS_MENU, WAITING_FOR_DOC = range(2)
 # ----------------------------
 def get_main_keyboard():
     return ReplyKeyboardMarkup([[
-        KeyboardButton("📄 Neue Rechnung"),
-        KeyboardButton("📋 Neues Angebot")
-    ],
-                                [
-                                    KeyboardButton("📊 Meine Rechnungen"),
-                                    KeyboardButton("📄 Meine Angebote")
-                                ], [KeyboardButton("⚙️ Einstellungen")]],
+        KeyboardButton("📄 Rechnungen"),
+        KeyboardButton("📋 Angebote"),
+        KeyboardButton("⚙️ Einstellungen")
+    ]],
                                resize_keyboard=True)
 
 
 def get_invoices_submenu():
-    return ReplyKeyboardMarkup([[KeyboardButton("➕ Neue Rechnung")],
-                                [KeyboardButton("📊 Rechnungen anzeigen")],
-                                [KeyboardButton("🔢 Nummerierung einstellen")],
-                                [KeyboardButton("🔙 Zurück")]],
-                               resize_keyboard=True)
+    return ReplyKeyboardMarkup(
+        [[KeyboardButton("➕ Neue Rechnung")], [KeyboardButton("📊 Liste")],
+         [KeyboardButton("🔢 Nummerierung")], [KeyboardButton("🔙 Zurück")]],
+        resize_keyboard=True)
 
 
 def get_offers_submenu():
-    return ReplyKeyboardMarkup([[KeyboardButton("➕ Neues Angebot")],
-                                [KeyboardButton("📄 Angebote anzeigen")],
-                                [KeyboardButton("🔢 Nummerierung einstellen")],
-                                [KeyboardButton("🔙 Zurück")]],
-                               resize_keyboard=True)
+    return ReplyKeyboardMarkup(
+        [[KeyboardButton("➕ Neues Angebot")], [KeyboardButton("📄 Liste")],
+         [KeyboardButton("🔢 Nummerierung")], [KeyboardButton("🔙 Zurück")]],
+        resize_keyboard=True)
 
 
 def get_settings_submenu():
     return ReplyKeyboardMarkup(
         [[KeyboardButton("🏢 Firmendaten")], [KeyboardButton("🔢 Nummerierung")],
-         [KeyboardButton("🔒 Datenschutz & Daten löschen")],
+         [KeyboardButton("🔒 Datenschutz")],
+         [KeyboardButton("🗑️ Daten löschen")],
          [KeyboardButton("💬 Feedback senden")], [KeyboardButton("🔙 Zurück")]],
         resize_keyboard=True)
 
@@ -717,27 +713,56 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     txt = update.message.text
     user_id = update.effective_user.id
 
-    # ===== ГЛАВНОЕ МЕНЮ - ПРЯМЫЕ ПЕРЕХОДЫ =====
-    if txt == "📄 Neue Rechnung":
-        await rechnung_erstellen_start(update, context)
-    elif txt == "📋 Neues Angebot":
-        await angebot_erstellen_start(update, context)
-    elif txt == "📊 Meine Rechnungen":
-        await show_invoices_list(update, context)
-    elif txt == "📄 Meine Angebote":
-        await show_offers_list(update, context)
+    # ===== ГЛАВНОЕ МЕНЮ =====
+    if txt == "📄 Rechnungen":
+        context.user_data['current_menu'] = 'invoices'
+        await update.message.reply_text("📄 Rechnungen:",
+                                        reply_markup=get_invoices_submenu())
+
+    elif txt == "📋 Angebote":
+        context.user_data['current_menu'] = 'offers'
+        await update.message.reply_text("📋 Angebote:",
+                                        reply_markup=get_offers_submenu())
+
     elif txt == "⚙️ Einstellungen":
+        print("🔍 НАСТРОЙКИ НАЖАТЫ!")
         context.user_data['current_menu'] = 'settings'
+        submenu = get_settings_submenu()
+        print(f"🔍 SUBMENU: {submenu}")
         await update.message.reply_text("⚙️ Einstellungen:",
-                                        reply_markup=get_settings_submenu())
+                                        reply_markup=submenu)
+        print("🔍 ОТПРАВЛЕНО!")
+
+    # ===== ПОДМЕНЮ СЧЕТОВ =====
+    elif txt == "➕ Neue Rechnung":
+        await rechnung_erstellen_start(update, context)
+    elif txt == "📊 Liste" and context.user_data.get(
+            'current_menu') == 'invoices':
+        await show_invoices_list(update, context)
+    elif txt == "🔢 Nummerierung" and context.user_data.get(
+            'current_menu') == 'invoices':
+        await show_invoice_numbering_settings(update, context)
+
+    # ===== ПОДМЕНЮ ОФФЕРОВ =====
+    elif txt == "➕ Neues Angebot":
+        await angebot_erstellen_start(update, context)
+    elif txt == "📄 Liste" and context.user_data.get(
+            'current_menu') == 'offers':
+        await show_offers_list(update, context)
+    elif txt == "🔢 Nummerierung" and context.user_data.get(
+            'current_menu') == 'offers':
+        await show_offer_numbering_settings(update, context)
 
     # ===== ПОДМЕНЮ НАСТРОЕК =====
     elif txt == "🏢 Firmendaten":
         await settings_command(update, context)
-    elif txt == "🔢 Nummerierung":
+    elif txt == "🔢 Nummerierung" and context.user_data.get(
+            'current_menu') == 'settings':
         await show_numbering_settings(update, context)
-    elif txt == "🔒 Datenschutz & Daten löschen":
-        await show_privacy_and_deletion(update, context)
+    elif txt == "🔒 Datenschutz":
+        await show_privacy_menu(update, context)
+    elif txt == "🗑️ Daten löschen":
+        await show_deletion_menu(update, context)
     elif txt == "💬 Feedback senden":
         await show_feedback_form(update, context)
 
@@ -888,26 +913,52 @@ async def handle_copy_offer(update: Update, context: ContextTypes.DEFAULT_TYPE,
 # ----------------------------
 # Удаление всех данных
 # ----------------------------
-async def show_privacy_and_deletion(update: Update,
-                                    context: ContextTypes.DEFAULT_TYPE):
-    """Объединённая страница: Datenschutz + Daten löschen"""
+async def show_privacy_menu(update: Update,
+                            context: ContextTypes.DEFAULT_TYPE):
+    """Меню Datenschutz - только GDPR и Terms"""
     user_id = update.effective_user.id
     profile = db.get_profile(user_id) or {}
 
-    gdpr_consent = profile.get('gdpr_consent', False)
+    gdpr = profile.get('gdpr_consent', False)
     gdpr_date = profile.get('gdpr_consent_date', '-')
-    terms_accepted = profile.get('accepted_terms', False)
+    terms = profile.get('accepted_terms', False)
     terms_date = profile.get('accepted_terms_date', '-')
 
     keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("📜 Datenschutzerklärung",
+            InlineKeyboardButton("📜 Datenschutzerklärung lesen",
                                  callback_data="show_privacy_policy")
         ],
         [
-            InlineKeyboardButton("📋 Nutzungsbedingungen",
+            InlineKeyboardButton("📋 Nutzungsbedingungen lesen",
                                  callback_data="show_terms")
         ],
+        [
+            InlineKeyboardButton(
+                "✅ GDPR akzeptieren" if not gdpr else "✓ GDPR akzeptiert",
+                callback_data="accept_gdpr")
+        ],
+        [
+            InlineKeyboardButton(
+                "✅ AGB akzeptieren" if not terms else "✓ AGB akzeptiert",
+                callback_data="accept_terms")
+        ],
+    ])
+
+    await update.message.reply_text(
+        f"🔒 Datenschutz\n\n"
+        f"📊 Status:\n"
+        f"• GDPR: {'✅' if gdpr else '❌'} {f'({gdpr_date})' if gdpr else ''}\n"
+        f"• AGB: {'✅' if terms else '❌'} {f'({terms_date})' if terms else ''}",
+        reply_markup=keyboard)
+
+
+async def show_deletion_menu(update: Update,
+                             context: ContextTypes.DEFAULT_TYPE):
+    """Меню удаления данных - отдельно от Datenschutz"""
+    user_id = update.effective_user.id
+
+    keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton("🗑️ Rechnungen löschen",
                                  callback_data="delete_invoices")
@@ -923,13 +974,9 @@ async def show_privacy_and_deletion(update: Update,
     ])
 
     await update.message.reply_text(
-        f"🔒 Datenschutz & Daten löschen\n\n"
-        f"📊 Status:\n"
-        f"• GDPR Zustimmung: {'✅' if gdpr_consent else '❌'}\n"
-        f"• Datum: {gdpr_date}\n"
-        f"• Nutzungsbedingungen: {'✅' if terms_accepted else '❌'}\n"
-        f"• Datum: {terms_date}\n\n"
-        f"Wählen Sie eine Option:",
+        "🗑️ Daten löschen\n\n"
+        "⚠️ Achtung: Gelöschte Daten können nicht wiederhergestellt werden!\n\n"
+        "Wählen Sie eine Option:",
         reply_markup=keyboard)
 
 
@@ -1313,10 +1360,10 @@ Wir sind nicht verpflichtet, an Streitbeilegungsverfahren vor einer Verbrauchers
 
 **Haftungsausschluss:**
 Trotz sorgfältiger Prüfung übernehmen wir keine Haftung für:
-- Richtigkeit der Dokumente
-- Steuerrechtliche Konformität
-- Vollständigkeit der Rechnungen
-- Schäden durch fehlerhafte Nutzung
+• Richtigkeit der Dokumente
+• Steuerrechtliche Konformität
+• Vollständigkeit der Rechnungen
+• Schäden durch fehlerhafte Nutzung
 
 Sie sind selbst verantwortlich für die Überprüfung aller Dokumente vor Versand an Kunden.
 """
@@ -1387,6 +1434,40 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 # ----------------------------
 # GDPR & Legal
 # ----------------------------
+async def accept_gdpr_callback(update: Update,
+                               context: ContextTypes.DEFAULT_TYPE):
+    """Принятие GDPR"""
+    query = update.callback_query
+    await query.answer()
+    user_id = update.effective_user.id
+
+    from datetime import datetime
+    db.update_profile(
+        user_id, {
+            'gdpr_consent': True,
+            'gdpr_consent_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+
+    await query.edit_message_text("✅ GDPR-Zustimmung erteilt!")
+
+
+async def accept_terms_callback(update: Update,
+                                context: ContextTypes.DEFAULT_TYPE):
+    """Принятие Terms of Service"""
+    query = update.callback_query
+    await query.answer()
+    user_id = update.effective_user.id
+
+    from datetime import datetime
+    db.update_profile(
+        user_id, {
+            'accepted_terms': True,
+            'accepted_terms_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+
+    await query.edit_message_text("✅ AGB akzeptiert!")
+
+
 async def show_privacy_policy_callback(update: Update,
                                        context: ContextTypes.DEFAULT_TYPE):
     """Показать политику конфиденциальности (GDPR compliant)"""

@@ -51,30 +51,6 @@ def main():
     app.add_handler(CommandHandler("start", handlers_v1.start_command))
     app.add_handler(CommandHandler("help", handlers_v1.help_command))
 
-    # ConversationHandler ТОЛЬКО для настроек
-    settings_conv = ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Regex("^⚙️ Einstellungen$"),
-                           handlers_v1.settings_command)
-        ],
-        states={
-            handlers_v1.SETTINGS_MENU: [
-                MessageHandler(filters.Regex(r"📄 Aus Dokument laden"),
-                               handlers_v1.ask_for_document),
-                MessageHandler(filters.Regex(r"🔙 Zurück"), handlers_v1.cancel)
-            ],
-            handlers_v1.WAITING_FOR_DOC: [
-                MessageHandler(filters.PHOTO | filters.Document.ALL,
-                               handlers_v1.handle_profile_document),
-                MessageHandler(filters.Regex(r"🔙 Zurück"),
-                               handlers_v1.settings_main)
-            ]
-        },
-        fallbacks=[CommandHandler("start", handlers_v1.start_command)],
-        allow_reentry=True)
-
-    app.add_handler(settings_conv)
-
     # Callback handlers для просмотра и конвертации офферов
     app.add_handler(
         CallbackQueryHandler(handlers_v1.view_offer_details,
@@ -104,6 +80,12 @@ def main():
                              pattern="^cancel_delete$"))
 
     # Callback handlers для privacy и terms
+    app.add_handler(
+        CallbackQueryHandler(handlers_v1.accept_gdpr_callback,
+                             pattern="^accept_gdpr$"))
+    app.add_handler(
+        CallbackQueryHandler(handlers_v1.accept_terms_callback,
+                             pattern="^accept_terms$"))
     app.add_handler(
         CallbackQueryHandler(handlers_v1.show_privacy_policy_callback,
                              pattern="^show_privacy_policy$"))
