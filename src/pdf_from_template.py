@@ -89,20 +89,12 @@ class PDFFromTemplateV2:
             subtotal += line_total
 
             prepared_items.append({
-                "position_number":
-                item.get("position_number", 1),  # ← ДОБАВЛЕНО
-                "description":
-                item.get("description", ""),
-                "quantity":
-                f"{_m(qty):.2f}",
-                "unit":
-                item.get("unit", "Stk"),
-                "unit_price":
-                f"{_m(unit_price):.2f}",  # ← ИСПРАВЛЕНО (было "price")
-                "vat_rate":
-                f"{_d(item.get('vat_rate', 0)):.0f}",
-                "total_price":
-                f"{_m(line_total):.2f}",  # ← ИСПРАВЛЕНО (было "total")
+                "description": item.get("description", ""),
+                "quantity": f"{_m(qty):.2f}",
+                "unit": item.get("unit", "Stk"),
+                "price": f"{_m(unit_price):.2f}",
+                "vat_rate": f"{_d(item.get('vat_rate', 0)):.0f}",
+                "total": f"{_m(line_total):.2f}",
             })
 
         subtotal = _m(subtotal)
@@ -116,7 +108,7 @@ class PDFFromTemplateV2:
         vat_rows = []
         for row in vat_breakdown:
             vat_rows.append({
-                "vat_rate": f"{_d(row.get('vat_rate')):.0f}",
+                "rate": f"{_d(row.get('vat_rate')):.0f}",
                 "taxable_amount": f"{_m(_d(row.get('taxable_amount'))):.2f}",
                 "vat_amount": f"{_m(_d(row.get('vat_amount'))):.2f}",
                 "category": row.get("vat_category_code") or "",
@@ -154,10 +146,6 @@ class PDFFromTemplateV2:
                 f"{data.get('client_city', '')}").strip(", ")
 
         return {
-            # ✅ PROFILE для нового шаблона
-            "profile":
-            profile,
-
             # Sender
             "sender_company":
             profile.get("company_name", ""),
@@ -182,10 +170,6 @@ class PDFFromTemplateV2:
             # Client
             "client_name":
             data.get("client_name", ""),
-            "client_company":
-            data.get("client_name", ""),
-            "client_address":
-            addr,
             "client_street":
             data.get("client_street", ""),
             "client_postal_code":
@@ -194,8 +178,12 @@ class PDFFromTemplateV2:
             data.get("client_city", ""),
             "client_country":
             data.get("client_country", ""),
+            "client_address":
+            addr,
             "client_email":
             data.get("client_email"),
+            "client_vat_id":
+            data.get("client_vat_id"),
             "customer_id":
             data.get("customer_id"),
 
@@ -224,12 +212,6 @@ class PDFFromTemplateV2:
             # Totals
             "subtotal":
             f"{subtotal:.2f}",
-            "amount":
-            float(total_net),
-            "vat_amount":
-            float(total_vat),
-            "total":
-            float(total_gross),
             "discount_percentage":
             float(discount_percentage),
             "discount_amount":
@@ -244,8 +226,6 @@ class PDFFromTemplateV2:
             float(total_gross),
 
             # VAT breakdown (KEY)
-            "vat_breakdown":
-            vat_rows,
             "vat_rows":
             vat_rows,
             "has_vat_breakdown":
