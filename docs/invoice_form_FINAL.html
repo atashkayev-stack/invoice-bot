@@ -222,7 +222,30 @@
         <div id="debug-log"></div>
       </div>
 
-      <h1 style="margin-bottom: 20px">📄 Rechnung erstellen</h1>
+      <div
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+        "
+      >
+        <button
+          onclick="window.Telegram.WebApp.close()"
+          style="
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+          "
+        >
+          🔙 Zurück
+        </button>
+        <h1 style="margin: 0">📄 Rechnung erstellen</h1>
+        <div style="width: 80px"></div>
+      </div>
 
       <div class="tabs">
         <button class="tab active" onclick="showTab(0)">👤 Kunde</button>

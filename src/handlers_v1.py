@@ -28,10 +28,15 @@ SETTINGS_MENU, WAITING_FOR_DOC = range(2)
 # UI / Keyboard
 # ----------------------------
 def get_main_keyboard():
-    return ReplyKeyboardMarkup(
-        [[KeyboardButton("📝 Rechnungen"),
-          KeyboardButton("📋 Angebote")], [KeyboardButton("⚙️ Einstellungen")]],
-        resize_keyboard=True)
+    return ReplyKeyboardMarkup([[
+        KeyboardButton("📄 Neue Rechnung"),
+        KeyboardButton("📋 Neues Angebot")
+    ],
+                                [
+                                    KeyboardButton("📊 Meine Rechnungen"),
+                                    KeyboardButton("📄 Meine Angebote")
+                                ], [KeyboardButton("⚙️ Einstellungen")]],
+                               resize_keyboard=True)
 
 
 def get_invoices_submenu():
@@ -52,9 +57,8 @@ def get_offers_submenu():
 
 def get_settings_submenu():
     return ReplyKeyboardMarkup(
-        [[KeyboardButton("🏢 Firmendaten")],
-         [KeyboardButton("📜 Rechtliche Hinweise")],
-         [KeyboardButton("🗑️ Alle Daten löschen")],
+        [[KeyboardButton("🏢 Firmendaten")], [KeyboardButton("🔢 Nummerierung")],
+         [KeyboardButton("🔒 Datenschutz & Daten löschen")],
          [KeyboardButton("💬 Feedback senden")], [KeyboardButton("🔙 Zurück")]],
         resize_keyboard=True)
 
@@ -713,21 +717,21 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     txt = update.message.text
     user_id = update.effective_user.id
 
-    # ===== ГЛАВНОЕ МЕНЮ =====
-    if txt == "📝 Rechnungen":
-        context.user_data['current_menu'] = 'invoices'
-        await update.message.reply_text("📝 Rechnungen verwalten:",
-                                        reply_markup=get_invoices_submenu())
-    elif txt == "📋 Angebote":
-        context.user_data['current_menu'] = 'offers'
-        await update.message.reply_text("📋 Angebote verwalten:",
-                                        reply_markup=get_offers_submenu())
+    # ===== ГЛАВНОЕ МЕНЮ - ПРЯМЫЕ ПЕРЕХОДЫ =====
+    if txt == "📄 Neue Rechnung":
+        await rechnung_erstellen_start(update, context)
+    elif txt == "📋 Neues Angebot":
+        await angebot_erstellen_start(update, context)
+    elif txt == "📊 Meine Rechnungen":
+        await show_invoices_list(update, context)
+    elif txt == "📄 Meine Angebote":
+        await show_offers_list(update, context)
     elif txt == "⚙️ Einstellungen":
         context.user_data['current_menu'] = 'settings'
         await update.message.reply_text("⚙️ Einstellungen:",
                                         reply_markup=get_settings_submenu())
 
-    # ===== ПОДМЕНЮ СЧЕТОВ =====
+    # ===== ПОДМЕНЮ СЧЕТОВ (старое, удалить позже) =====
     elif txt == "➕ Neue Rechnung":
         await rechnung_erstellen_start(update, context)
     elif txt == "📊 Rechnungen anzeigen":
@@ -739,7 +743,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await show_invoice_numbering_settings(update, context)
 
-    # ===== ПОДМЕНЮ ОФФЕРОВ =====
+    # ===== ПОДМЕНЮ ОФФЕРОВ (старое, удалить позже) =====
     elif txt == "➕ Neues Angebot":
         await angebot_erstellen_start(update, context)
     elif txt == "📄 Angebote anzeigen":
@@ -748,6 +752,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ===== ПОДМЕНЮ НАСТРОЕК =====
     elif txt == "🏢 Firmendaten":
         await settings_command(update, context)
+    elif txt == "🔢 Nummerierung":
+        await show_numbering_settings(update, context)
+    elif txt == "🔒 Datenschutz & Daten löschen":
+        await show_privacy_and_deletion(update, context)
     elif txt == "📜 Rechtliche Hinweise":
         await show_legal_info(update, context)
     elif txt == "🗑️ Alle Daten löschen":
@@ -902,6 +910,51 @@ async def handle_copy_offer(update: Update, context: ContextTypes.DEFAULT_TYPE,
 # ----------------------------
 # Удаление всех данных
 # ----------------------------
+async def show_privacy_and_deletion(update: Update,
+                                    context: ContextTypes.DEFAULT_TYPE):
+    """Объединённая страница: Datenschutz + Daten löschen"""
+    user_id = update.effective_user.id
+    profile = db.get_profile(user_id) or {}
+
+    gdpr_consent = profile.get('gdpr_consent', False)
+    gdpr_date = profile.get('gdpr_consent_date', '-')
+    terms_accepted = profile.get('accepted_terms', False)
+    terms_date = profile.get('accepted_terms_date', '-')
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("📜 Datenschutzerklärung",
+                                 callback_data="show_privacy_policy")
+        ],
+        [
+            InlineKeyboardButton("📋 Nutzungsbedingungen",
+                                 callback_data="show_terms")
+        ],
+        [
+            InlineKeyboardButton("🗑️ Rechnungen löschen",
+                                 callback_data="delete_invoices")
+        ],
+        [
+            InlineKeyboardButton("🗑️ Angebote löschen",
+                                 callback_data="delete_offers")
+        ],
+        [
+            InlineKeyboardButton("⚠️ ALLE DATEN LÖSCHEN",
+                                 callback_data=f"confirm_delete_{user_id}")
+        ],
+    ])
+
+    await update.message.reply_text(
+        f"🔒 Datenschutz & Daten löschen\n\n"
+        f"📊 Status:\n"
+        f"• GDPR Zustimmung: {'✅' if gdpr_consent else '❌'}\n"
+        f"• Datum: {gdpr_date}\n"
+        f"• Nutzungsbedingungen: {'✅' if terms_accepted else '❌'}\n"
+        f"• Datum: {terms_date}\n\n"
+        f"Wählen Sie eine Option:",
+        reply_markup=keyboard)
+
+
 async def delete_all_data_handler(update: Update,
                                   context: ContextTypes.DEFAULT_TYPE):
     """Обработка удаления всех данных пользователя"""
@@ -943,6 +996,41 @@ async def handle_confirm_delete(update: Update,
                                   f"• Angebote: {stats.get('offers', 0)}\n"
                                   f"• Kunden: {stats.get('clients', 0)}\n"
                                   f"• Dateien: {stats.get('files', 0)}")
+
+
+async def handle_delete_invoices(update: Update,
+                                 context: ContextTypes.DEFAULT_TYPE):
+    """Удаление только счетов"""
+    query = update.callback_query
+    await query.answer()
+    user_id = update.effective_user.id
+
+    keyboard = InlineKeyboardMarkup([[
+        InlineKeyboardButton(
+            "❌ JA, LÖSCHEN",
+            callback_data=f"confirm_delete_invoices_{user_id}")
+    ], [InlineKeyboardButton("🔙 Abbrechen", callback_data="cancel_delete")]])
+
+    await query.edit_message_text(
+        "⚠️ Alle Rechnungen löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden!",
+        reply_markup=keyboard)
+
+
+async def handle_delete_offers(update: Update,
+                               context: ContextTypes.DEFAULT_TYPE):
+    """Удаление только офферов"""
+    query = update.callback_query
+    await query.answer()
+    user_id = update.effective_user.id
+
+    keyboard = InlineKeyboardMarkup([[
+        InlineKeyboardButton("❌ JA, LÖSCHEN",
+                             callback_data=f"confirm_delete_offers_{user_id}")
+    ], [InlineKeyboardButton("🔙 Abbrechen", callback_data="cancel_delete")]])
+
+    await query.edit_message_text(
+        "⚠️ Alle Angebote löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden!",
+        reply_markup=keyboard)
 
 
 # ----------------------------
@@ -1079,6 +1167,44 @@ async def show_upgrade_info(update: Update,
 # ----------------------------
 # Настройки нумерации
 # ----------------------------
+async def show_numbering_settings(update: Update,
+                                  context: ContextTypes.DEFAULT_TYPE):
+    """Объединённая форма настройки нумерации счетов И офферов"""
+    user_id = update.effective_user.id
+    profile = db.get_profile(user_id) or {}
+
+    data_json = json.dumps(profile, default=str)
+    encoded = base64.urlsafe_b64encode(data_json.encode()).decode().strip("=")
+
+    # Используем общую форму для обеих нумераций
+    url = f"{BASE_URL}/invoice_numbering.html?data={urllib.parse.quote(encoded)}&mode=combined"
+
+    keyboard = ReplyKeyboardMarkup([[
+        KeyboardButton("🔢 Nummerierung öffnen", web_app=WebAppInfo(url=url))
+    ], [KeyboardButton("🔙 Zurück")]],
+                                   resize_keyboard=True)
+
+    inv_prefix = profile.get('invoice_number_prefix', 'RE-')
+    inv_next = profile.get('next_invoice_number', 1)
+    inv_format = profile.get('invoice_number_format', 4)
+
+    off_prefix = profile.get('offer_number_prefix', 'AN-')
+    off_next = profile.get('next_offer_number', 1)
+    off_format = profile.get('offer_number_format', 4)
+
+    await update.message.reply_text(
+        f"🔢 Nummerierung\n\n"
+        f"📄 Rechnungen:\n"
+        f"• Präfix: {inv_prefix}\n"
+        f"• Nächste: {inv_next}\n"
+        f"• Beispiel: {inv_prefix}{str(inv_next).zfill(inv_format)}\n\n"
+        f"📋 Angebote:\n"
+        f"• Präfix: {off_prefix}\n"
+        f"• Nächste: {off_next}\n"
+        f"• Beispiel: {off_prefix}{str(off_next).zfill(off_format)}",
+        reply_markup=keyboard)
+
+
 async def show_invoice_numbering_settings(update: Update,
                                           context: ContextTypes.DEFAULT_TYPE):
     """Показать форму настройки нумерации счетов"""

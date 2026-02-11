@@ -89,12 +89,21 @@ class PDFFromTemplateV2:
             subtotal += line_total
 
             prepared_items.append({
-                "description": item.get("description", ""),
-                "quantity": f"{_m(qty):.2f}",
-                "unit": item.get("unit", "Stk"),
-                "price": f"{_m(unit_price):.2f}",
-                "vat_rate": f"{_d(item.get('vat_rate', 0)):.0f}",
-                "total": f"{_m(line_total):.2f}",
+                "position_number":
+                item.get("position_number",
+                         len(prepared_items) + 1),
+                "description":
+                item.get("description", ""),
+                "quantity":
+                f"{_m(qty):.2f}",
+                "unit":
+                item.get("unit", "Stk"),
+                "unit_price":
+                f"{_m(unit_price):.2f}",
+                "vat_rate":
+                f"{_d(item.get('vat_rate', 0)):.0f}",
+                "total_price":
+                f"{_m(line_total):.2f}",
             })
 
         subtotal = _m(subtotal)

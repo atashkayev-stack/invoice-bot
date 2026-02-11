@@ -11,6 +11,7 @@
         margin: 0;
         padding: 0;
       }
+
       body {
         font-family:
           -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -136,6 +137,23 @@
       <div class="debug-panel hidden" id="debug-panel">
         <h3>🐛 DEBUG MODE ENABLED</h3>
         <div id="debug-log"></div>
+      </div>
+
+      <!-- Кнопка Zurück -->
+      <div style="margin-bottom: 20px">
+        <button
+          onclick="window.Telegram.WebApp.close()"
+          style="
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+          "
+        >
+          🔙 Zurück
+        </button>
       </div>
 
       <!-- 1. FIRMENDATEN -->
