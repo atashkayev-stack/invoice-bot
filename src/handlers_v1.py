@@ -1598,19 +1598,21 @@ async def email_invoice_callback(update: Update,
 
     import base64
     file_data = file_record['file_data']
-    logger.info(f"DEBUG file_data type={type(file_data).__name__}, len={len(file_data) if file_data else 0}, first_50={repr(file_data[:50]) if file_data else 'None'}")
 
-    # Определяем формат: hex (\x...) или base64
+    # Supabase returns BYTEA as \x + hex.
+    # Old records: base64 string was stored in BYTEA → \x + hex(base64(pdf)) → need double decode
+    # New records: raw hex was stored → \x + hex(pdf) → need single decode
     if isinstance(file_data, str) and file_data.startswith('\\x'):
-        pdf_bytes = bytes.fromhex(file_data[2:])
-    elif isinstance(file_data, str):
-        pdf_bytes = base64.b64decode(file_data)
+        raw = bytes.fromhex(file_data[2:])
+        # Check if result is PDF (%PDF) or base64-encoded PDF
+        if raw[:4] == b'%PDF':
+            pdf_bytes = raw
+        else:
+            pdf_bytes = base64.b64decode(raw)
     elif isinstance(file_data, bytes):
         pdf_bytes = file_data
     else:
-        pdf_bytes = base64.b64decode(str(file_data))
-
-    logger.info(f"DEBUG pdf_bytes len={len(pdf_bytes)}, first_4={pdf_bytes[:4]}")
+        pdf_bytes = base64.b64decode(file_data)
     filename = file_record.get('file_name', f'Rechnung_{invoice_id}.pdf')
 
     await send_pdf_to_email(update, context, pdf_bytes, filename, user_id)
