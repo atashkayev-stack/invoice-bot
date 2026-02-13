@@ -1516,12 +1516,12 @@ async def send_pdf_to_email(update: Update, context: ContextTypes.DEFAULT_TYPE,
             reply_markup=keyboard)
         return False
 
-    smtp_server = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
+    smtp_server = os.getenv('SMTP_SERVER')
     smtp_port = int(os.getenv('SMTP_PORT', '587'))
     smtp_email = os.getenv('SMTP_EMAIL')
     smtp_password = os.getenv('SMTP_PASSWORD')
 
-    if not smtp_email or not smtp_password:
+    if not smtp_server or not smtp_email or not smtp_password:
         logger.error("SMTP credentials not configured")
         await update.effective_message.reply_text(
             "❌ E-Mail-Versand ist derzeit nicht verfügbar.\n"
@@ -1548,11 +1548,13 @@ async def send_pdf_to_email(update: Update, context: ContextTypes.DEFAULT_TYPE,
                               filename=filename)
         msg.attach(attachment)
 
+        use_tls = smtp_port == 465
         await aiosmtplib.send(
             msg,
             hostname=smtp_server,
             port=smtp_port,
-            start_tls=True,
+            use_tls=use_tls,
+            start_tls=not use_tls,
             username=smtp_email,
             password=smtp_password,
         )
