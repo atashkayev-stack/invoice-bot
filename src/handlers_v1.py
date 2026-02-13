@@ -52,8 +52,7 @@ def get_offers_submenu():
 
 def get_settings_submenu():
     return ReplyKeyboardMarkup(
-        [[KeyboardButton("🏢 Firmendaten")], [KeyboardButton("🔢 Nummerierung")],
-         [KeyboardButton("🔒 Datenschutz")],
+        [[KeyboardButton("🏢 Firmendaten")], [KeyboardButton("🔒 Datenschutz")],
          [KeyboardButton("🗑️ Daten löschen")],
          [KeyboardButton("💬 Feedback senden")], [KeyboardButton("🔙 Zurück")]],
         resize_keyboard=True)
@@ -561,14 +560,44 @@ async def web_app_data_handler(update: Update,
             else:
                 caption = "✅ Ваша Rechnung (Standard PDF)"
 
-            await update.effective_message.reply_document(
+            # Отправляем PDF пользователю
+            sent_msg = await update.effective_message.reply_document(
                 document=io.BytesIO(pdf_bytes),
                 filename=filename,
                 caption=caption)
 
+            # Сохраняем PDF в БД
+            pdf_db_id = save_pdf_to_db(user_id=user_id,
+                                       document_id=str(invoice_id),
+                                       document_type='invoice',
+                                       pdf_bytes=pdf_bytes,
+                                       filename=filename)
+
+            # Обновляем invoice с ID файла
+            if pdf_db_id:
+                db.update_invoice(invoice_id, {'pdf_file_id': pdf_db_id})
+
+            # Кнопки: Email и Донат
+            keyboard = InlineKeyboardMarkup(
+                [[
+                    InlineKeyboardButton(
+                        "📧 Per E-Mail senden",
+                        callback_data=f"email_invoice_{invoice_id}")
+                ],
+                 [
+                     InlineKeyboardButton(
+                         "☕ Sag Danke (PayPal)",
+                         url="https://paypal.me/DEIN_PAYPAL_USERNAME")
+                 ]])
+
             await update.effective_message.reply_text(
                 "✅ Rechnung gespeichert und versendet!",
                 reply_markup=get_main_keyboard())
+
+            await update.effective_message.reply_text(
+                "🙏 Gefällt Ihnen der Bot?\n"
+                "Unterstützen Sie die Entwicklung mit einem kleinen Beitrag!",
+                reply_markup=keyboard)
 
         except Exception as e:
             logger.error("Error during file generation/sending: %s", e)
@@ -635,7 +664,8 @@ async def rechnung_erstellen_start(update: Update,
     profile = db.get_profile(user_id) or {}
 
     # ⚠️ ПРОВЕРКА: Профиль заполнен и согласие дано?
-    if not profile.get('gdpr_consent') or not profile.get('company_name'):
+    if not profile.get('gdpr_consent') or not profile.get(
+            'accepted_terms') or not profile.get('company_name'):
         keyboard = InlineKeyboardMarkup([[
             InlineKeyboardButton("⚙️ Firmendaten eingeben",
                                  callback_data="goto_settings")
@@ -643,7 +673,9 @@ async def rechnung_erstellen_start(update: Update,
 
         missing = []
         if not profile.get('gdpr_consent'):
-            missing.append("• Zustimmung zu Datenschutz & Nutzungsbedingungen")
+            missing.append("• GDPR-Zustimmung")
+        if not profile.get('accepted_terms'):
+            missing.append("• Nutzungsbedingungen (AGB)")
         if not profile.get('company_name'):
             missing.append("• Firmendaten (Name, Adresse, etc.)")
 
@@ -675,7 +707,8 @@ async def angebot_erstellen_start(update: Update,
     profile = db.get_profile(user_id) or {}
 
     # ⚠️ ПРОВЕРКА: Профиль заполнен и согласие дано?
-    if not profile.get('gdpr_consent') or not profile.get('company_name'):
+    if not profile.get('gdpr_consent') or not profile.get(
+            'accepted_terms') or not profile.get('company_name'):
         keyboard = InlineKeyboardMarkup([[
             InlineKeyboardButton("⚙️ Firmendaten eingeben",
                                  callback_data="goto_settings")
@@ -683,7 +716,9 @@ async def angebot_erstellen_start(update: Update,
 
         missing = []
         if not profile.get('gdpr_consent'):
-            missing.append("• Zustimmung zu Datenschutz & Nutzungsbedingungen")
+            missing.append("• GDPR-Zustimmung")
+        if not profile.get('accepted_terms'):
+            missing.append("• Nutzungsbedingungen (AGB)")
         if not profile.get('company_name'):
             missing.append("• Firmendaten (Name, Adresse, etc.)")
 
@@ -725,13 +760,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                         reply_markup=get_offers_submenu())
 
     elif txt == "⚙️ Einstellungen":
-        print("🔍 НАСТРОЙКИ НАЖАТЫ!")
         context.user_data['current_menu'] = 'settings'
-        submenu = get_settings_submenu()
-        print(f"🔍 SUBMENU: {submenu}")
         await update.message.reply_text("⚙️ Einstellungen:",
-                                        reply_markup=submenu)
-        print("🔍 ОТПРАВЛЕНО!")
+                                        reply_markup=get_settings_submenu())
 
     # ===== ПОДМЕНЮ СЧЕТОВ =====
     elif txt == "➕ Neue Rechnung":
@@ -756,9 +787,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ===== ПОДМЕНЮ НАСТРОЕК =====
     elif txt == "🏢 Firmendaten":
         await settings_command(update, context)
-    elif txt == "🔢 Nummerierung" and context.user_data.get(
-            'current_menu') == 'settings':
-        await show_numbering_settings(update, context)
     elif txt == "🔒 Datenschutz":
         await show_privacy_menu(update, context)
     elif txt == "🗑️ Daten löschen":
@@ -1186,7 +1214,7 @@ async def show_donation_message(update: Update,
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton("☕ Sag Danke mit PayPal",
-                                 url="https://paypal.me/YOURPAYPAL")
+                                 url="https://paypal.me/t1@ukr.net")
         ],
     ])
 
@@ -1429,6 +1457,70 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     tb = "".join(traceback.format_exception(None, err, err.__traceback__))
     logger.error("Full traceback:\n%s", tb)
     logger.error("====== END ERROR ======")
+
+
+# ----------------------------
+# Сохранение PDF в БД
+# ----------------------------
+def save_pdf_to_db(user_id: int, document_id: str, document_type: str,
+                   pdf_bytes: bytes, filename: str):
+    """Сохранение PDF в таблицу document_files"""
+    try:
+        import base64
+
+        file_data = {
+            'user_id': user_id,
+            'document_id': document_id,
+            'document_type': document_type,
+            'file_data':
+            base64.b64encode(pdf_bytes).decode('utf-8'),  # Base64 для bytea
+            'file_name': filename,
+            'file_size': len(pdf_bytes),
+            'mime_type': 'application/pdf'
+        }
+
+        # ПРАВИЛЬНО: db.client
+        response = db.client.table('document_files').insert(
+            file_data).execute()
+
+        logger.info(
+            f"PDF saved to DB: {filename}, size: {len(pdf_bytes)} bytes")
+        return response.data[0]['id'] if response.data else None
+
+    except Exception as e:
+        logger.error(f"Error saving PDF to DB: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return None
+
+
+async def send_pdf_to_email(update: Update, context: ContextTypes.DEFAULT_TYPE,
+                            pdf_bytes: bytes, filename: str, user_id: int):
+    """Отправка PDF на email пользователя"""
+    profile = db.get_profile(user_id) or {}
+    email = profile.get('email')
+
+    if not email:
+        keyboard = InlineKeyboardMarkup([[
+            InlineKeyboardButton("⚙️ E-Mail hinzufügen",
+                                 callback_data="goto_settings")
+        ]])
+        await update.effective_message.reply_text(
+            "❌ Keine E-Mail-Adresse hinterlegt!\n"
+            "Bitte fügen Sie Ihre E-Mail in den Einstellungen hinzu.",
+            reply_markup=keyboard)
+        return False
+
+    # TODO: SMTP Integration (SendGrid, AWS SES, etc.)
+    # import smtplib
+    # from email.mime.multipart import MIMEMultipart
+    # from email.mime.application import MIMEApplication
+
+    await update.effective_message.reply_text(
+        f"📧 Dokument-Versand an {email}...\n\n"
+        f"⚠️ E-Mail-Funktion noch in Entwicklung!\n"
+        f"Bitte laden Sie das Dokument aus dem Chat herunter.")
+    return True
 
 
 # ----------------------------
