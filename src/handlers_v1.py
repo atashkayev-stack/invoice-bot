@@ -1598,16 +1598,7 @@ async def email_invoice_callback(update: Update,
 
     # Supabase returns BYTEA as PostgreSQL hex format: \x<hex_digits>
     file_data = file_record['file_data']
-    if isinstance(file_data, str) and file_data.startswith('\\x'):
-        raw = bytes.fromhex(file_data[2:])
-        # New format: hex(PDF) → raw starts with %PDF
-        # Old format: hex(base64(PDF)) → raw is base64 text
-        if raw[:4] == b'%PDF':
-            pdf_bytes = raw
-        else:
-            pdf_bytes = base64.b64decode(raw)
-    else:
-        pdf_bytes = base64.b64decode(file_data)
+    pdf_bytes = bytes.fromhex(file_data[2:])  # strip \x, hex → PDF bytes
     filename = file_record.get('file_name', f'Rechnung_{invoice_id}.pdf')
 
     await send_pdf_to_email(update, context, pdf_bytes, filename, user_id)
