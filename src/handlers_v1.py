@@ -577,6 +577,9 @@ async def web_app_data_handler(update: Update,
             if pdf_db_id:
                 db.update_invoice(invoice_id, {'pdf_file_id': pdf_db_id})
 
+            # Автоматическая отправка PDF по email
+            await send_pdf_to_email(update, context, pdf_bytes, filename, user_id)
+
             # Кнопки: Email и Донат
             keyboard = InlineKeyboardMarkup(
                 [[
