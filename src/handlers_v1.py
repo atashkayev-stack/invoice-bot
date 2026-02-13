@@ -595,7 +595,7 @@ async def web_app_data_handler(update: Update,
 
             await update.effective_message.reply_text(
                 "✅ Rechnung gespeichert und versendet!",
-                reply_markup=get_main_keyboard())
+                reply_markup=get_invoices_submenu())
 
             await update.effective_message.reply_text(
                 "🙏 Gefällt Ihnen der Bot?\n"
