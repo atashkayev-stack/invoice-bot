@@ -822,7 +822,7 @@ class Database:
                 "document_type": document_type,
                 "document_id": document_id,
                 "file_name": file_name,
-                "file_data": file_data,
+                "file_data": '\\x' + file_data.hex(),  # hex для BYTEA
                 "file_size": len(file_data),
                 "mime_type": "application/pdf"
             }

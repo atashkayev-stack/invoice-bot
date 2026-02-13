@@ -1466,14 +1466,11 @@ def save_pdf_to_db(user_id: int, document_id: str, document_type: str,
                    pdf_bytes: bytes, filename: str):
     """Сохранение PDF в таблицу document_files"""
     try:
-        import base64
-
         file_data = {
             'user_id': user_id,
             'document_id': document_id,
             'document_type': document_type,
-            'file_data':
-            base64.b64encode(pdf_bytes).decode('utf-8'),  # Base64 для bytea
+            'file_data': '\\x' + pdf_bytes.hex(),  # hex для BYTEA
             'file_name': filename,
             'file_size': len(pdf_bytes),
             'mime_type': 'application/pdf'
@@ -1600,11 +1597,15 @@ async def email_invoice_callback(update: Update,
         return
 
     # Supabase returns BYTEA as PostgreSQL hex format: \x<hex_digits>
-    # The hex decodes to the original base64 string we stored
     file_data = file_record['file_data']
     if isinstance(file_data, str) and file_data.startswith('\\x'):
-        b64_bytes = bytes.fromhex(file_data[2:])
-        pdf_bytes = base64.b64decode(b64_bytes)
+        raw = bytes.fromhex(file_data[2:])
+        # New format: hex(PDF) → raw starts with %PDF
+        # Old format: hex(base64(PDF)) → raw is base64 text
+        if raw[:4] == b'%PDF':
+            pdf_bytes = raw
+        else:
+            pdf_bytes = base64.b64decode(raw)
     else:
         pdf_bytes = base64.b64decode(file_data)
     filename = file_record.get('file_name', f'Rechnung_{invoice_id}.pdf')
