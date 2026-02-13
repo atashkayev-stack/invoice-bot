@@ -1596,9 +1596,10 @@ async def email_invoice_callback(update: Update,
             "❌ PDF-Datei konnte nicht geladen werden.")
         return
 
-    # Supabase returns BYTEA as PostgreSQL hex format: \x<hex_digits>
+    # Supabase (PostgREST) returns BYTEA as base64
+    import base64
     file_data = file_record['file_data']
-    pdf_bytes = bytes.fromhex(file_data[2:])  # strip \x, hex → PDF bytes
+    pdf_bytes = base64.b64decode(file_data)
     filename = file_record.get('file_name', f'Rechnung_{invoice_id}.pdf')
 
     await send_pdf_to_email(update, context, pdf_bytes, filename, user_id)
