@@ -25,6 +25,37 @@ SETTINGS_MENU, WAITING_FOR_DOC = range(2)
 
 
 # ----------------------------
+# Helpers
+# ----------------------------
+def _profile_complete(profile):
+    return (profile.get('gdpr_consent')
+            and profile.get('accepted_terms')
+            and profile.get('company_name'))
+
+
+def _build_form_url(profile, base_url):
+    encoded = base64.urlsafe_b64encode(
+        json.dumps(profile).encode()).decode().strip("=")
+    return f"{base_url}&data={encoded}"
+
+
+def _invoices_submenu_for(user_id):
+    """Build invoices submenu with WebApp button if profile is ready."""
+    profile = db.get_profile(user_id) or {}
+    url = (_build_form_url(profile, CREATE_INVOICE_FORM_URL)
+           if _profile_complete(profile) else None)
+    return get_invoices_submenu(url)
+
+
+def _offers_submenu_for(user_id):
+    """Build offers submenu with WebApp button if profile is ready."""
+    profile = db.get_profile(user_id) or {}
+    url = (_build_form_url(profile, CREATE_OFFER_FORM_URL)
+           if _profile_complete(profile) else None)
+    return get_offers_submenu(url)
+
+
+# ----------------------------
 # UI / Keyboard
 # ----------------------------
 def get_main_keyboard():
@@ -36,16 +67,26 @@ def get_main_keyboard():
                                resize_keyboard=True)
 
 
-def get_invoices_submenu():
+def get_invoices_submenu(webapp_url=None):
+    if webapp_url:
+        btn = KeyboardButton("➕ Neue Rechnung",
+                             web_app=WebAppInfo(url=webapp_url))
+    else:
+        btn = KeyboardButton("➕ Neue Rechnung")
     return ReplyKeyboardMarkup(
-        [[KeyboardButton("➕ Neue Rechnung")], [KeyboardButton("📊 Liste")],
+        [[btn], [KeyboardButton("📊 Liste")],
          [KeyboardButton("🔢 Nummerierung")], [KeyboardButton("🔙 Zurück")]],
         resize_keyboard=True)
 
 
-def get_offers_submenu():
+def get_offers_submenu(webapp_url=None):
+    if webapp_url:
+        btn = KeyboardButton("➕ Neues Angebot",
+                             web_app=WebAppInfo(url=webapp_url))
+    else:
+        btn = KeyboardButton("➕ Neues Angebot")
     return ReplyKeyboardMarkup(
-        [[KeyboardButton("➕ Neues Angebot")], [KeyboardButton("📄 Liste")],
+        [[btn], [KeyboardButton("📄 Liste")],
          [KeyboardButton("🔢 Nummerierung")], [KeyboardButton("🔙 Zurück")]],
         resize_keyboard=True)
 
@@ -246,7 +287,7 @@ async def web_app_data_handler(update: Update,
         if db.update_profile(user_id, update_data):
             await update.effective_message.reply_text(
                 "✅ Rechnungsnummerierung aktualisiert!",
-                reply_markup=get_invoices_submenu())
+                reply_markup=_invoices_submenu_for(user_id))
         else:
             await update.effective_message.reply_text(
                 "❌ Fehler beim Speichern!")
@@ -264,7 +305,7 @@ async def web_app_data_handler(update: Update,
         if db.update_profile(user_id, update_data):
             await update.effective_message.reply_text(
                 "✅ Angebotsnummerierung aktualisiert!",
-                reply_markup=get_offers_submenu())
+                reply_markup=_offers_submenu_for(user_id))
         else:
             await update.effective_message.reply_text(
                 "❌ Fehler beim Speichern!")
@@ -595,7 +636,7 @@ async def web_app_data_handler(update: Update,
 
             await update.effective_message.reply_text(
                 "✅ Rechnung gespeichert und versendet!",
-                reply_markup=get_invoices_submenu())
+                reply_markup=_invoices_submenu_for(user_id))
 
             await update.effective_message.reply_text(
                 "🙏 Gefällt Ihnen der Bot?\n"
@@ -754,13 +795,15 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ===== ГЛАВНОЕ МЕНЮ =====
     if txt == "📄 Rechnungen":
         context.user_data['current_menu'] = 'invoices'
-        await update.message.reply_text("📄 Rechnungen:",
-                                        reply_markup=get_invoices_submenu())
+        await update.message.reply_text(
+            "📄 Rechnungen:",
+            reply_markup=_invoices_submenu_for(user_id))
 
     elif txt == "📋 Angebote":
         context.user_data['current_menu'] = 'offers'
-        await update.message.reply_text("📋 Angebote:",
-                                        reply_markup=get_offers_submenu())
+        await update.message.reply_text(
+            "📋 Angebote:",
+            reply_markup=_offers_submenu_for(user_id))
 
     elif txt == "⚙️ Einstellungen":
         context.user_data['current_menu'] = 'settings'
@@ -824,7 +867,7 @@ async def show_invoices_list(update: Update,
         await update.message.reply_text(
             "📊 У вас пока нет счетов.\n\n"
             "Создайте первый счёт с помощью кнопки '➕ Neue Rechnung'",
-            reply_markup=get_invoices_submenu())
+            reply_markup=_invoices_submenu_for(user_id))
         return
 
     # Формируем текстовый список
@@ -863,7 +906,7 @@ async def show_invoices_list(update: Update,
 
     await update.message.reply_text(text,
                                     parse_mode='Markdown',
-                                    reply_markup=get_invoices_submenu())
+                                    reply_markup=_invoices_submenu_for(user_id))
 
 
 async def show_offers_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -878,7 +921,7 @@ async def show_offers_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "📄 У вас пока нет предложений.\n\n"
             "Создайте первое предложение с помощью кнопки '➕ Neues Angebot'",
-            reply_markup=get_offers_submenu())
+            reply_markup=_offers_submenu_for(user_id))
         return
 
     # Формируем текстовый список
@@ -903,7 +946,7 @@ async def show_offers_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(text,
                                     parse_mode='Markdown',
-                                    reply_markup=get_offers_submenu())
+                                    reply_markup=_offers_submenu_for(user_id))
 
 
 # ----------------------------
