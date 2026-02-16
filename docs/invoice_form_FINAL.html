@@ -966,11 +966,27 @@
 
         // 🔒 БЛОКИРОВКА ПОЛЕЙ НДС
         const globalVatField = document.getElementById("global_vat_rate");
+        const vatPerItemCb = document.getElementById("vat_per_item");
         const shouldDisableVat =
           vatMode === "klein" || vatMode === "export" || vatMode === "reverse";
 
         if (globalVatField) {
           globalVatField.disabled = shouldDisableVat;
+          if (shouldDisableVat) {
+            globalVatField.value = "0";
+            document.getElementById("global_vat_section").style.display = "block";
+          }
+        }
+
+        // Блокировка чекбокса "Unterschiedliche MwSt. pro Position"
+        if (vatPerItemCb) {
+          vatPerItemCb.disabled = shouldDisableVat;
+          if (shouldDisableVat) {
+            vatPerItemCb.checked = false;
+            document.querySelectorAll(".item-vat").forEach(
+              (el) => (el.style.display = "none"),
+            );
+          }
         }
 
         // Блокировка НДС на позициях (если используется per-item VAT)
@@ -1278,7 +1294,10 @@
 
           if (profile.is_kleinunternehmer) {
             log("⚠️ Kleinunternehmer mode", "#ff0");
+            document.getElementById("global_vat_rate").value = "0";
             document.getElementById("global_vat_rate").disabled = true;
+            document.getElementById("vat_per_item").checked = false;
+            document.getElementById("vat_per_item").disabled = true;
             // Блокировка НДС на позициях
             document.querySelectorAll(".item-vat-rate").forEach((field) => {
               field.disabled = true;
