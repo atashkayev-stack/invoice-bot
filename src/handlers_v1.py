@@ -25,6 +25,36 @@ SETTINGS_MENU, WAITING_FOR_DOC = range(2)
 
 
 # ----------------------------
+# Helpers
+# ----------------------------
+def _profile_complete(profile):
+    return (profile.get('gdpr_consent') and profile.get('accepted_terms')
+            and profile.get('company_name'))
+
+
+def _build_form_url(profile, base_url):
+    encoded = base64.urlsafe_b64encode(
+        json.dumps(profile).encode()).decode().strip("=")
+    return f"{base_url}&data={encoded}"
+
+
+def _invoices_submenu_for(user_id):
+    """Build invoices submenu with WebApp button if profile is ready."""
+    profile = db.get_profile(user_id) or {}
+    url = (_build_form_url(profile, CREATE_INVOICE_FORM_URL)
+           if _profile_complete(profile) else None)
+    return get_invoices_submenu(url)
+
+
+def _offers_submenu_for(user_id):
+    """Build offers submenu with WebApp button if profile is ready."""
+    profile = db.get_profile(user_id) or {}
+    url = (_build_form_url(profile, CREATE_OFFER_FORM_URL)
+           if _profile_complete(profile) else None)
+    return get_offers_submenu(url)
+
+
+# ----------------------------
 # UI / Keyboard
 # ----------------------------
 def get_main_keyboard():
@@ -36,16 +66,26 @@ def get_main_keyboard():
                                resize_keyboard=True)
 
 
-def get_invoices_submenu():
+def get_invoices_submenu(webapp_url=None):
+    if webapp_url:
+        btn = KeyboardButton("➕ Neue Rechnung",
+                             web_app=WebAppInfo(url=webapp_url))
+    else:
+        btn = KeyboardButton("➕ Neue Rechnung")
     return ReplyKeyboardMarkup(
-        [[KeyboardButton("➕ Neue Rechnung")], [KeyboardButton("📊 Liste")],
+        [[btn], [KeyboardButton("📊 Liste")],
          [KeyboardButton("🔢 Nummerierung")], [KeyboardButton("🔙 Zurück")]],
         resize_keyboard=True)
 
 
-def get_offers_submenu():
+def get_offers_submenu(webapp_url=None):
+    if webapp_url:
+        btn = KeyboardButton("➕ Neues Angebot",
+                             web_app=WebAppInfo(url=webapp_url))
+    else:
+        btn = KeyboardButton("➕ Neues Angebot")
     return ReplyKeyboardMarkup(
-        [[KeyboardButton("➕ Neues Angebot")], [KeyboardButton("📄 Liste")],
+        [[btn], [KeyboardButton("📄 Liste")],
          [KeyboardButton("🔢 Nummerierung")], [KeyboardButton("🔙 Zurück")]],
         resize_keyboard=True)
 
@@ -246,7 +286,7 @@ async def web_app_data_handler(update: Update,
         if db.update_profile(user_id, update_data):
             await update.effective_message.reply_text(
                 "✅ Rechnungsnummerierung aktualisiert!",
-                reply_markup=get_invoices_submenu())
+                reply_markup=_invoices_submenu_for(user_id))
         else:
             await update.effective_message.reply_text(
                 "❌ Fehler beim Speichern!")
@@ -264,7 +304,7 @@ async def web_app_data_handler(update: Update,
         if db.update_profile(user_id, update_data):
             await update.effective_message.reply_text(
                 "✅ Angebotsnummerierung aktualisiert!",
-                reply_markup=get_offers_submenu())
+                reply_markup=_offers_submenu_for(user_id))
         else:
             await update.effective_message.reply_text(
                 "❌ Fehler beim Speichern!")
@@ -577,6 +617,10 @@ async def web_app_data_handler(update: Update,
             if pdf_db_id:
                 db.update_invoice(invoice_id, {'pdf_file_id': pdf_db_id})
 
+            # Автоматическая отправка PDF по email
+            await send_pdf_to_email(update, context, pdf_bytes, filename,
+                                    user_id)
+
             # Кнопки: Email и Донат
             keyboard = InlineKeyboardMarkup(
                 [[
@@ -592,7 +636,7 @@ async def web_app_data_handler(update: Update,
 
             await update.effective_message.reply_text(
                 "✅ Rechnung gespeichert und versendet!",
-                reply_markup=get_main_keyboard())
+                reply_markup=_invoices_submenu_for(user_id))
 
             await update.effective_message.reply_text(
                 "🙏 Gefällt Ihnen der Bot?\n"
@@ -751,13 +795,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ===== ГЛАВНОЕ МЕНЮ =====
     if txt == "📄 Rechnungen":
         context.user_data['current_menu'] = 'invoices'
-        await update.message.reply_text("📄 Rechnungen:",
-                                        reply_markup=get_invoices_submenu())
+        await update.message.reply_text(
+            "📄 Rechnungen:", reply_markup=_invoices_submenu_for(user_id))
 
     elif txt == "📋 Angebote":
         context.user_data['current_menu'] = 'offers'
-        await update.message.reply_text("📋 Angebote:",
-                                        reply_markup=get_offers_submenu())
+        await update.message.reply_text(
+            "📋 Angebote:", reply_markup=_offers_submenu_for(user_id))
 
     elif txt == "⚙️ Einstellungen":
         context.user_data['current_menu'] = 'settings'
@@ -821,7 +865,7 @@ async def show_invoices_list(update: Update,
         await update.message.reply_text(
             "📊 У вас пока нет счетов.\n\n"
             "Создайте первый счёт с помощью кнопки '➕ Neue Rechnung'",
-            reply_markup=get_invoices_submenu())
+            reply_markup=_invoices_submenu_for(user_id))
         return
 
     # Формируем текстовый список
@@ -858,9 +902,10 @@ async def show_invoices_list(update: Update,
 
     text += f"\nGesamt: {len(invoices)} Rechnung(en)"
 
-    await update.message.reply_text(text,
-                                    parse_mode='Markdown',
-                                    reply_markup=get_invoices_submenu())
+    await update.message.reply_text(
+        text,
+        parse_mode='Markdown',
+        reply_markup=_invoices_submenu_for(user_id))
 
 
 async def show_offers_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -875,7 +920,7 @@ async def show_offers_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "📄 У вас пока нет предложений.\n\n"
             "Создайте первое предложение с помощью кнопки '➕ Neues Angebot'",
-            reply_markup=get_offers_submenu())
+            reply_markup=_offers_submenu_for(user_id))
         return
 
     # Формируем текстовый список
@@ -900,7 +945,7 @@ async def show_offers_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(text,
                                     parse_mode='Markdown',
-                                    reply_markup=get_offers_submenu())
+                                    reply_markup=_offers_submenu_for(user_id))
 
 
 # ----------------------------
@@ -1466,14 +1511,11 @@ def save_pdf_to_db(user_id: int, document_id: str, document_type: str,
                    pdf_bytes: bytes, filename: str):
     """Сохранение PDF в таблицу document_files"""
     try:
-        import base64
-
         file_data = {
             'user_id': user_id,
             'document_id': document_id,
             'document_type': document_type,
-            'file_data':
-            base64.b64encode(pdf_bytes).decode('utf-8'),  # Base64 для bytea
+            'file_data': '\\x' + pdf_bytes.hex(),  # hex для BYTEA
             'file_name': filename,
             'file_size': len(pdf_bytes),
             'mime_type': 'application/pdf'
@@ -1496,7 +1538,12 @@ def save_pdf_to_db(user_id: int, document_id: str, document_type: str,
 
 async def send_pdf_to_email(update: Update, context: ContextTypes.DEFAULT_TYPE,
                             pdf_bytes: bytes, filename: str, user_id: int):
-    """Отправка PDF на email пользователя"""
+    """Отправка PDF на email пользователя через Gmail SMTP"""
+    import aiosmtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.application import MIMEApplication
+    from email.mime.text import MIMEText
+
     profile = db.get_profile(user_id) or {}
     email = profile.get('email')
 
@@ -1511,16 +1558,109 @@ async def send_pdf_to_email(update: Update, context: ContextTypes.DEFAULT_TYPE,
             reply_markup=keyboard)
         return False
 
-    # TODO: SMTP Integration (SendGrid, AWS SES, etc.)
-    # import smtplib
-    # from email.mime.multipart import MIMEMultipart
-    # from email.mime.application import MIMEApplication
+    smtp_server = os.getenv('SMTP_SERVER')
+    smtp_port = int(os.getenv('SMTP_PORT', '587'))
+    smtp_email = os.getenv('SMTP_EMAIL')
+    smtp_password = os.getenv('SMTP_PASSWORD')
 
-    await update.effective_message.reply_text(
-        f"📧 Dokument-Versand an {email}...\n\n"
-        f"⚠️ E-Mail-Funktion noch in Entwicklung!\n"
-        f"Bitte laden Sie das Dokument aus dem Chat herunter.")
-    return True
+    if not smtp_server or not smtp_email or not smtp_password:
+        logger.error("SMTP credentials not configured")
+        await update.effective_message.reply_text(
+            "❌ E-Mail-Versand ist derzeit nicht verfügbar.\n"
+            "Bitte versuchen Sie es später erneut.")
+        return False
+
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = smtp_email
+        msg['To'] = email
+        msg['Subject'] = f'Ihre Rechnung – {filename}'
+
+        body = MIMEText(
+            f"Sehr geehrte Damen und Herren,\n\n"
+            f"anbei erhalten Sie Ihre Rechnung als PDF-Datei.\n\n"
+            f"Dateiname: {filename}\n\n"
+            f"Mit freundlichen Grüßen\n"
+            f"Ihr RechnungAgent Bot", 'plain', 'utf-8')
+        msg.attach(body)
+
+        attachment = MIMEApplication(pdf_bytes, _subtype='pdf')
+        attachment.add_header('Content-Disposition',
+                              'attachment',
+                              filename=filename)
+        msg.attach(attachment)
+
+        use_tls = smtp_port == 465
+        await aiosmtplib.send(
+            msg,
+            hostname=smtp_server,
+            port=smtp_port,
+            use_tls=use_tls,
+            start_tls=not use_tls,
+            username=smtp_email,
+            password=smtp_password,
+        )
+
+        logger.info(f"Email sent to {email} with attachment {filename}")
+        await update.effective_message.reply_text(
+            f"✅ Rechnung erfolgreich an {email} gesendet!")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error sending email to {email}: {e}")
+        logger.error(traceback.format_exc())
+        await update.effective_message.reply_text(
+            f"❌ Fehler beim E-Mail-Versand: {str(e)}\n"
+            f"Bitte überprüfen Sie Ihre E-Mail-Adresse.")
+        return False
+
+
+async def email_invoice_callback(update: Update,
+                                 context: ContextTypes.DEFAULT_TYPE):
+    """Callback для кнопки '📧 Per E-Mail senden' — достаёт PDF из БД и отправляет"""
+    query = update.callback_query
+    await query.answer()
+
+    invoice_id = query.data.replace("email_invoice_", "")
+    user_id = update.effective_user.id
+
+    invoice = db.get_invoice(invoice_id)
+    if not invoice:
+        await query.message.reply_text("❌ Rechnung nicht gefunden.")
+        return
+
+    pdf_file_id = invoice.get('pdf_file_id')
+    if not pdf_file_id:
+        await query.message.reply_text(
+            "❌ Keine PDF-Datei für diese Rechnung vorhanden.")
+        return
+
+    file_record = db.get_document_file(str(pdf_file_id))
+    if not file_record or not file_record.get('file_data'):
+        await query.message.reply_text(
+            "❌ PDF-Datei konnte nicht geladen werden.")
+        return
+
+    import base64
+    file_data = file_record['file_data']
+
+    # Supabase returns BYTEA as \x + hex.
+    # Old records: base64 string was stored in BYTEA → \x + hex(base64(pdf)) → need double decode
+    # New records: raw hex was stored → \x + hex(pdf) → need single decode
+    if isinstance(file_data, str) and file_data.startswith('\\x'):
+        raw = bytes.fromhex(file_data[2:])
+        # Check if result is PDF (%PDF) or base64-encoded PDF
+        if raw[:4] == b'%PDF':
+            pdf_bytes = raw
+        else:
+            pdf_bytes = base64.b64decode(raw)
+    elif isinstance(file_data, bytes):
+        pdf_bytes = file_data
+    else:
+        pdf_bytes = base64.b64decode(file_data)
+    filename = file_record.get('file_name', f'Rechnung_{invoice_id}.pdf')
+
+    await send_pdf_to_email(update, context, pdf_bytes, filename, user_id)
 
 
 # ----------------------------

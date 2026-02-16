@@ -51,6 +51,11 @@ def main():
     app.add_handler(CommandHandler("start", handlers_v1.start_command))
     app.add_handler(CommandHandler("help", handlers_v1.help_command))
 
+    # Callback handler для отправки счёта по email
+    app.add_handler(
+        CallbackQueryHandler(handlers_v1.email_invoice_callback,
+                             pattern="^email_invoice_"))
+
     # Callback handlers для просмотра и конвертации офферов
     app.add_handler(
         CallbackQueryHandler(handlers_v1.view_offer_details,
