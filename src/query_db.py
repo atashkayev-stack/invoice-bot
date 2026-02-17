@@ -190,10 +190,12 @@ class Database:
     def update_profile(self, user_id: int, data: Dict) -> bool:
         try:
             clean = {k: v for k, v in data.items() if k != "id"}
+            logger.info(f"[PostgreSQL] update_profile user={user_id}, keys={list(clean.keys())}")
             self._update("profiles", clean, {"id": user_id})
+            logger.info(f"[PostgreSQL] update_profile SUCCESS for user={user_id}")
             return True
         except Exception as e:
-            logger.error(f"Error update_profile user={user_id}: {e}")
+            logger.error(f"Error update_profile user={user_id}: {e}", exc_info=True)
             return False
 
     # ═══════════════════ CLIENTS ═══════════════════

@@ -109,11 +109,13 @@ class Database:
     def update_profile(self, user_id: int, data: Dict) -> bool:
         try:
             clean = {k: v for k, v in data.items() if k != "id"}
-            self.client.table("profiles").update(clean).eq("id",
+            logger.info(f"[Supabase] update_profile user={user_id}, keys={list(clean.keys())}")
+            resp = self.client.table("profiles").update(clean).eq("id",
                                                            user_id).execute()
+            logger.info(f"[Supabase] update_profile response: count={len(resp.data) if resp.data else 0}")
             return True
         except Exception as e:
-            logger.error(f"Error update_profile user={user_id}: {e}")
+            logger.error(f"Error update_profile user={user_id}: {e}", exc_info=True)
             return False
 
     def get_all_clients(self, user_id: int) -> List[Dict]:

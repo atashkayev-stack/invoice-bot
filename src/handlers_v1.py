@@ -24,6 +24,8 @@ except ImportError:
     from config_v1 import SETTINGS_FORM_URL, CREATE_INVOICE_FORM_URL, CREATE_OFFER_FORM_URL, BASE_URL
 
 logger = logging.getLogger(__name__)
+_db_backend = "PostgreSQL (query_db)" if os.getenv("DATABASE_URL") else "Supabase (database_v1)"
+logger.info("=== DB backend: %s ===", _db_backend)
 db, ai = Database(), AIService()
 
 # Состояния
@@ -320,7 +322,10 @@ async def web_app_data_handler(update: Update,
         return
 
     # ========== СОХРАНЕНИЕ ПРОФИЛЯ ==========
+    logger.info("Checking profile_update: type='%s', match=%s",
+                data.get('type'), data.get('type') == 'profile_update')
     if data.get('type') == 'profile_update':
+        logger.info(">>> PROFILE_UPDATE branch entered for user=%s", user_id)
         profile_data = {
             "id":
             user_id,
@@ -410,7 +415,11 @@ async def web_app_data_handler(update: Update,
             data.get("gdpr_consent_date"),
         }
 
-        if db.update_profile(user_id, profile_data):
+        logger.info(">>> Calling db.update_profile user=%s, company=%s",
+                    user_id, profile_data.get('company_name'))
+        result = db.update_profile(user_id, profile_data)
+        logger.info(">>> db.update_profile returned: %s", result)
+        if result:
             await update.effective_message.reply_text(
                 "✅ Profil gespeichert!", reply_markup=get_main_keyboard())
         else:
