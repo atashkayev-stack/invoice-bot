@@ -4,8 +4,6 @@
 -- Запускается при первом старте контейнера
 -- ============================================
 
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 -- ============ PROFILES ============
 CREATE TABLE IF NOT EXISTS profiles (
     id BIGINT PRIMARY KEY,
@@ -415,7 +413,7 @@ CREATE INDEX IF NOT EXISTS idx_offer_items ON offer_items(offer_id);
 
 -- ============ OFFER VAT BREAKDOWN ============
 CREATE TABLE IF NOT EXISTS offer_vat_breakdown (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     offer_id UUID NOT NULL REFERENCES offers(id) ON DELETE CASCADE,
     vat_rate NUMERIC NOT NULL,
     taxable_amount NUMERIC NOT NULL,
@@ -429,7 +427,7 @@ CREATE INDEX IF NOT EXISTS idx_offer_vat ON offer_vat_breakdown(offer_id);
 
 -- ============ DOCUMENT FILES ============
 CREATE TABLE IF NOT EXISTS document_files (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id BIGINT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     document_type VARCHAR NOT NULL,
     document_id UUID NOT NULL,
@@ -445,7 +443,7 @@ CREATE INDEX IF NOT EXISTS idx_doc_files_doc ON document_files(document_id);
 
 -- ============ USER LIMITS ============
 CREATE TABLE IF NOT EXISTS user_limits (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id BIGINT NOT NULL UNIQUE REFERENCES profiles(id) ON DELETE CASCADE,
     plan_type VARCHAR DEFAULT 'free',
     invoices_limit INTEGER DEFAULT 5,
@@ -461,7 +459,7 @@ CREATE INDEX IF NOT EXISTS idx_user_limits ON user_limits(user_id);
 
 -- ============ DATA DELETION LOGS ============
 CREATE TABLE IF NOT EXISTS data_deletion_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id BIGINT NOT NULL,
     deletion_type VARCHAR NOT NULL,
     items_deleted INTEGER DEFAULT 0,
@@ -471,7 +469,7 @@ CREATE TABLE IF NOT EXISTS data_deletion_logs (
 
 -- ============ DOCUMENT ARCHIVES ============
 CREATE TABLE IF NOT EXISTS document_archives (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id BIGINT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     email VARCHAR NOT NULL,
     status VARCHAR DEFAULT 'pending',
@@ -484,7 +482,7 @@ CREATE TABLE IF NOT EXISTS document_archives (
 
 -- ============ USER FEEDBACK ============
 CREATE TABLE IF NOT EXISTS user_feedback (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id BIGINT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     feedback_type VARCHAR DEFAULT 'general',
     subject VARCHAR,
