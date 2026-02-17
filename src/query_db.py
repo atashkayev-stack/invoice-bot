@@ -191,8 +191,15 @@ class Database:
         try:
             clean = {k: v for k, v in data.items() if k != "id"}
             logger.info(f"[PostgreSQL] update_profile user={user_id}, keys={list(clean.keys())}")
-            self._update("profiles", clean, {"id": user_id})
-            logger.info(f"[PostgreSQL] update_profile SUCCESS for user={user_id}")
+            # UPSERT: INSERT если строки нет, UPDATE если есть
+            cols = ["id"] + list(clean.keys())
+            vals = [user_id] + list(clean.values())
+            ph = ", ".join(["%s"] * len(cols))
+            set_clause = ", ".join(f"{k} = EXCLUDED.{k}" for k in clean)
+            sql = (f'INSERT INTO profiles ({", ".join(cols)}) VALUES ({ph}) '
+                   f'ON CONFLICT (id) DO UPDATE SET {set_clause}')
+            self._exec(sql, vals, fetch=None)
+            logger.info(f"[PostgreSQL] update_profile UPSERT SUCCESS for user={user_id}")
             return True
         except Exception as e:
             logger.error(f"Error update_profile user={user_id}: {e}", exc_info=True)
