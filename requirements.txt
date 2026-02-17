@@ -11,3 +11,5 @@ jinja2
 lxml
 fpdf2
 requests
+anthropic
+supabase
