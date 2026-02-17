@@ -7,13 +7,19 @@ from telegram.ext import ContextTypes, ConversationHandler
 from src.pdf_from_template import PDFFromTemplateV2
 from src.xml_generator_v2 import XMLGeneratorV2, embed_xml_in_pdf
 
-# Импорты модулей
+# Импорты модулей — автоопределение бэкенда (PostgreSQL / Supabase)
 try:
-    from .database_v1 import Database
+    if os.getenv("DATABASE_URL"):
+        from .query_db import Database
+    else:
+        from .database_v1 import Database
     from .ai_service_v1 import AIService
     from .config_v1 import SETTINGS_FORM_URL, CREATE_INVOICE_FORM_URL, CREATE_OFFER_FORM_URL, BASE_URL
 except ImportError:
-    from database_v1 import Database
+    if os.getenv("DATABASE_URL"):
+        from query_db import Database
+    else:
+        from database_v1 import Database
     from ai_service_v1 import AIService
     from config_v1 import SETTINGS_FORM_URL, CREATE_INVOICE_FORM_URL, CREATE_OFFER_FORM_URL, BASE_URL
 

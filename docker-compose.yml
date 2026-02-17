@@ -11,7 +11,31 @@ services:
       - ./src:/app/src
       - ./data:/app/data
     depends_on:
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - bot-network
+
+  db:
+    image: postgres:16-alpine
+    container_name: invoice-bot-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: invoice_bot
+      POSTGRES_USER: bot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ./database/schema_full.sql:/docker-entrypoint-initdb.d/01_schema.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bot -d invoice_bot"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     networks:
       - bot-network
 
@@ -27,6 +51,7 @@ services:
       - bot-network
 
 volumes:
+  pg-data:
   redis-data:
 
 networks:

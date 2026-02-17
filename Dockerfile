@@ -6,7 +6,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ ./src/
+COPY templates/ ./templates/
+COPY main_v1.py .
 
 ENV PYTHONUNBUFFERED=1
 
-CMD ["python", "src/bot/main.py"]
+CMD ["python", "main_v1.py"]
