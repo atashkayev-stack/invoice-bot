@@ -108,10 +108,12 @@ class Database:
 
     def update_profile(self, user_id: int, data: Dict) -> bool:
         try:
-            self.client.table("profiles").update(data).eq("id",
-                                                          user_id).execute()
+            clean = {k: v for k, v in data.items() if k != "id"}
+            self.client.table("profiles").update(clean).eq("id",
+                                                           user_id).execute()
             return True
-        except:
+        except Exception as e:
+            logger.error(f"Error update_profile user={user_id}: {e}")
             return False
 
     def get_all_clients(self, user_id: int) -> List[Dict]:

@@ -278,6 +278,8 @@ async def web_app_data_handler(update: Update,
         return
 
     user_id = update.effective_user.id
+    logger.info("WebApp data type=%s, user=%s, keys=%s",
+                data.get('type'), user_id, list(data.keys()))
 
     # ========== НАСТРОЙКИ НУМЕРАЦИИ СЧЕТОВ ==========
     if data.get('type') == 'invoice_numbering_update':
@@ -683,7 +685,7 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ], [KeyboardButton("📄 Aus Dokument laden")], [KeyboardButton("🔙 Zurück")]],
                                    resize_keyboard=True)
 
-    await update.message.reply_text("⚙️ Einstellungen:", reply_markup=keyboard)
+    await update.effective_message.reply_text("⚙️ Einstellungen:", reply_markup=keyboard)
     return SETTINGS_MENU
 
 
@@ -1485,7 +1487,7 @@ async def handle_goto_settings(update: Update,
     await query.answer()
 
     # Просто вызываем settings_command
-    await settings_command(query, context)
+    await settings_command(update, context)
 
 
 async def view_offer_details(update, context):

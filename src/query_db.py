@@ -189,9 +189,11 @@ class Database:
 
     def update_profile(self, user_id: int, data: Dict) -> bool:
         try:
-            self._update("profiles", data, {"id": user_id})
+            clean = {k: v for k, v in data.items() if k != "id"}
+            self._update("profiles", clean, {"id": user_id})
             return True
-        except:
+        except Exception as e:
+            logger.error(f"Error update_profile user={user_id}: {e}")
             return False
 
     # ═══════════════════ CLIENTS ═══════════════════
