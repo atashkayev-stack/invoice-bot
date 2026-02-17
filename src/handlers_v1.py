@@ -727,18 +727,19 @@ async def rechnung_erstellen_start(update: Update,
     # ⚠️ ПРОВЕРКА: Профиль заполнен и согласие дано?
     if not profile.get('gdpr_consent') or not profile.get(
             'accepted_terms') or not profile.get('company_name'):
-        keyboard = InlineKeyboardMarkup([[
-            InlineKeyboardButton("⚙️ Firmendaten eingeben",
-                                 callback_data="goto_settings")
-        ]])
-
         missing = []
-        if not profile.get('gdpr_consent'):
-            missing.append("• GDPR-Zustimmung")
-        if not profile.get('accepted_terms'):
-            missing.append("• Nutzungsbedingungen (AGB)")
+        buttons = []
         if not profile.get('company_name'):
             missing.append("• Firmendaten (Name, Adresse, etc.)")
+            buttons.append([InlineKeyboardButton("⚙️ Firmendaten eingeben",
+                                                 callback_data="goto_settings")])
+        if not profile.get('gdpr_consent') or not profile.get('accepted_terms'):
+            if not profile.get('gdpr_consent'):
+                missing.append("• GDPR-Zustimmung")
+            if not profile.get('accepted_terms'):
+                missing.append("• Nutzungsbedingungen (AGB)")
+            buttons.append([InlineKeyboardButton("🔒 Datenschutz & AGB",
+                                                 callback_data="goto_datenschutz")])
 
         await update.message.reply_text(
             "⚠️ **Profil unvollständig**\n\n"
@@ -747,7 +748,7 @@ async def rechnung_erstellen_start(update: Update,
             "Bitte gehen Sie zu den Einstellungen und füllen Sie "
             "Ihr Firmenprofil aus.",
             parse_mode='Markdown',
-            reply_markup=keyboard)
+            reply_markup=InlineKeyboardMarkup(buttons))
         return  # ❌ БЛОКИРУЕМ создание
 
     # ✅ Всё ОК - открываем форму
@@ -770,18 +771,19 @@ async def angebot_erstellen_start(update: Update,
     # ⚠️ ПРОВЕРКА: Профиль заполнен и согласие дано?
     if not profile.get('gdpr_consent') or not profile.get(
             'accepted_terms') or not profile.get('company_name'):
-        keyboard = InlineKeyboardMarkup([[
-            InlineKeyboardButton("⚙️ Firmendaten eingeben",
-                                 callback_data="goto_settings")
-        ]])
-
         missing = []
-        if not profile.get('gdpr_consent'):
-            missing.append("• GDPR-Zustimmung")
-        if not profile.get('accepted_terms'):
-            missing.append("• Nutzungsbedingungen (AGB)")
+        buttons = []
         if not profile.get('company_name'):
             missing.append("• Firmendaten (Name, Adresse, etc.)")
+            buttons.append([InlineKeyboardButton("⚙️ Firmendaten eingeben",
+                                                 callback_data="goto_settings")])
+        if not profile.get('gdpr_consent') or not profile.get('accepted_terms'):
+            if not profile.get('gdpr_consent'):
+                missing.append("• GDPR-Zustimmung")
+            if not profile.get('accepted_terms'):
+                missing.append("• Nutzungsbedingungen (AGB)")
+            buttons.append([InlineKeyboardButton("🔒 Datenschutz & AGB",
+                                                 callback_data="goto_datenschutz")])
 
         await update.message.reply_text(
             "⚠️ **Profil unvollständig**\n\n"
@@ -790,7 +792,7 @@ async def angebot_erstellen_start(update: Update,
             "Bitte gehen Sie zu den Einstellungen und füllen Sie "
             "Ihr Firmenprofil aus.",
             parse_mode='Markdown',
-            reply_markup=keyboard)
+            reply_markup=InlineKeyboardMarkup(buttons))
         return  # ❌ БЛОКИРУЕМ создание
 
     # ✅ Всё ОК - открываем форму
@@ -1036,7 +1038,7 @@ async def show_privacy_menu(update: Update,
         ],
     ])
 
-    await update.message.reply_text(
+    await update.effective_message.reply_text(
         f"🔒 Datenschutz\n\n"
         f"📊 Status:\n"
         f"• GDPR: {'✅' if gdpr else '❌'} {f'({gdpr_date})' if gdpr else ''}\n"
@@ -1497,6 +1499,14 @@ async def handle_goto_settings(update: Update,
 
     # Просто вызываем settings_command
     await settings_command(update, context)
+
+
+async def handle_goto_datenschutz(update: Update,
+                                  context: ContextTypes.DEFAULT_TYPE):
+    """Переход в Datenschutz при нажатии inline-кнопки"""
+    query = update.callback_query
+    await query.answer()
+    await show_privacy_menu(update, context)
 
 
 async def view_offer_details(update, context):
